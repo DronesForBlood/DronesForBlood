@@ -1,0 +1,51 @@
+sudo: required
+
+language: python
+python:
+  - "3.6"
+
+services:
+  - docker
+  
+install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/1.15.0/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+  - pip install -r tests/Tools/requirements.txt
+
+env:
+  - test_stage=gcs_lost_communication_test
+
+script:
+  - ./pull_image.sh gazebo
+  - ./pull_image.sh groundcontrol
+  - ./tests/${test_stage}.sh
+stages:
+  - build
+  - test
+#  - name: deploy
+#    if: branch = master
+
+jobs:
+  include:
+    - stage: build
+      script:
+        - docker-compose build $build_type
+        - ./deploy.sh $build_type
+      env: build_type=gazebo
+    - script:
+        - docker-compose build $build_type
+        - ./deploy.sh $build_type
+      env: build_type=groundcontrol
+#    - stage: deploy
+#      script: skip
+#      install: skip
+#      deploy:
+#         - provider: script
+#           script:
+#             - ./pull_image.sh webapp
+#             - ./pull_image.sh drone
+#             - ./pull_image.sh gazebo
+#             - ./pull_image.sh groundcontrol
+#             - "./deploy_latest.sh"
