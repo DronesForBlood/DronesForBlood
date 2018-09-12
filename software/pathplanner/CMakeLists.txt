@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(PATH_FINDER)
+project(PATHPLANNER)
 set (CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -14,9 +14,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(SOURCES
     sources/main.cpp
     sources/node.cpp
+    sources/nodecollection.cpp
     sources/pathfinder.cpp
 
     headers/node.h
+    headers/nodecollection.h
     headers/pathfinder.h
 )
 
