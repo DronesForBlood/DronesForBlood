@@ -5,12 +5,13 @@ WORKDIR /usr/src/app/
 
 RUN git clone https://github.com/PX4/Firmware.git
 
+
 ADD run.sh /usr/src/run.sh
 RUN chmod +x /usr/src/run.sh
 
 EXPOSE 14557
 EXPOSE 14556
 EXPOSE 14560
+EXPOSE 11345
 
-
-CMD ["serial"]
+ENTRYPOINT ["/usr/src/run.sh"]
