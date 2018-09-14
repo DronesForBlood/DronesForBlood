@@ -16,10 +16,12 @@ set(SOURCES
     sources/node.cpp
     sources/nodecollection.cpp
     sources/pathfinder.cpp
+    sources/simulation.cpp
 
     headers/node.h
     headers/nodecollection.h
     headers/pathfinder.h
+    headers/simulation.h
 )
 
 add_executable(${PROJECT_NAME}

@@ -1,10 +1,8 @@
 
 #include <iostream>
 
-#include "headers/pathfinder.h"
+#include "headers/simulation.h"
 
 int main() {
-    Pathfinder test;
-
-    return 0;
+    Simulation simulation;
 }

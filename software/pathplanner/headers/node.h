@@ -49,16 +49,22 @@ public:
     bool getStable() {return stable;}
 
     double getCost() {return cost;}
+    double getPenalty() {return penalty;}
+    void setPenalty(double val) {penalty = val;}
+
+
     std::pair<double, double> getPosition() {return position;}
     std::pair<double, double> getSourceIndex() {return sourceNode;}
 
     void setNodeAsInit();
     void updateSourceAndCost(std::pair<std::size_t, std::size_t> source, double newCost);
+    void setSource(std::pair<std::size_t, std::size_t> source) {sourceNode = source;}
 
 private:
     std::pair<std::size_t, std::size_t> sourceNode;
     std::pair<double, double> position;
     double cost = -1.;
+    double penalty = 0.;
 
     bool stable = true;
     bool updated = false;
