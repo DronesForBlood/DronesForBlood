@@ -26,18 +26,11 @@ void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
     }
 }
 
-void Node::setNodeReadyMutex(std::shared_ptr<std::mutex> mutex)
-{
-    nodeReadyMutex = mutex;
-}
-
-void Node::setCheckNodesAgain(bool *val)
-{
-    checkNodesAgain = val;
-}
-
 void Node::checkAndUpdateNeighbors()
 {
+    if(!updated)
+        return;
+
     for(NeighborNode &neighbor : neighbors) {
         double costToMove = neighbor.distance + neighbor.node->getPenalty() + cost;
         neighbor.node->lockAccessNode();
@@ -45,6 +38,7 @@ void Node::checkAndUpdateNeighbors()
             neighbor.node->updateSourceAndCost(position, costToMove);
             neighbor.node->setUpdated(true);
             neighbor.node->setStable(false);
+            neighbor.node->setPointerToSource(pointerToSelf);
             neighbor.node->unlockNodeReady();
         }
         neighbor.node->unlockAccessNode();
@@ -61,20 +55,41 @@ void Node::unlockNodeReady()
     }
 }
 
+void Node::setPenalty(double val)
+{
+    double difference = val - penalty;
+    penalty = val;
+    cost += difference;
+    //addToNextCost(difference);
+}
+
+void Node::addToNextCost(double val)
+{
+    for(NeighborNode neighbor : neighbors) {
+        if(pointerToSelf == neighbor.node->getPointerToSource()) {
+            neighbor.node->addToCost(val);
+            neighbor.node->addToNextCost(val);
+            neighbor.node->setUpdated(true);
+        }
+    }
+}
+
 void Node::setNodeAsInit()
 {
     stable = false;
     updated = true;
-    sourceNode = position;
+    sourceNodeIndex = position;
     cost = 0;
+
+    pointerToSelf = nullptr;
 
     nodeReadyMutex->lock();
     *checkNodesAgain = true;
     nodeReadyMutex->unlock();
 }
 
-void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> source, double newCost)
+void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost)
 {
-    sourceNode = source;
+    this->sourceNodeIndex = sourceNodeIndex;
     cost = newCost;
 }

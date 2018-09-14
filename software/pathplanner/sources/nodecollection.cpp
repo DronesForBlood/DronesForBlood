@@ -29,6 +29,9 @@ void NodeCollection::start()
 void NodeCollection::pause()
 {
     pauseThread = true;
+    nodeReadyMutex->lock();
+    *checkNodesAgain = true;
+    nodeReadyMutex->unlock();
 }
 
 void NodeCollection::resume()
@@ -42,11 +45,11 @@ void NodeCollection::nodeChecker()
 
         if(pauseThread)
             isPaused = true;
-        while(pauseThread) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+        while(pauseThread)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
         isPaused = false;
-        std::cout << "STILL RUNNING" << std::endl;
+
         while(!*checkNodesAgain)
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -54,11 +57,9 @@ void NodeCollection::nodeChecker()
         *checkNodesAgain = false;
         nodeReadyMutex->unlock();
 
-        stable = true;
         for(std::shared_ptr<Node> &node : nodes) {
             if(!node->getStable()) {
                 node->checkAndUpdateNeighbors();
-                stable = false;
             }
         }
     }

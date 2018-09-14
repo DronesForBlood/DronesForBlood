@@ -21,7 +21,7 @@ public:
     void start();
     void pause();
     void resume();
-    bool getIsPaused() {std::cout << "CMON" << isPaused << std::endl; return isPaused;}
+    bool getIsPaused() {return isPaused;}
 
 
 private:
