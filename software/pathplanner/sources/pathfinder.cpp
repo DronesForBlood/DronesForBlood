@@ -3,7 +3,7 @@
 
 Pathfinder::Pathfinder()
 {
-
+    collectionControlMutex = std::shared_ptr<std::mutex>(new std::mutex);
 }
 
 void Pathfinder::setCurrentPosition(std::pair<std::size_t, std::size_t> position)
@@ -19,14 +19,14 @@ void Pathfinder::setCurrentPosition(std::pair<std::size_t, std::size_t> position
  */
 void Pathfinder::startSolver()
 {
+    // Start the thread that monitors the status of the map.
+    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
+    mapStatusThread->detach();
+
     // Set inital node and start solving the map.
     map[currentPosition.first][currentPosition.second]->setNodeAsInit();
     for(NodeCollection &collection : nodeCollections)
         collection.start();
-
-    // Start the thread that monitors the status of the map.
-    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
-    mapStatusThread->detach();
 }
 
 
@@ -46,6 +46,7 @@ void Pathfinder::generateTestMap()
         for(int j = 0; j < mapSize; j++) {
             std::pair<double, double> pos(i,j);
             std::shared_ptr<Node> newNode(new Node(pos));
+            newNode->setPointerToSelf(newNode);
             row.push_back(newNode);
         }
         map.push_back(row);
@@ -67,45 +68,59 @@ void Pathfinder::generateTestMap()
 
 void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
 {
+    collectionControlMutex->lock();
+
     for(NodeCollection &collection : nodeCollections)
         collection.pause();
 
-    /*
+    for(NodeCollection &collection : nodeCollections)
+        while(!collection.getIsPaused())
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+
     for(std::size_t i = 0; i < map.size(); i++)
-        for(std::size_t j = 0; j < map[i].size(); j++)
-            map[i][j]->lockAccessNode();
-            */
+        for(std::size_t j = 0; j < map[i].size(); j++) {
+            map[i][j]->setUpdated(false);
+            //map[i][j]->setStable(false);
+        }
 
     map[row][col]->setPenalty(penalty);
-    //map[row][col]->setStable(false);
-
-    for(std::size_t i = 0; i < map.size(); i++)
-        for(std::size_t j = 0; j < map[i].size(); j++)
-            map[i][j]->setUpdated(false);
-
-    //map[row][col]->setUpdated(true);
-    //map[row][col]->unlockNodeReady();
-
+    map[row][col]->setUpdated(false);
     map[currentPosition.first][currentPosition.second]->setStable(false);
-    //map[sourcePos.first][sourcePos.second]->setUpdated(true);
     map[currentPosition.first][currentPosition.second]->setUpdated(true);
     map[currentPosition.first][currentPosition.second]->setSource(currentPosition);
     map[currentPosition.first][currentPosition.second]->unlockNodeReady();
 
-    /*
-    for(std::size_t i = 0; i < map.size(); i++)
-        for(std::size_t j = 0; j < map[i].size(); j++)
-            map[i][j]->unlockAccessNode();
-            */
-
-    timeMeasureBegin = std::chrono::steady_clock::now();
-    mapIsStable = false;
-
     for(NodeCollection &collection : nodeCollections)
         collection.resume();
 
+    collectionControlMutex->unlock();
+
+    if(!mapIsStable)
+        timeMeasureBegin = std::chrono::steady_clock::now();
+    mapIsStable = false;
+
     std::cout << "Penalty of node updated!" << std::endl;
 }
+
+
+/* Get the path to the node at location row, col.
+ */
+void Pathfinder::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
+{
+    std::pair<std::size_t,std::size_t> sourcePos = map[row][col]->getSourceIndex();
+
+    //std::cout << "PATH1: " << sourcePos.first << " " << sourcePos.second << std::endl;
+    std::pair<double,double> pos = map[row][col]->getPosition();
+    //std::cout << "PATH: " << pos.first << " " << pos.second << std::endl;
+    path.push_back(pos);
+
+    if(sourcePos.first == row && sourcePos.second == col)
+        return;
+
+    makePathToDestination(sourcePos.first, sourcePos.second, path);
+}
+
 
 /* Prints the current status of the map with info about node row, col.
  */
@@ -114,14 +129,22 @@ void Pathfinder::printMapStatus(std::size_t row, std::size_t col)
     std::vector<std::pair<std::size_t, std::size_t>> path;
     makePathToDestination(row, col, path);
 
-    double pathCost = map[0][mapSize-1]->getCost();
+    if(path.back().first != currentPosition.first || path.back().second != currentPosition.second) {
+        std::cout << "No path exists from node [" << currentPosition.first << ", " << currentPosition.second << "] to [" << row << ", " << col << "] in map of size " << map.size() << "x" << map[0].size() << std::endl;
+        return;
+    }
+
+    double pathCost = map[row][col]->getCost();
 
     if(mapIsStable) {
         std::cout << "Map stable: True" << std::endl;
         std::cout << "Computation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(timeMeasureEnd - timeMeasureBegin).count() <<std::endl;
     }
-    else
+    else {
         std::cout << "Map stable: False" << std::endl;
+        std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
+        std::cout << "Computation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - timeMeasureBegin).count() <<std::endl;
+    }
 
     std::cout << "Path from node [" << currentPosition.first << ", " << currentPosition.second << "] to [" << row << ", " << col << "] in map of size " << map.size() << "x" << map[0].size() << std::endl;
     std::cout << "Length: " << path.size() << std::endl;
@@ -160,6 +183,11 @@ void Pathfinder::printPathMap(std::size_t row, std::size_t col)
     std::vector<std::pair<std::size_t, std::size_t>> path;
     makePathToDestination(row, col, path);
 
+    if(path.back().first != currentPosition.first || path.back().second != currentPosition.second) {
+        std::cout << "No path exists from node [" << currentPosition.first << ", " << currentPosition.second << "] to [" << row << ", " << col << "] in map of size " << map.size() << "x" << map[0].size() << std::endl;
+        return;
+    }
+
     for(std::size_t i = 0; i < path.size(); i++)
         pathMap[path[i].first][path[i].second] = 'X';
 
@@ -186,9 +214,6 @@ void Pathfinder::mapStatusChecker()
         //printCostMap();
 
         //printMapStatus(0, mapSize - 1);
-
-        std::vector<std::pair<std::size_t, std::size_t>> path;
-        makePathToDestination(0, mapSize - 1, path);
     }
 }
 
@@ -223,7 +248,7 @@ void Pathfinder::waitForMapStable()
     while(!checkMapStable()) {
         if(++i > 50) {
             std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
-            std::cout << "Calculating... Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - timeMeasureBegin).count() << std::endl;
+            std::cout << "Stabilzing map. Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - timeMeasureBegin).count() << std::endl;
             i = 0;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -237,26 +262,20 @@ void Pathfinder::waitForMapStable()
  */
 bool Pathfinder::checkMapStable()
 {
+    collectionControlMutex->lock();
+
     for(NodeCollection &collection : nodeCollections)
         collection.pause();
 
     for(NodeCollection &collection : nodeCollections) {
-        std::cout << collection.getIsPaused() << std::endl;
         while(!collection.getIsPaused()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
 
-    /*
-    for(std::size_t i = 0; i < map.size(); i++)
-        for(std::size_t j = 0; j < map[i].size(); j++)
-            map[i][j]->lockAccessNode();
-            */
-
     bool stable = true;
     for(std::size_t i = 0; i < map.size(); i++) {
         for(std::size_t j = 0; j < map[i].size(); j++) {
-            //std::cout << map[i][j]->getStable() << std::endl;
             if(!map[i][j]->getStable()) {
                 stable = false;
                 break;
@@ -266,14 +285,10 @@ bool Pathfinder::checkMapStable()
         }
     }
 
-    /*
-    for(std::size_t i = 0; i < map.size(); i++)
-        for(std::size_t j = 0; j < map[i].size(); j++)
-            map[i][j]->unlockAccessNode();
-            */
-
     for(NodeCollection &collection : nodeCollections)
         collection.resume();
+
+    collectionControlMutex->unlock();
 
     return stable;
 }
@@ -323,9 +338,6 @@ void Pathfinder::calculateNeighbors(std::size_t row, std::size_t col, std::vecto
  */
 void Pathfinder::divideIntoCollections()
 {
-    std::size_t gridRows = 4;
-    std::size_t gridCols = 4;
-
     std::size_t rowCount = map.size() / gridRows;
     std::size_t colCount = map.size() / gridCols;
 
@@ -371,22 +383,4 @@ void Pathfinder::printMap()
         }
         std::cout << "\n";
     }
-}
-
-
-/* Get the path to the node at location row, col.
- */
-void Pathfinder::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
-{
-    std::pair<std::size_t,std::size_t> sourcePos = map[row][col]->getSourceIndex();
-
-    //std::cout << "PATH1: " << sourcePos.first << " " << sourcePos.second << std::endl;
-    std::pair<double,double> pos = map[row][col]->getPosition();
-    //std::cout << "PATH: " << pos.first << " " << pos.second << std::endl;
-    path.push_back(pos);
-
-    if(sourcePos.first == row && sourcePos.second == col)
-        return;
-
-    makePathToDestination(sourcePos.first, sourcePos.second, path);
 }

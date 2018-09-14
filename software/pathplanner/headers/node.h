@@ -30,10 +30,10 @@ public:
     ~Node();
 
     Node(std::pair<double, double> position);
+    void setPointerToSelf(std::shared_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);
-    void setNodeReadyMutex(std::shared_ptr<std::mutex> mutex);
-    void setCheckNodesAgain(bool *val);
-
+    void setNodeReadyMutex(std::shared_ptr<std::mutex> mutex) {nodeReadyMutex = mutex;}
+    void setCheckNodesAgain(bool *val) {checkNodesAgain = val;}
 
     void checkAndUpdateNeighbors();
 
@@ -50,19 +50,25 @@ public:
 
     double getCost() {return cost;}
     double getPenalty() {return penalty;}
-    void setPenalty(double val) {penalty = val;}
-
+    void addToCost(double val) {cost += val;}
+    void setPenalty(double val);
+    void addToNextCost(double val);
 
     std::pair<double, double> getPosition() {return position;}
-    std::pair<double, double> getSourceIndex() {return sourceNode;}
+    std::pair<std::size_t, std::size_t> getSourceIndex() {return sourceNodeIndex;}
+    std::shared_ptr<Node> getPointerToSource() {return pointerToSource;}
 
     void setNodeAsInit();
-    void updateSourceAndCost(std::pair<std::size_t, std::size_t> source, double newCost);
-    void setSource(std::pair<std::size_t, std::size_t> source) {sourceNode = source;}
+    void updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost);
+    void setSource(std::pair<std::size_t, std::size_t> source) {sourceNodeIndex = source;}
+    void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    std::pair<std::size_t, std::size_t> sourceNode;
+    std::shared_ptr<Node> pointerToSelf;
+    std::shared_ptr<Node> pointerToSource;
+    std::pair<std::size_t, std::size_t> sourceNodeIndex;
     std::pair<double, double> position;
+
     double cost = -1.;
     double penalty = 0.;
 
