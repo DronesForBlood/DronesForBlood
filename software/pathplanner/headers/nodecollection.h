@@ -19,7 +19,10 @@ public:
 
     void addNode(std::shared_ptr<Node> node);
     void start();
-    bool isDone() {return stable;}
+    void pause();
+    void resume();
+    bool getIsPaused() {std::cout << "CMON" << isPaused << std::endl; return isPaused;}
+
 
 private:
     [[ noreturn ]] void nodeChecker();
@@ -30,6 +33,8 @@ private:
    std::shared_ptr<std::thread> checkerThread;
    bool *checkNodesAgain = new bool(false);
    bool stable = false;
+   bool pauseThread = false;
+   bool isPaused = false;
 
 };
 

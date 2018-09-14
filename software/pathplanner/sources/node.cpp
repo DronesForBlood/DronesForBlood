@@ -38,12 +38,8 @@ void Node::setCheckNodesAgain(bool *val)
 
 void Node::checkAndUpdateNeighbors()
 {
-    //if(stable)
-    //    return;
-    stable = true;
-
     for(NeighborNode &neighbor : neighbors) {
-        double costToMove = neighbor.distance + cost;
+        double costToMove = neighbor.distance + neighbor.node->getPenalty() + cost;
         neighbor.node->lockAccessNode();
         if(costToMove < neighbor.node->getCost() || !neighbor.node->getUpdated()) {
             neighbor.node->updateSourceAndCost(position, costToMove);
@@ -53,14 +49,16 @@ void Node::checkAndUpdateNeighbors()
         }
         neighbor.node->unlockAccessNode();
     }
-
+    stable = true;
 }
 
 void Node::unlockNodeReady()
 {
-    nodeReadyMutex->lock();
-    *checkNodesAgain = true;
-    nodeReadyMutex->unlock();
+    if(!*checkNodesAgain) {
+        nodeReadyMutex->lock();
+        *checkNodesAgain = true;
+        nodeReadyMutex->unlock();
+    }
 }
 
 void Node::setNodeAsInit()
@@ -69,7 +67,6 @@ void Node::setNodeAsInit()
     updated = true;
     sourceNode = position;
     cost = 0;
-    //nodeReadyMutex->unlock();
 
     nodeReadyMutex->lock();
     *checkNodesAgain = true;
