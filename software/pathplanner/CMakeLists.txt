@@ -7,17 +7,26 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
+find_package(OpenCV REQUIRED)
+include_directories( SYSTEM
+    ${OpenCV_INCLUDE_DIRS}
+)
+
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # ADD ALL SOURCES AND FREE HEADERS HERE
 set(SOURCES
     sources/main.cpp
+    sources/mapcontroller.cpp
+    sources/mapgenerator.cpp
     sources/node.cpp
     sources/nodecollection.cpp
     sources/pathfinder.cpp
     sources/simulation.cpp
 
+    headers/mapcontroller.h
+    headers/mapgenerator.h
     headers/node.h
     headers/nodecollection.h
     headers/pathfinder.h
@@ -29,4 +38,5 @@ add_executable(${PROJECT_NAME}
     )
 
 target_link_libraries(${PROJECT_NAME}
+    ${OpenCV_LIBRARIES}
     )
