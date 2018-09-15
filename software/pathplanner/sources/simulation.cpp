@@ -4,22 +4,41 @@
 
 Simulation::Simulation()
 {
-    Pathfinder test;
+    MapController test;
     test.generateTestMap();
-    std::pair<std::size_t,std::size_t> currentPosition(500,500);
+    std::pair<std::size_t,std::size_t> currentPosition(0,0);
+    std::pair<std::size_t,std::size_t> goalPosition(799,999);
     test.setCurrentPosition(currentPosition);
+    test.setGoalPosition(goalPosition);
     test.startSolver();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+    std::cout << "BEGIN!" << std::endl;
     while(true) {
-        std::size_t dest = 1999;
+        std::vector<std::pair<std::size_t, std::size_t> > path;
+        test.getPathToDestination(path);
+        if(path.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+        currentPosition.first = path[path.size() - 2].first;
+        currentPosition.second = path[path.size() - 2].second;
+        std::cout << "New pos: " << currentPosition.first << " " << currentPosition.second << std::endl;
+        test.setCurrentHeading(currentPosition);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+
+        /*
         while(!test.getMapStable()) {
-            test.printMapStatus(dest, dest);
+            test.printMapStatus();
+            //test.printCostMap();
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-        test.printMapStatus(dest, dest);
+        test.printMapStatus();
         //test.printCostMap();
+        //*/
 
+        /*
 
         std::cout << "Update penalty!" << std::endl;
 
@@ -42,9 +61,10 @@ Simulation::Simulation()
         test.printMapStatus(dest, dest);
         //test.printCostMap();
         //test.printPathMap(dest, dest);
-
-        break;
+        //*/
     }
+    while(true)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 }
 
 Simulation::~Simulation()

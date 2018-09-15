@@ -9,7 +9,7 @@
 #include <thread>
 #include <mutex>
 
-#include "headers/pathfinder.h"
+#include "headers/mapcontroller.h"
 
 class Simulation
 {

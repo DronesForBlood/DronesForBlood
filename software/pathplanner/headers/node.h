@@ -52,6 +52,7 @@ public:
     double getPenalty() {return penalty;}
     void addToCost(double val) {cost += val;}
     void setPenalty(double val);
+    void setCost(double val);
     void addToNextCost(double val);
 
     std::pair<double, double> getPosition() {return position;}

@@ -60,7 +60,14 @@ void Node::setPenalty(double val)
     double difference = val - penalty;
     penalty = val;
     cost += difference;
-    //addToNextCost(difference);
+    addToNextCost(difference); // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
+}
+
+void Node::setCost(double val)
+{
+    double difference = val - cost;
+    cost = val;
+    addToNextCost(difference);
 }
 
 void Node::addToNextCost(double val)
@@ -81,7 +88,8 @@ void Node::setNodeAsInit()
     sourceNodeIndex = position;
     cost = 0;
 
-    pointerToSelf = nullptr;
+    //pointerToSelf = nullptr;
+    pointerToSource = pointerToSelf;
 
     nodeReadyMutex->lock();
     *checkNodesAgain = true;
@@ -91,5 +99,6 @@ void Node::setNodeAsInit()
 void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost)
 {
     this->sourceNodeIndex = sourceNodeIndex;
+    addToCost(newCost - cost);  // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
     cost = newCost;
 }
