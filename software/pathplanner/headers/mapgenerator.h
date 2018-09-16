@@ -25,9 +25,9 @@ private:
 private:
     // Note to self: DO NOT MAKE SUPER LARGER MAPS.
     const std::size_t mapSizeRow = 800;
-    const std::size_t mapSizeCol = 1500;
-    std::size_t gridRows = 1;
-    std::size_t gridCols = 1;
+    const std::size_t mapSizeCol = 1600;
+    std::size_t gridRows = 40;
+    std::size_t gridCols = 80;
 };
 
 #endif // MAPGENERATOR_H

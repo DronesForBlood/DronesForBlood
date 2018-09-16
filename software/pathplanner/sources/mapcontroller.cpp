@@ -28,8 +28,8 @@ void MapController::startSolver()
     solver.startSolver();
     setCurrentHeading(*currentPosition.get());
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&MapController::mapStatusUpdater,this));
-    mapStatusThread->detach();
+    //mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&MapController::mapStatusUpdater,this));
+    //mapStatusThread->detach();
 }
 
 /* Sets the current position of the map.
@@ -43,21 +43,29 @@ void MapController::setCurrentPosition(std::pair<std::size_t, std::size_t> posit
 
 void MapController::setCurrentHeading(std::pair<std::size_t, std::size_t> heading)
 {
-    std::cout << "Heading not set!" << std::endl;
     currentHeading = std::shared_ptr<std::pair<std::size_t, std::size_t>>(new std::pair<std::size_t, std::size_t>(heading));
     solver.setCurrentHeading(currentHeading);
-    std::cout << "Heading set!" << std::endl;
 }
 
 void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
 {
+    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(col, row));
+    color->val[0] = 0;
+    color->val[1] = 0;
+    color->val[2] = 255;
     solver.updatePenaltyOfNode(row, col, penalty);
 }
 
-void MapController::getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path)
+bool MapController::getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
     path.clear();
-    makePathToDestination(goalPosition.first, goalPosition.second, path);
+    std::cout << "Making path" << std::endl;
+    bool succes = makePathToDestination(goalPosition.first, goalPosition.second, path);
+
+    if(succes)
+        printPathImage(path);
+
+    return succes;
 }
 
 
@@ -143,21 +151,8 @@ void MapController::printMap()
     }
 }
 
-void MapController::printPathImage()
+void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_t>> &path)
 {
-    std::vector<std::pair<std::size_t, std::size_t>> path;
-    getPathToDestination(path);
-
-    for(std::size_t i = 0; i < currentPath.size(); i++) {
-        if(currentPath[i] == *currentHeading.get()) {
-            break;
-        }
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(currentPath[i].second, currentPath[i].first));
-        color->val[0] = 255;
-        color->val[1] = 255;
-        color->val[2] = 255;
-    }
-    /*
     std::size_t currentPositionIndex = 0;
     for(std::size_t i = 0; i < currentPath.size(); i++) {
         if(currentPath[i] == *currentHeading.get()) {
@@ -165,25 +160,25 @@ void MapController::printPathImage()
             break;
         }
         cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(currentPath[i].second, currentPath[i].first));
-        color->val[0] = 255;
-        color->val[1] = 255;
-        color->val[2] = 255;
+        color->val[0] = 0;
+        color->val[1] = 100;
+        //color->val[2] = 0;
     }
 
-    for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(currentPath[i].second, currentPath[i].first));
+    if(currentPositionIndex != 0)
+        for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
+            cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(currentPath[i].second, currentPath[i].first));
 
-        color->val[0] = 255;
-        color->val[1] = 0;
-        color->val[2] = 0;
-    }
-    */
+            color->val[0] = 255;
+            color->val[1] = 0;
+            //color->val[2] = 0;
+        }
 
     for(std::size_t i = 0; i < path.size(); i++) {
         cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(path[i].second, path[i].first));
         color->val[0] = 0;
         color->val[1] = 255;
-        color->val[2] = 0;
+        //color->val[2] = 0;
     }
 
     currentPath = path;
@@ -195,23 +190,64 @@ void MapController::printPathImage()
 void MapController::mapStatusUpdater()
 {
     while(true) {
-        printPathImage();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        //printPathImage();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 
 
 /* Get the path to the node at location row, col.
  */
-void MapController::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
+bool MapController::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
-    std::pair<double,double> pos = map->at(row).at(col)->getPosition();
-    //std::cout << "POS: " << pos.first << " " << pos.second << std::endl;
+    if(!map->at(row).at(col)->getUpdated()) {
+        std::cout << "Done making path 0" << std::endl;
+        return false;
+    }
+
+    //std::cout << "Begin: " << path.size() << std::endl;
+    if(!map->at(row).at(col)->getPointerToSource()) {
+        std::cout << "Done making path 1" << std::endl;
+        return false;
+    }
+
+    //std::cout << "Begin 2" << std::endl;
+    std::pair<std::size_t, std::size_t> pos = map->at(row).at(col)->getPosition();
+    //std::cout << "Begin 3" << std::endl;
+
+
+
     path.push_back(pos);
+    //std::cout << "Begin 4" << std::endl;
 
     std::pair<std::size_t,std::size_t> sourcePos = map->at(row).at(col)->getSourceIndex();
-    if(sourcePos.first == currentHeading->first && sourcePos.second == currentHeading->second)
-        return;
 
-    makePathToDestination(sourcePos.first, sourcePos.second, path);
+    //std::cout << "Begin 5" << std::endl;
+    //std::cout << "Row:    " << row << " " << col << std::endl;
+    //std::cout << "Head:   " << currentHeading->first << " " << currentHeading->second << std::endl;
+    //std::cout << "Source: " << sourcePos.first << " " << sourcePos.second << std::endl;
+
+    if(sourcePos.first == currentHeading->first && sourcePos.second == currentHeading->second) {
+        //std::cout << "POS: " << pos.first << " " << pos.second << std::endl;
+        std::cout << "Done making path 2" << std::endl;
+        return true;
+    }
+
+    //std::cout << "Begin 6" << std::endl;
+    if(row == currentHeading->first && col == currentHeading->second) {
+        std::cout << "Done making path 3" << std::endl;
+        return false;
+    }
+
+    for(int i = 0; i < path.size() - 1; i++)
+        if(pos == path[i]) {
+            std::cout << "Current pos: " << currentHeading->first << " " << currentHeading->second << std::endl;
+            for(int j = 0; j < path.size(); j++)
+                std::cout << "L path: " << path[j].first << " " << path[j].second << std::endl;
+            std::cout << "Done making path 4" << std::endl;
+            return false;
+        }
+
+    //std::cout << "Begin 7" << std::endl;
+    return makePathToDestination(sourcePos.first, sourcePos.second, path);
 }

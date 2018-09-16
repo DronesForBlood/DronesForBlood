@@ -32,8 +32,8 @@ void Node::checkAndUpdateNeighbors()
         return;
 
     for(NeighborNode &neighbor : neighbors) {
-        double costToMove = neighbor.distance + neighbor.node->getPenalty() + cost;
         neighbor.node->lockAccessNode();
+        double costToMove = neighbor.distance + neighbor.node->getPenalty() + cost;
         if(costToMove < neighbor.node->getCost() || !neighbor.node->getUpdated()) {
             neighbor.node->updateSourceAndCost(position, costToMove);
             neighbor.node->setUpdated(true);
@@ -55,11 +55,22 @@ void Node::unlockNodeReady()
     }
 }
 
+void Node::setNextUpdated(bool val)
+{
+    updated = val;
+    for(NeighborNode &neighbor : neighbors) {
+        if(pointerToSelf == neighbor.node->getPointerToSource()) {
+            neighbor.node->setNextUpdated(val);
+        }
+    }
+}
+
 void Node::setPenalty(double val)
 {
     double difference = val - penalty;
     penalty = val;
     cost += difference;
+    updated = true;
     addToNextCost(difference); // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
 }
 
@@ -72,11 +83,11 @@ void Node::setCost(double val)
 
 void Node::addToNextCost(double val)
 {
-    for(NeighborNode neighbor : neighbors) {
+    for(NeighborNode &neighbor : neighbors) {
         if(pointerToSelf == neighbor.node->getPointerToSource()) {
             neighbor.node->addToCost(val);
             neighbor.node->addToNextCost(val);
-            neighbor.node->setUpdated(true);
+            //neighbor.node->setUpdated(true);
         }
     }
 }
@@ -89,7 +100,7 @@ void Node::setNodeAsInit()
     cost = 0;
 
     //pointerToSelf = nullptr;
-    pointerToSource = pointerToSelf;
+    //pointerToSource = pointerToSelf;
 
     nodeReadyMutex->lock();
     *checkNodesAgain = true;
@@ -99,6 +110,7 @@ void Node::setNodeAsInit()
 void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost)
 {
     this->sourceNodeIndex = sourceNodeIndex;
-    addToCost(newCost - cost);  // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
+    //addToCost(newCost - cost);  // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
     cost = newCost;
+
 }
