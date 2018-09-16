@@ -38,11 +38,13 @@ public:
     void checkAndUpdateNeighbors();
 
     void lockAccessNode() {accessNodeMutex.lock();}
+    bool tryLockAccessNode() {return accessNodeMutex.try_lock();}
     void unlockAccessNode() {accessNodeMutex.unlock();}
 
     void unlockNodeReady();
 
     void setUpdated(bool val) {updated = val;}
+    void setNextUpdated(bool val);
     bool getUpdated() {return updated;}
 
     void setStable(bool val) {stable = val;}

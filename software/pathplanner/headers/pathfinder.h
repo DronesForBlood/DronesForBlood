@@ -21,6 +21,7 @@ public:
     //void generateTestMap();
     void setCurrentHeading(std::shared_ptr<std::pair<std::size_t,std::size_t>> heading);
     void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);
+    void updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t,std::size_t>> positions, double penalty);
     bool getMapStable() {return  mapIsStable;}
     long getCurrentComputationTime();
 

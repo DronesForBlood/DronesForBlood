@@ -32,11 +32,21 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
     if(currentHeading)
         map->at(currentHeading->first).at(currentHeading->second)->setUpdated(false);
 
+    /*
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->setUpdated(false);
+            */
+
+
     // Current
     currentHeading = heading;
     map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
-    map->at(currentHeading->first).at(currentHeading->second)->setCost(0);
+    map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
     map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
+    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(nullptr);
+    map->at(currentHeading->first).at(currentHeading->second)->setCost(0);
+
     map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
@@ -49,15 +59,18 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
 {
     pauseSolver();
 
+
     for(std::size_t i = 0; i < map->size(); i++)
         for(std::size_t j = 0; j < map->at(i).size(); j++)
             map->at(i).at(j)->setUpdated(false);
+
 
     map->at(row).at(col)->setPenalty(penalty);
 
     map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
     map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
     map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
+    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(nullptr);
     map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
@@ -66,6 +79,11 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
     resumeSolver();
 
     std::cout << "Penalty of node updated!" << std::endl;
+}
+
+void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > positions, double penalty)
+{
+
 }
 
 long Pathfinder::getCurrentComputationTime()

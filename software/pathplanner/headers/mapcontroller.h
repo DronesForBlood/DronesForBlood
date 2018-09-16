@@ -25,19 +25,19 @@ public:
     void setCurrentHeading(std::pair<std::size_t,std::size_t> heading);
     void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);
     bool getMapStable() {return  solver.getMapStable();}
-    void getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path);
+    bool getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path);
 
     void printMapStatus();
     void printCostMap();
     void printPathMap();
     void printMap();
 
-    void printPathImage();
+    void printPathImage(std::vector<std::pair<std::size_t, std::size_t> > &path);
 
 
 private:
     [[ noreturn ]] void mapStatusUpdater();
-    void makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path);
+    bool makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path);
 
 private:
     cv::Mat pathImage;
