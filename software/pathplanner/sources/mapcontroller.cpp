@@ -200,6 +200,9 @@ bool MapController::makePathToDestination(std::size_t row, std::size_t col, std:
     if(!map->at(row).at(col)->getUpdated())
         return false;
 
+    if(!map->at(row).at(col)->getStable())
+        return false;
+
     if(!map->at(row).at(col)->getPointerToSource())
         return false;
 

@@ -48,6 +48,7 @@ public:
     bool getUpdated() {return updated;}
 
     void setStable(bool val) {stable = val;}
+    void setNextStable(bool val);
     bool getStable() {return stable;}
 
     double getCost() {return cost;}
@@ -55,7 +56,7 @@ public:
     void addToCost(double val) {cost += val;}
     void setPenalty(double val);
     void setCost(double val);
-    void addToNextCost(double val);
+    void addToNextCost(double &val);
 
     std::pair<double, double> getPosition() {return position;}
     std::pair<std::size_t, std::size_t> getSourceIndex() {return sourceNodeIndex;}
@@ -68,7 +69,7 @@ public:
 
 private:
     std::weak_ptr<Node> pointerToSelf;
-    std::shared_ptr<Node> pointerToSource;
+    std::shared_ptr<Node> pointerToSource = nullptr;
     std::pair<std::size_t, std::size_t> sourceNodeIndex;
     std::pair<double, double> position;
 

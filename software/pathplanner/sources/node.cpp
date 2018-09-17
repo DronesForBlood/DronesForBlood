@@ -35,7 +35,7 @@ void Node::checkAndUpdateNeighbors()
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
         double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
-        if(costToMove < neighborNode->getCost() || !neighborNode->getUpdated()) {
+        if((costToMove < neighborNode->getCost() || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(position, costToMove);
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
@@ -62,6 +62,21 @@ void Node::setNextUpdated(bool val)
     for(NeighborNode &neighbor : neighbors) {
         if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
             neighbor.node.lock()->setNextUpdated(val);
+            neighbor.node.lock()->setPointerToSource(nullptr);
+        }
+    }
+}
+
+void Node::setNextStable(bool val)
+{
+    stable = val;
+    for(NeighborNode &neighbor : neighbors) {
+        if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
+            neighbor.node.lock()->setNextStable(val);
+        }
+        else {
+            neighbor.node.lock()->setStable(val);
+            neighbor.node.lock()->unlockNodeReady();
         }
     }
 }
@@ -69,10 +84,14 @@ void Node::setNextUpdated(bool val)
 void Node::setPenalty(double val)
 {
     double difference = val - penalty;
-    penalty = val;
     cost += difference;
-    //updated = true;
-    //setNextUpdated(false);
+    penalty = val;
+
+    if(!updated)
+        return;
+
+    addToNextCost(difference);
+    setNextStable(false);
 }
 
 void Node::setCost(double val)
@@ -82,7 +101,7 @@ void Node::setCost(double val)
     addToNextCost(difference);
 }
 
-void Node::addToNextCost(double val)
+void Node::addToNextCost(double &val)
 {
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
