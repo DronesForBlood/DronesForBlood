@@ -35,7 +35,7 @@ private:
    bool *checkNodesAgain = new bool(false);
    bool stable = false;
    bool pauseThread = false;
-   bool isPaused = false;
+   bool isPaused = true;
    bool threadRunning = false;
    bool threadClosed = true;
 

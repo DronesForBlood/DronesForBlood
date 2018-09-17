@@ -71,8 +71,8 @@ void Node::setPenalty(double val)
     double difference = val - penalty;
     penalty = val;
     cost += difference;
-    updated = true;
-    addToNextCost(difference); // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
+    //updated = true;
+    //setNextUpdated(false);
 }
 
 void Node::setCost(double val)
@@ -85,10 +85,10 @@ void Node::setCost(double val)
 void Node::addToNextCost(double val)
 {
     for(NeighborNode &neighbor : neighbors) {
-        if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
-            neighbor.node.lock()->addToCost(val);
-            neighbor.node.lock()->addToNextCost(val);
-            //neighbor.node->setUpdated(true);
+        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
+        if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->addToCost(val);
+            neighborNode->addToNextCost(val);
         }
     }
 }
@@ -100,16 +100,12 @@ void Node::setNodeAsInit()
     sourceNodeIndex = position;
     cost = 0;
 
-    //pointerToSelf = nullptr;
-    //pointerToSource = pointerToSelf;
-
     unlockNodeReady();
 }
 
 void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost)
 {
     this->sourceNodeIndex = sourceNodeIndex;
-    //addToCost(newCost - cost);  // NOT SURE ABOUT THIS LINE. MAY IMPROVE PERFORMANCE, MAY CRASH. IDK
     cost = newCost;
 
 }

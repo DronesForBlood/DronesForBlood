@@ -14,9 +14,6 @@ NodeCollection::~NodeCollection()
     while(!threadClosed)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-
-    //std::cout << "CLOSED 2!" << std::endl;
-
 }
 
 void NodeCollection::addNode(std::shared_ptr<Node> node)
@@ -76,6 +73,6 @@ void NodeCollection::nodeChecker()
             }
         }
     }
-    //std::cout << "CLOSED!" << std::endl;
+
     threadClosed = true;
 }
