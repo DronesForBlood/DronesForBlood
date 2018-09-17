@@ -23,28 +23,26 @@ void MapController::generateTestMap()
 /* Start the solver
  * It waits to ensure that the solver is in fact ready
  */
-void MapController::startSolver()
+void MapController::startSolver(std::pair<std::size_t, std::size_t> position)
 {
+    currentHeading = std::shared_ptr<std::pair<std::size_t, std::size_t>>(new std::pair<std::size_t, std::size_t>(position));
+    solver.setInitialPosition(currentHeading);
     solver.startSolver();
-    setCurrentHeading(*currentPosition.get());
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    //mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&MapController::mapStatusUpdater,this));
-    //mapStatusThread->detach();
-}
 
-/* Sets the current position of the map.
- * The position MUST be on the current path as of now.
- */
-void MapController::setCurrentPosition(std::pair<std::size_t, std::size_t> position)
-{
-    currentPosition = std::shared_ptr<std::pair<std::size_t, std::size_t>>(new std::pair<std::size_t, std::size_t>(position));
-    solver.setCurrentPosition(currentPosition);
+
 }
 
 void MapController::setCurrentHeading(std::pair<std::size_t, std::size_t> heading)
 {
     currentHeading = std::shared_ptr<std::pair<std::size_t, std::size_t>>(new std::pair<std::size_t, std::size_t>(heading));
-    solver.setCurrentHeading(currentHeading);
+
+    for(std::size_t i = 0; i < currentPath.size(); i++)
+        if(heading == currentPath[i]) {
+            solver.setCurrentHeading(currentHeading);
+            return;
+        }
+
+    solver.setInitialPosition(currentHeading);
 }
 
 void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
@@ -59,7 +57,6 @@ void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double
 bool MapController::getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
     path.clear();
-    std::cout << "Making path" << std::endl;
     bool succes = makePathToDestination(goalPosition.first, goalPosition.second, path);
 
     if(succes)
@@ -200,54 +197,32 @@ void MapController::mapStatusUpdater()
  */
 bool MapController::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
-    if(!map->at(row).at(col)->getUpdated()) {
-        std::cout << "Done making path 0" << std::endl;
+    if(!map->at(row).at(col)->getUpdated())
         return false;
-    }
 
-    //std::cout << "Begin: " << path.size() << std::endl;
-    if(!map->at(row).at(col)->getPointerToSource()) {
-        std::cout << "Done making path 1" << std::endl;
+    if(!map->at(row).at(col)->getPointerToSource())
         return false;
-    }
 
-    //std::cout << "Begin 2" << std::endl;
     std::pair<std::size_t, std::size_t> pos = map->at(row).at(col)->getPosition();
-    //std::cout << "Begin 3" << std::endl;
-
-
-
     path.push_back(pos);
-    //std::cout << "Begin 4" << std::endl;
 
     std::pair<std::size_t,std::size_t> sourcePos = map->at(row).at(col)->getSourceIndex();
 
-    //std::cout << "Begin 5" << std::endl;
-    //std::cout << "Row:    " << row << " " << col << std::endl;
-    //std::cout << "Head:   " << currentHeading->first << " " << currentHeading->second << std::endl;
-    //std::cout << "Source: " << sourcePos.first << " " << sourcePos.second << std::endl;
-
-    if(sourcePos.first == currentHeading->first && sourcePos.second == currentHeading->second) {
-        //std::cout << "POS: " << pos.first << " " << pos.second << std::endl;
-        std::cout << "Done making path 2" << std::endl;
+    if(sourcePos.first == currentHeading->first && sourcePos.second == currentHeading->second)
         return true;
-    }
 
-    //std::cout << "Begin 6" << std::endl;
-    if(row == currentHeading->first && col == currentHeading->second) {
-        std::cout << "Done making path 3" << std::endl;
+    if(row == currentHeading->first && col == currentHeading->second)
         return false;
-    }
 
     for(int i = 0; i < path.size() - 1; i++)
         if(pos == path[i]) {
-            std::cout << "Current pos: " << currentHeading->first << " " << currentHeading->second << std::endl;
-            for(int j = 0; j < path.size(); j++)
-                std::cout << "L path: " << path[j].first << " " << path[j].second << std::endl;
-            std::cout << "Done making path 4" << std::endl;
+            std::cout << "INFINITE ROUTE DUE TO CYCLE. THIS SHOULD NEVER HAPPEN." << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            int crash = 0;
+            int now = 1/crash;
+            crash = now;
             return false;
         }
 
-    //std::cout << "Begin 7" << std::endl;
     return makePathToDestination(sourcePos.first, sourcePos.second, path);
 }

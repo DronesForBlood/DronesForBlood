@@ -20,7 +20,7 @@ public:
     MapController();
     void generateTestMap();
     void setGoalPosition(std::pair<std::size_t,std::size_t> goal) {goalPosition = goal;}
-    void startSolver();
+    void startSolver(std::pair<std::size_t, std::size_t> position);
     void setCurrentPosition(std::pair<std::size_t,std::size_t> position);
     void setCurrentHeading(std::pair<std::size_t,std::size_t> heading);
     void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);

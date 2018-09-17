@@ -27,10 +27,10 @@ void Simulation::runSingle()
     //std::pair<std::size_t,std::size_t> goalPosition(10, 10);
     std::pair<std::size_t,std::size_t> currentPosition(rand() % 800, rand() % 1600);
     std::pair<std::size_t,std::size_t> goalPosition(rand() % 800, rand() % 1600);
-    test.setCurrentPosition(currentPosition);
+    //test.setCurrentHeading(currentPosition);
     test.setGoalPosition(goalPosition);
-    test.startSolver();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    test.startSolver(currentPosition);
+    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     std::vector<std::pair<std::size_t, std::size_t> > path;
 
@@ -40,11 +40,9 @@ void Simulation::runSingle()
         bool succes = test.getPathToDestination(path);
         if(!succes || path.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            std::cout << "Empty!" << std::endl;
             continue;
         }
 
-        std::cout << "Path size: " << path.size() << std::endl;
         if(path.size() > 2) {
             currentPosition.first = path[path.size() - 1].first;
             currentPosition.second = path[path.size() - 1].second;
@@ -52,13 +50,15 @@ void Simulation::runSingle()
         else
             return;
 
-        std::cout << "Path size: " << path.size() << std::endl;
-
-        std::cout << "New pos: " << currentPosition.first << " " << currentPosition.second << std::endl;
-        test.setCurrentHeading(currentPosition);
 
         i++;
-        std::cout << "Iteration: " << i << std::endl;
+
+        if(rand() % 1000 == 0) {
+            currentPosition.first = rand() % 800;
+            currentPosition.second = rand() % 1600;
+        }
+        test.setCurrentHeading(currentPosition);
+
         if(rand() % 50 == 0) {
             test.updatePenaltyOfNode(path[path.size() - 10].first, path[path.size() - 10].second, 500);
             //std::this_thread::sleep_for(std::chrono::milliseconds(2000));

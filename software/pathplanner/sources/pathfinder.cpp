@@ -22,17 +22,43 @@ Pathfinder::~Pathfinder()
  */
 void Pathfinder::startSolver()
 {
-    //currentHeading = currentPosition;
-    // Start the thread that monitors the status of the map.
-    //threadRunning = true;
-    //threadClosed = false;
-    //mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
-    //mapStatusThread->detach();
+    /* Start the thread that monitors the status of the map. Not needed to run solver.
+     *
+    threadRunning = true;
+    threadClosed = false;
+    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
+    mapStatusThread->detach();
+    //*/
 
     // Set inital node and start solving the map.
-    map->at(currentPosition->first).at(currentPosition->second)->setNodeAsInit();
+    map->at(currentHeading->first).at(currentHeading->second)->setNodeAsInit();
     for(NodeCollection &collection : nodeCollections)
         collection.start();
+}
+
+void Pathfinder::setInitialPosition(std::shared_ptr<std::pair<std::size_t, std::size_t> > position)
+{
+    pauseSolver();
+    currentHeading = position;
+
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->setUpdated(false);
+
+    std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
+
+    currentHeadingNode->setStable(false);
+    currentHeadingNode->setUpdated(true);
+    currentHeadingNode->setSource(*currentHeading.get());
+    currentHeadingNode->setPointerToSource(std::make_shared<Node>());
+    currentHeadingNode->setCost(0);
+
+    currentHeadingNode->unlockNodeReady();
+
+    timeMeasureBegin = std::chrono::steady_clock::now();
+    mapIsStable = false;
+
+    resumeSolver();
 }
 
 void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::size_t> > heading)
@@ -40,25 +66,23 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
     pauseSolver();
 
     // Previous
-    if(currentHeading)
-        map->at(currentHeading->first).at(currentHeading->second)->setUpdated(false);
-
-    /*
-    for(std::size_t i = 0; i < map->size(); i++)
-        for(std::size_t j = 0; j < map->at(i).size(); j++)
-            map->at(i).at(j)->setUpdated(false);
-            */
-
+    if(currentHeading) {
+        std::shared_ptr<Node> previousHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
+        previousHeadingNode->setUpdated(false);
+    }
 
     // Current
     currentHeading = heading;
-    map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
-    map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
-    map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
-    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(std::make_shared<Node>());
-    map->at(currentHeading->first).at(currentHeading->second)->setCost(0);
 
-    map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
+    std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
+
+    currentHeadingNode->setStable(false);
+    currentHeadingNode->setUpdated(true);
+    currentHeadingNode->setSource(*currentHeading.get());
+    currentHeadingNode->setPointerToSource(std::make_shared<Node>());
+    currentHeadingNode->setCost(0);
+
+    currentHeadingNode->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
     mapIsStable = false;
@@ -74,21 +98,19 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
         for(std::size_t j = 0; j < map->at(i).size(); j++)
             map->at(i).at(j)->setUpdated(false);
 
-    map->at(row).at(col)->setPenalty(penalty);
+    std::shared_ptr<Node> penaltyNode = map->at(row).at(col);
+    penaltyNode->setPenalty(penalty);
 
-    map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
-    map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
-    map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
-    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(std::make_shared<Node>());
+    std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
+    currentHeadingNode->setStable(false);
+    currentHeadingNode->setUpdated(true);
 
-    map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
+    currentHeadingNode->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
     mapIsStable = false;
 
     resumeSolver();
-
-    std::cout << "Penalty of node updated!" << std::endl;
 }
 
 void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > positions, double penalty)
