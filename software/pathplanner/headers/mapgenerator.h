@@ -23,7 +23,7 @@ private:
     void getSlice(std::size_t row, std::size_t col, std::size_t rowCount, std::size_t colCount, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, NodeCollection &collection);
 
 private:
-    // Note to self: DO NOT MAKE SUPER LARGER MAPS.
+    // Note to self: DO NOT MAKE SUPER LARGE MAPS.
     const std::size_t mapSizeRow = 800;
     const std::size_t mapSizeCol = 1600;
     std::size_t gridRows = 40;

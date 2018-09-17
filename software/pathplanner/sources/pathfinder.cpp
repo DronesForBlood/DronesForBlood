@@ -3,8 +3,17 @@
 
 Pathfinder::Pathfinder()
 {
-    collectionControlMutex = std::shared_ptr<std::mutex>(new std::mutex);
+    collectionControlMutex = std::make_shared<std::mutex>();
+}
 
+Pathfinder::~Pathfinder()
+{
+    for(NodeCollection &collection : nodeCollections)
+        collection.scheduleThreadToStop();
+
+    threadRunning = false;
+    while(!threadClosed)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 /* Starts the solver.
@@ -15,8 +24,10 @@ void Pathfinder::startSolver()
 {
     //currentHeading = currentPosition;
     // Start the thread that monitors the status of the map.
-    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
-    mapStatusThread->detach();
+    //threadRunning = true;
+    //threadClosed = false;
+    //mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&Pathfinder::mapStatusChecker,this));
+    //mapStatusThread->detach();
 
     // Set inital node and start solving the map.
     map->at(currentPosition->first).at(currentPosition->second)->setNodeAsInit();
@@ -44,7 +55,7 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
     map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
     map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
     map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
-    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(nullptr);
+    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(std::make_shared<Node>());
     map->at(currentHeading->first).at(currentHeading->second)->setCost(0);
 
     map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
@@ -59,18 +70,17 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
 {
     pauseSolver();
 
-
     for(std::size_t i = 0; i < map->size(); i++)
         for(std::size_t j = 0; j < map->at(i).size(); j++)
             map->at(i).at(j)->setUpdated(false);
-
 
     map->at(row).at(col)->setPenalty(penalty);
 
     map->at(currentHeading->first).at(currentHeading->second)->setStable(false);
     map->at(currentHeading->first).at(currentHeading->second)->setUpdated(true);
     map->at(currentHeading->first).at(currentHeading->second)->setSource(*currentHeading.get());
-    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(nullptr);
+    map->at(currentHeading->first).at(currentHeading->second)->setPointerToSource(std::make_shared<Node>());
+
     map->at(currentHeading->first).at(currentHeading->second)->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
@@ -101,12 +111,13 @@ long Pathfinder::getCurrentComputationTime()
  */
 void Pathfinder::mapStatusChecker()
 {
-    while(true) {
+    while(threadRunning) {
         waitForMapUnstable();
         timeMeasureBegin = std::chrono::steady_clock::now(); // Start to measure computation time of solver.
         waitForMapStable();
         timeMeasureEnd = std::chrono::steady_clock::now();
     }
+    threadClosed = true;
 }
 
 
@@ -118,7 +129,7 @@ void Pathfinder::waitForMapUnstable()
 {
     std::chrono::steady_clock::time_point stableBeginTime = std::chrono::steady_clock::now();
     int i = 0;
-    while(checkMapStable() && mapIsStable) {
+    while(checkMapStable() && mapIsStable && threadRunning) {
         if(++i > 50) {
             std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
             std::cout << "Map has been stable for: " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - stableBeginTime).count() << std::endl;
@@ -137,7 +148,7 @@ void Pathfinder::waitForMapUnstable()
 void Pathfinder::waitForMapStable()
 {
     int i = 0;
-    while(!checkMapStable() && !mapIsStable) {
+    while(!checkMapStable() && !mapIsStable && threadRunning) {
         if(++i > 50) {
             std::chrono::steady_clock::time_point currentTime = std::chrono::steady_clock::now();
             std::cout << "Stabilzing map. Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - timeMeasureBegin).count() << std::endl;

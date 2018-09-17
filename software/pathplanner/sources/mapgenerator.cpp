@@ -22,7 +22,7 @@ void MapGenerator::generateTestMap(std::shared_ptr<std::vector<std::vector<std::
         std::vector<std::shared_ptr<Node>> row;
         for(int j = 0; j < mapSizeCol; j++) {
             std::pair<double, double> pos(i,j);
-            std::shared_ptr<Node> newNode(new Node(pos));
+            std::shared_ptr<Node> newNode = std::make_shared<Node>(pos);
             newNode->setPointerToSelf(newNode);
             row.push_back(newNode);
         }

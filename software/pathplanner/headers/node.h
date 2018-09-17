@@ -14,12 +14,12 @@ class Node;
 
 struct NeighborNode {
     NeighborNode() {}
-    NeighborNode(std::shared_ptr<Node> node, double distance) {
+    NeighborNode(std::weak_ptr<Node> node, double distance) {
         this->node = node;
         this->distance = distance;
-        this->distance = rand() % 100 + 1;
+        //this->distance = rand() % 100 + 1;
     }
-    std::shared_ptr<Node> node;
+    std::weak_ptr<Node> node;
     double distance;
 };
 
@@ -30,7 +30,7 @@ public:
     ~Node();
 
     Node(std::pair<double, double> position);
-    void setPointerToSelf(std::shared_ptr<Node> pointer) {pointerToSelf = pointer;}
+    void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);
     void setNodeReadyMutex(std::shared_ptr<std::mutex> mutex) {nodeReadyMutex = mutex;}
     void setCheckNodesAgain(bool *val) {checkNodesAgain = val;}
@@ -67,7 +67,7 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    std::shared_ptr<Node> pointerToSelf;
+    std::weak_ptr<Node> pointerToSelf;
     std::shared_ptr<Node> pointerToSource;
     std::pair<std::size_t, std::size_t> sourceNodeIndex;
     std::pair<double, double> position;

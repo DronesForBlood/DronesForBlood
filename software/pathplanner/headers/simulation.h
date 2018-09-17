@@ -17,7 +17,8 @@ public:
     Simulation();
     ~Simulation();
 
-
+private:
+    void runSingle();
 
 private:
    Pathfinder pathfinder;

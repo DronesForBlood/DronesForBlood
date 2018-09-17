@@ -14,6 +14,7 @@ class Pathfinder
 {
 public:
     Pathfinder();
+    ~Pathfinder();
     void setMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap) {map = aMap;}
     void setNodeCollections(std::vector<NodeCollection> collections) {nodeCollections = collections;}
     void setCurrentPosition(std::shared_ptr<std::pair<std::size_t,std::size_t>> position) {currentPosition = position;}
@@ -26,7 +27,7 @@ public:
     long getCurrentComputationTime();
 
 private:
-    [[ noreturn ]] void mapStatusChecker();
+    void mapStatusChecker();
     void waitForMapUnstable();
     void waitForMapStable();
     bool checkMapStable();
@@ -41,6 +42,8 @@ private:
     std::chrono::steady_clock::time_point timeMeasureBegin;
     std::chrono::steady_clock::time_point timeMeasureEnd;
     bool mapIsStable = false;
+    bool threadRunning = false;
+    bool threadClosed = true;
 
     std::shared_ptr<std::pair<std::size_t,std::size_t>> currentPosition;
     std::shared_ptr<std::pair<std::size_t,std::size_t>> currentHeading;
