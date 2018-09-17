@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package>
+  <name>monitor</name>
+  <version>1.0.0</version>
+  <description>The monitor node. Monitors other nodes for performance and erros</description>
+
+  <maintainer email="fande14@student.sdu.dk">Frederik Mazur Andersen</maintainer>
+  <license>BSD</license>
+ 
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>serial</build_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>serial</run_depend>
+</package>
