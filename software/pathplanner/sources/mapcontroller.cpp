@@ -3,7 +3,7 @@
 
 MapController::MapController()
 {
-    map = std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>>(new std::vector<std::vector<std::shared_ptr<Node>>>);
+    map = std::make_shared<std::vector<std::vector<std::shared_ptr<Node>>>>();
 }
 
 /* Generates a simple test map of size mapSize x mapSize (see header).

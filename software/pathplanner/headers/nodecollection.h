@@ -21,11 +21,12 @@ public:
     void start();
     void pause();
     void resume();
+    void scheduleThreadToStop();
     bool getIsPaused() {return isPaused;}
 
 
 private:
-    [[ noreturn ]] void nodeChecker();
+    void nodeChecker();
 
 private:
    std::vector<std::shared_ptr<Node>> nodes;
@@ -35,6 +36,8 @@ private:
    bool stable = false;
    bool pauseThread = false;
    bool isPaused = false;
+   bool threadRunning = false;
+   bool threadClosed = true;
 
 };
 

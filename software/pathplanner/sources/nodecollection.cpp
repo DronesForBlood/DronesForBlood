@@ -10,6 +10,12 @@ NodeCollection::NodeCollection()
 
 NodeCollection::~NodeCollection()
 {
+    threadRunning = false;
+    while(!threadClosed)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+
+    //std::cout << "CLOSED 2!" << std::endl;
 
 }
 
@@ -22,6 +28,8 @@ void NodeCollection::addNode(std::shared_ptr<Node> node)
 
 void NodeCollection::start()
 {
+    threadRunning = true;
+    threadClosed = false;
     checkerThread = std::shared_ptr<std::thread>(new std::thread(&NodeCollection::nodeChecker,this));
     checkerThread->detach();
 }
@@ -39,18 +47,23 @@ void NodeCollection::resume()
     pauseThread = false;
 }
 
+void NodeCollection::scheduleThreadToStop()
+{
+    threadRunning = false;
+}
+
 void NodeCollection::nodeChecker()
 {
-    while(true) {
+    while(threadRunning) {
 
         if(pauseThread)
             isPaused = true;
-        while(pauseThread)
+        while(pauseThread && threadRunning)
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         isPaused = false;
 
-        while(!*checkNodesAgain)
+        while(!*checkNodesAgain && threadRunning)
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         nodeReadyMutex->lock();
@@ -63,4 +76,6 @@ void NodeCollection::nodeChecker()
             }
         }
     }
+    //std::cout << "CLOSED!" << std::endl;
+    threadClosed = true;
 }

@@ -19,8 +19,8 @@ Node::Node(std::pair<double, double> position)
 
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
-    for(std::shared_ptr<Node> neighbor : nodes) {
-        double distance = sqrt(pow(position.first - neighbor->getPosition().first, 2) + pow(position.second - neighbor->getPosition().second, 2));
+    for(std::weak_ptr<Node> neighbor : nodes) {
+        double distance = sqrt(pow(position.first - neighbor.lock()->getPosition().first, 2) + pow(position.second - neighbor.lock()->getPosition().second, 2));
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
     }
@@ -32,16 +32,17 @@ void Node::checkAndUpdateNeighbors()
         return;
 
     for(NeighborNode &neighbor : neighbors) {
-        neighbor.node->lockAccessNode();
-        double costToMove = neighbor.distance + neighbor.node->getPenalty() + cost;
-        if(costToMove < neighbor.node->getCost() || !neighbor.node->getUpdated()) {
-            neighbor.node->updateSourceAndCost(position, costToMove);
-            neighbor.node->setUpdated(true);
-            neighbor.node->setStable(false);
-            neighbor.node->setPointerToSource(pointerToSelf);
-            neighbor.node->unlockNodeReady();
+        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
+        neighborNode->lockAccessNode();
+        double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
+        if(costToMove < neighborNode->getCost() || !neighborNode->getUpdated()) {
+            neighborNode->updateSourceAndCost(position, costToMove);
+            neighborNode->setUpdated(true);
+            neighborNode->setStable(false);
+            neighborNode->setPointerToSource(pointerToSelf.lock());
+            neighborNode->unlockNodeReady();
         }
-        neighbor.node->unlockAccessNode();
+        neighborNode->unlockAccessNode();
     }
     stable = true;
 }
@@ -59,8 +60,8 @@ void Node::setNextUpdated(bool val)
 {
     updated = val;
     for(NeighborNode &neighbor : neighbors) {
-        if(pointerToSelf == neighbor.node->getPointerToSource()) {
-            neighbor.node->setNextUpdated(val);
+        if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
+            neighbor.node.lock()->setNextUpdated(val);
         }
     }
 }
@@ -84,9 +85,9 @@ void Node::setCost(double val)
 void Node::addToNextCost(double val)
 {
     for(NeighborNode &neighbor : neighbors) {
-        if(pointerToSelf == neighbor.node->getPointerToSource()) {
-            neighbor.node->addToCost(val);
-            neighbor.node->addToNextCost(val);
+        if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
+            neighbor.node.lock()->addToCost(val);
+            neighbor.node.lock()->addToNextCost(val);
             //neighbor.node->setUpdated(true);
         }
     }
@@ -102,9 +103,7 @@ void Node::setNodeAsInit()
     //pointerToSelf = nullptr;
     //pointerToSource = pointerToSelf;
 
-    nodeReadyMutex->lock();
-    *checkNodesAgain = true;
-    nodeReadyMutex->unlock();
+    unlockNodeReady();
 }
 
 void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost)
