@@ -6,6 +6,14 @@ MapController::MapController()
     map = std::make_shared<std::vector<std::vector<std::shared_ptr<Node>>>>();
 }
 
+MapController::~MapController()
+{
+    threadRunning = false;
+
+    while(!threadClosed)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
+
 /* Generates a simple test map of size mapSize x mapSize (see header).
  * One node is generated for each field on the map.
  * All the nodes are then given a pointer to their neighboring nodes.
@@ -25,10 +33,17 @@ void MapController::generateTestMap()
  */
 void MapController::startSolver(std::pair<std::size_t, std::size_t> position)
 {
+    initPosition = position;
     currentHeading = std::shared_ptr<std::pair<std::size_t, std::size_t>>(new std::pair<std::size_t, std::size_t>(position));
     solver.setInitialPosition(currentHeading);
     solver.startSolver();
 
+    /*
+    threadRunning = true;
+    threadClosed = false;
+    mapStatusThread = std::shared_ptr<std::thread>(new std::thread(&MapController::mapStatusUpdater,this));
+    mapStatusThread->detach();
+    */
 
 }
 
@@ -48,8 +63,8 @@ void MapController::setCurrentHeading(std::pair<std::size_t, std::size_t> headin
 void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
 {
     cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(col, row));
-    color->val[0] = 0;
-    color->val[1] = 0;
+    color->val[0] = 255;
+    color->val[1] = 255;
     color->val[2] = 255;
     solver.updatePenaltyOfNode(row, col, penalty);
 }
@@ -73,8 +88,8 @@ void MapController::printMapStatus()
     std::vector<std::pair<std::size_t, std::size_t>> path;
     getPathToDestination(path);
 
-    if(path.back().first != currentPosition->first || path.back().second != currentPosition->second) {
-        std::cout << "No path exists from node [" << currentPosition->first << ", " << currentPosition->second << "] to [" << goalPosition.first << ", " << goalPosition.second << "] in map of size " << map->size() << "x" << map->at(0).size() << std::endl;
+    if(path.back().first != currentHeading->first || path.back().second != currentHeading->second) {
+        std::cout << "No path exists from node [" << currentHeading->first << ", " << currentHeading->second << "] to [" << goalPosition.first << ", " << goalPosition.second << "] in map of size " << map->size() << "x" << map->at(0).size() << std::endl;
         return;
     }
 
@@ -86,66 +101,10 @@ void MapController::printMapStatus()
         std::cout << "Map stable: False" << std::endl;
 
     std::cout << "Computation time: " << solver.getCurrentComputationTime() << std::endl;
-    std::cout << "Path from node [" << currentPosition->first << ", " << currentPosition->second << "] to [" << goalPosition.first << ", " << goalPosition.second << "] in map of size " << map->size() << "x" << map->at(0).size() << std::endl;
+    std::cout << "Path from node [" << currentHeading->first << ", " << currentHeading->second << "] to [" << goalPosition.first << ", " << goalPosition.second << "] in map of size " << map->size() << "x" << map->at(0).size() << std::endl;
     std::cout << "Length: " << path.size() << std::endl;
     std::cout << "Cost:   " << pathCost << std::endl;
 
-}
-
-
-/* Prints the map using the costs of the nodes.
- */
-void MapController::printCostMap()
-{
-    std::cout << "Cost map:" << std::endl;
-    for(std::size_t i = 0; i < map->size(); i++) {
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            std::cout << int(map->at(i).at(j)->getCost()) << " ";
-        }
-        std::cout << "\n";
-    }
-}
-
-
-/* Prints the path to the node at location row, col.
- */
-void MapController::printPathMap()
-{
-    std::vector<std::vector<char>> pathMap;
-    for(std::size_t i = 0; i < map->size(); i++) {
-        std::vector<char> temp;
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            temp.push_back('+');
-        }
-        pathMap.push_back(temp);
-    }
-
-    std::vector<std::pair<std::size_t, std::size_t>> path;
-    getPathToDestination(path);
-
-    if(path.back().first != currentPosition->first || path.back().second != currentPosition->second) {
-        std::cout << "No path exists from node [" << currentPosition->first << ", " << currentPosition->second << "] to [" << goalPosition.first << ", " << goalPosition.second << "] in map of size " << map->size() << "x" << map->at(0).size() << std::endl;
-        return;
-    }
-
-    for(std::size_t i = 0; i < path.size(); i++)
-        pathMap[path[i].first][path[i].second] = 'X';
-
-    for(std::size_t i = 0; i < pathMap.size(); i++) {
-        for(std::size_t j = 0; j < pathMap[i].size(); j++)
-            std::cout << pathMap[i][j];
-        std::cout << std::endl;
-    }
-}
-
-void MapController::printMap()
-{
-    for(std::size_t i = 0; i < map->size(); i++) {
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            std::cout << map->at(i).at(j)->getPosition().first << map->at(i).at(j)->getPosition().second << " ";
-        }
-        std::cout << "\n";
-    }
 }
 
 void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_t>> &path)
@@ -186,10 +145,46 @@ void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_
 
 void MapController::mapStatusUpdater()
 {
-    while(true) {
-        //printPathImage();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    while(threadRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        std::cout << "INIT COST: " << map->at(initPosition.first).at(initPosition.second)->getCost() << std::endl;
+
+        //*
+        double biggestCost = 0;
+        for(int i = 0; i < map->size(); i++) {
+            for(int j = 0; j < map->at(i).size(); j++) {
+                double cost = map->at(i).at(j)->getCost() + map->at(i).at(j)->getPenalty();
+                if(cost > biggestCost)
+                    biggestCost = cost;
+            }
+        }
+
+        for(int i = 0; i < map->size(); i++) {
+            for(int j = 0; j < map->at(i).size(); j++) {
+                double cost = map->at(i).at(j)->getCost() + map->at(i).at(j)->getPenalty();
+
+                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(j, i));
+
+                color->val[2] = cost / biggestCost * 255.;
+            }
+        }
+        //*/
+        /*
+        for(int i = 0; i < map->size(); i++) {
+            for(int j = 0; j < map->at(i).size(); j++) {
+                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(j, i));
+                if(map->at(i).at(j)->getUpdated())
+                    color->val[2] = 255.;
+                else
+                    color->val[2] = 0;
+            }
+        }
+        //*/
+        std::cout << "DONE" << std::endl;
+
+
     }
+    threadClosed = true;
 }
 
 
@@ -197,14 +192,17 @@ void MapController::mapStatusUpdater()
  */
 bool MapController::makePathToDestination(std::size_t row, std::size_t col, std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
-    if(!map->at(row).at(col)->getUpdated())
+    if(!map->at(row).at(col)->getUpdated()) {
         return false;
+    }
 
-    if(!map->at(row).at(col)->getStable())
+    if(!map->at(row).at(col)->getStable()){
         return false;
+    }
 
-    if(!map->at(row).at(col)->getPointerToSource())
+    if(!map->at(row).at(col)->getPointerToSource()){
         return false;
+    }
 
     std::pair<std::size_t, std::size_t> pos = map->at(row).at(col)->getPosition();
     path.push_back(pos);
@@ -214,8 +212,9 @@ bool MapController::makePathToDestination(std::size_t row, std::size_t col, std:
     if(sourcePos.first == currentHeading->first && sourcePos.second == currentHeading->second)
         return true;
 
-    if(row == currentHeading->first && col == currentHeading->second)
+    /*if(row == currentHeading->first && col == currentHeading->second){
         return false;
+    }*/
 
     for(int i = 0; i < path.size() - 1; i++)
         if(pos == path[i]) {

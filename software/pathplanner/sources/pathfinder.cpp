@@ -42,19 +42,12 @@ void Pathfinder::setInitialPosition(std::shared_ptr<std::pair<std::size_t, std::
     currentHeading = position;
 
     for(std::size_t i = 0; i < map->size(); i++)
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            map->at(i).at(j)->setUpdated(false);
-            map->at(i).at(j)->setStable(true);
-            map->at(i).at(j)->setPointerToSource(nullptr);
-        }
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->resetNode();
 
     std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
 
-    currentHeadingNode->setStable(false);
-    currentHeadingNode->setUpdated(true);
-    currentHeadingNode->setSource(*currentHeading.get());
-    currentHeadingNode->setPointerToSource(std::make_shared<Node>());
-    currentHeadingNode->setCost(0);
+    currentHeadingNode->setNodeAsInit();
 
     currentHeadingNode->unlockNodeReady();
 
@@ -68,24 +61,39 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
 {
     pauseSolver();
 
+
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++) {
+            map->at(i).at(j)->setUpdated(false);
+        }
+
+
+
     // Previous
-    if(currentHeading) {
-        std::shared_ptr<Node> previousHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
-        previousHeadingNode->setUpdated(false);
-    }
+    //if(currentHeading) {
+        //std::shared_ptr<Node> previousHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
+
+        //previousHeadingNode->setUpdated(false);
+        //previousHeadingNode->setStable(true);
+    //}
 
     // Current
     currentHeading = heading;
 
     std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
 
+    /*
+
     currentHeadingNode->setStable(false);
     currentHeadingNode->setUpdated(true);
     currentHeadingNode->setSource(*currentHeading.get());
     currentHeadingNode->setPointerToSource(std::make_shared<Node>());
     currentHeadingNode->setCost(0);
-
     currentHeadingNode->unlockNodeReady();
+    //*/
+    currentHeadingNode->setNodeAsInit();
+    //previousHeadingNode->setCost(2);
+    //previousHeadingNode->addToNextCost2(2, currentHeadingNode);
 
     timeMeasureBegin = std::chrono::steady_clock::now();
     mapIsStable = false;
