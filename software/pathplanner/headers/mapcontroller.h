@@ -18,19 +18,16 @@ class MapController
 {
 public:
     MapController();
+    ~MapController();
     void generateTestMap();
     void setGoalPosition(std::pair<std::size_t,std::size_t> goal) {goalPosition = goal;}
     void startSolver(std::pair<std::size_t, std::size_t> position);
-    void setCurrentPosition(std::pair<std::size_t,std::size_t> position);
     void setCurrentHeading(std::pair<std::size_t,std::size_t> heading);
     void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);
     bool getMapStable() {return  solver.getMapStable();}
     bool getPathToDestination(std::vector<std::pair<std::size_t, std::size_t> > &path);
 
     void printMapStatus();
-    void printCostMap();
-    void printPathMap();
-    void printMap();
 
     void printPathImage(std::vector<std::pair<std::size_t, std::size_t> > &path);
 
@@ -45,10 +42,13 @@ private:
     std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map;
     std::vector<NodeCollection> nodeCollections;
     std::pair<std::size_t,std::size_t> goalPosition;
-    std::shared_ptr<std::pair<std::size_t,std::size_t>> currentPosition;
+    std::pair<std::size_t,std::size_t> initPosition;
     std::shared_ptr<std::pair<std::size_t,std::size_t>> currentHeading;
     std::vector<std::pair<std::size_t, std::size_t>> currentPath;
     Pathfinder solver;
+
+    bool threadRunning = false;
+    bool threadClosed = true;
 };
 
 #endif // MAPCONTROLLER_H
