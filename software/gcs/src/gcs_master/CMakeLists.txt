@@ -10,9 +10,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-add_message_files(
-  FILES
- )
+# add_message_files(
+#   FILES
+#  )
 
 generate_messages(
   DEPENDENCIES
