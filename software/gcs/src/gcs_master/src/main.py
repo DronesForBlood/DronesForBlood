@@ -51,7 +51,7 @@ class GcsMasterNode():
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             # Update the state of the FSM.
-            self.state_machine.update()
+            self.state_machine.update_state()
             rate.sleep()
         return
 
