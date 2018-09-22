@@ -57,17 +57,23 @@ void Pathfinder::setInitialPosition(std::shared_ptr<std::pair<std::size_t, std::
     resumeSolver();
 }
 
+#include <algorithm>
+
 void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::size_t> > heading)
 {
     pauseSolver();
+    bool temp = false;
 
+    /*
+    for(const auto &it : *map.get())
+        std::for_each(it.begin(), it.end(), std::bind(&Node::setUpdated, std::placeholders::_1, &temp));
+        */
 
-    for(std::size_t i = 0; i < map->size(); i++)
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            map->at(i).at(j)->setUpdated(false);
-        }
-
-
+    //*
+    for(auto &it : *map.get())
+        for(auto &it2 : it)
+            it2->setUpdated(false);
+    //*/
 
     // Previous
     //if(currentHeading) {
@@ -104,24 +110,8 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
 void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
 {
     pauseSolver();
-
-    /*
-    for(std::size_t i = 0; i < map->size(); i++)
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            map->at(i).at(j)->setStable(false);
-            map->at(i).at(j)->unlockNodeReady();
-        }
-    //*/
-
-
     std::shared_ptr<Node> penaltyNode = map->at(row).at(col);
     penaltyNode->setPenalty(penalty);
-
-    std::shared_ptr<Node> currentHeadingNode = map->at(currentHeading->first).at(currentHeading->second);
-    //currentHeadingNode->setStable(false);
-    //currentHeadingNode->setUpdated(true);
-
-    //currentHeadingNode->unlockNodeReady();
 
     timeMeasureBegin = std::chrono::steady_clock::now();
     mapIsStable = false;
@@ -131,7 +121,17 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
 
 void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > positions, double penalty)
 {
+    pauseSolver();
 
+    for(std::pair<std::size_t, std::size_t> &pos : positions) {
+        std::shared_ptr<Node> penaltyNode = map->at(pos.first).at(pos.second);
+        penaltyNode->setPenalty(penalty);
+    }
+
+    timeMeasureBegin = std::chrono::steady_clock::now();
+    mapIsStable = false;
+
+    resumeSolver();
 }
 
 long Pathfinder::getCurrentComputationTime()
@@ -229,11 +229,9 @@ void Pathfinder::pauseSolver()
     for(NodeCollection &collection : nodeCollections)
         collection.pause();
 
-    for(NodeCollection &collection : nodeCollections) {
-        while(!collection.getIsPaused()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-    }
+    for(NodeCollection &collection : nodeCollections)
+        while(!collection.getIsPaused())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
 void Pathfinder::resumeSolver()
