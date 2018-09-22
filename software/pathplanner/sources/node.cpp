@@ -11,9 +11,10 @@ Node::~Node()
 
 }
 
-Node::Node(std::pair<double, double> position)
+Node::Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate)
 {
-    this->position = position;
+    selfNodeIndex = index;
+    worldCoordinate = coordinate;
 }
 
 void Node::resetNode()
@@ -29,24 +30,24 @@ void Node::resetNode()
 
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
+    //std::cout << "start" << std::endl;
     for(std::weak_ptr<Node> neighbor : nodes) {
-        double distance = sqrt(pow(position.first - neighbor.lock()->getPosition().first, 2) + pow(position.second - neighbor.lock()->getPosition().second, 2));
-        NeighborNode newNeighbor(neighbor, distance + 0.8);
+        //double distance = sqrt(pow(worldCoordinate.first - neighbor.lock()->getWorldCoordinate().first, 2) + pow(worldCoordinate.second - neighbor.lock()->getWorldCoordinate().second, 2));
+        int distance = calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
+        NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
+        //std::cout << neighbor.lock()->getWorldCoordinate().first << " " << neighbor.lock()->getWorldCoordinate().second << std::endl;
     }
 }
 
 void Node::checkAndUpdateNeighbors()
 {
-    if(!updated)
-        return;
-
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
         double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
-        if((costToMove < neighborNode->getCost() || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
-            neighborNode->updateSourceAndCost(position, costToMove);
+        if((costToMove < neighborNode->getCost() - minimumDistanceDifference || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
+            neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
             neighborNode->setPointerToSource(pointerToSelf.lock());
@@ -97,14 +98,14 @@ void Node::setPenalty(double val)
     double difference = val - penalty;
     cost += difference;
     penalty = val;
+    //std::cout << "P: " << cost << std::endl;
     stable = false;
 
     if(!updated)
         return;
 
     addToNextCost(difference);
-
-    setNextStable(false);
+    setNextStable(stable);
 }
 
 void Node::setCostAndUpdate(double val)
@@ -114,7 +115,7 @@ void Node::setCostAndUpdate(double val)
     cost = val;
 }
 
-void Node::addToNextCost(double &val)
+void Node::addToNextCost(double val)
 {
     updated = true;
     for(NeighborNode &neighbor : neighbors) {
@@ -131,29 +132,7 @@ void Node::setNodeAsInit()
     stable = false;
     updated = true;
     pointerToSource = nullptr;
-    sourceNodeIndex = position;
-
-    /*
-    //std::cout << "HERE 1" << std::endl;
-    std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
-    for(NeighborNode &neighbor : neighbors) {
-        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
-        if(neighborNode->getPointerToSource() != pointerToSelf.lock()) {
-            neighborNode->setSource(position);
-            neighborNode->setPointerToSource(pointerToSelf.lock());
-            neighborNode->setNextUpdated(false);
-
-            neighborNode->setCostAndUpdate(neighbor.distance + neighborNode->getPenalty());
-            neighborNode->setStable(false);
-        }
-        neighborNode->setUpdated(true);
-
-    }
-    std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
-    std::cout << "Counter: " << counter  << std::endl;
-    std::cout << "Time to complete: " << std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count() << std::endl;
-    //std::cout << "HERE 2" << std::endl;
-    //*/
+    sourceNodeIndex = selfNodeIndex;
 
     setCostAndUpdate(0);
 
@@ -165,4 +144,21 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
     this->sourceNodeIndex = sourceNodeIndex;
     cost = newCost;
 
+}
+
+int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    double lat1 = startCoord.first;
+    double lon1 = startCoord.second;
+    double lat2 = endCoord.first;
+    double lon2 = endCoord.second;
+
+    lat1 = lat1 * pi / 180.;
+    lat2 = lat2 * pi / 180.;
+    lon1 = lon1 * pi / 180.;
+    lon2 = lon2 * pi / 180.;
+
+    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
+    int distanceMeters = int(distance_radians * radiusEarthMeters);
+    return distanceMeters;
 }

@@ -14,14 +14,10 @@ class Node;
 
 struct NeighborNode {
     NeighborNode() {}
-    NeighborNode(std::weak_ptr<Node> node, double distance) {
+    NeighborNode(std::weak_ptr<Node> node, int distance) {
         this->node = node;
         this->distance = distance;
-        //this->distance = rand() % 100 + 1;
-        if(this->distance == 2)
-            this->distance = 3;
-        else
-            this->distance = 2;
+        //std::cout << distance << std::endl;
     }
     std::weak_ptr<Node> node;
     int distance;
@@ -33,7 +29,7 @@ public:
     Node();
     ~Node();
 
-    Node(std::pair<double, double> position);
+    Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate);
     void resetNode();
     void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);
@@ -58,12 +54,13 @@ public:
 
     double getCost() {return cost;}
     double getPenalty() {return penalty;}
-    void addToCost(double &val) {cost += val;}
+    void addToCost(double val) {cost += val;}
     void setPenalty(double val);
     void setCostAndUpdate(double val);
-    void addToNextCost(double &val);
+    void addToNextCost(double val);
 
-    std::pair<double, double> getPosition() {return position;}
+    std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
+    std::pair<std::size_t, std::size_t> getSelfIndex() {return selfNodeIndex;}
     std::pair<std::size_t, std::size_t> getSourceIndex() {return sourceNodeIndex;}
     std::shared_ptr<Node> getPointerToSource() {return pointerToSource;}
 
@@ -74,10 +71,20 @@ public:
 
 
 private:
+    int calcMeterDistanceBetweensCoords(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
+
+private:
+    const double pi = 3.14159265359;
+    const double radiusEarthMeters = 6371000.0;
+    const double minimumDistanceDifference = 25;
+
+
     std::weak_ptr<Node> pointerToSelf;
     std::shared_ptr<Node> pointerToSource = nullptr;
+    std::pair<std::size_t, std::size_t> selfNodeIndex;
     std::pair<std::size_t, std::size_t> sourceNodeIndex;
-    std::pair<double, double> position;
+
+    std::pair<double, double> worldCoordinate;
 
     double cost = -1.;
     double penalty = 0.;

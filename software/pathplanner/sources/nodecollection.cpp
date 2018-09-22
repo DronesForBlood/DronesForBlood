@@ -6,6 +6,7 @@
 NodeCollection::NodeCollection()
 {
     nodeReadyMutex = std::shared_ptr<std::mutex>(new std::mutex);
+    pauseMutex = std::shared_ptr<std::mutex>(new std::mutex);
 }
 
 NodeCollection::~NodeCollection()
@@ -33,15 +34,14 @@ void NodeCollection::start()
 
 void NodeCollection::pause()
 {
+    pauseMutex->lock();
     pauseThread = true;
-    nodeReadyMutex->lock();
-    *checkNodesAgain = true;
-    nodeReadyMutex->unlock();
 }
 
 void NodeCollection::resume()
 {
     pauseThread = false;
+    pauseMutex->unlock();
 }
 
 void NodeCollection::scheduleThreadToStop()
@@ -52,26 +52,26 @@ void NodeCollection::scheduleThreadToStop()
 void NodeCollection::nodeChecker()
 {
     while(threadRunning) {
+        if(pauseThread && threadRunning) {
+            isPaused = true;
+            pauseMutex->lock();
+            pauseMutex->unlock();
+            isPaused = false;
+        }
+
+        while(!*checkNodesAgain && threadRunning && !pauseThread)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         if(pauseThread)
-            isPaused = true;
-        while(pauseThread && threadRunning)
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-        isPaused = false;
-
-        while(!*checkNodesAgain && threadRunning)
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
 
         nodeReadyMutex->lock();
         *checkNodesAgain = false;
         nodeReadyMutex->unlock();
 
-        for(std::shared_ptr<Node> &node : nodes) {
-            if(!node->getStable()) {
+        for(std::shared_ptr<Node> &node : nodes)
+            if(!node->getStable() && node->getUpdated())
                 node->checkAndUpdateNeighbors();
-            }
-        }
     }
 
     threadClosed = true;

@@ -30,6 +30,7 @@ private:
 
 private:
    std::vector<std::shared_ptr<Node>> nodes;
+   std::shared_ptr<std::mutex> pauseMutex;
    std::shared_ptr<std::mutex> nodeReadyMutex;
    std::shared_ptr<std::thread> checkerThread;
    bool *checkNodesAgain = new bool(false);
