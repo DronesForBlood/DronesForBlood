@@ -57,23 +57,24 @@ void Pathfinder::setInitialPosition(std::shared_ptr<std::pair<std::size_t, std::
     resumeSolver();
 }
 
-#include <algorithm>
-
 void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::size_t> > heading)
 {
     pauseSolver();
-    bool temp = false;
 
     /*
     for(const auto &it : *map.get())
         std::for_each(it.begin(), it.end(), std::bind(&Node::setUpdated, std::placeholders::_1, &temp));
         */
 
-    //*
+    /*
     for(auto &it : *map.get())
         for(auto &it2 : it)
             it2->setUpdated(false);
     //*/
+
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->setUpdated(false);
 
     // Previous
     //if(currentHeading) {

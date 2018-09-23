@@ -44,7 +44,7 @@ public:
 
     void unlockNodeReady();
 
-    void setUpdated(bool val) {updated = val;}
+    void setUpdated(bool val) {wasUpdated = updated; updated = val;}
     void setNextUpdated(bool val);
     bool getUpdated() {return updated;}
 
@@ -57,7 +57,7 @@ public:
     void addToCost(double val) {cost += val;}
     void setPenalty(double val);
     void setCostAndUpdate(double val);
-    void addToNextCost(double val);
+    void addToNextCost(double val, bool mayUpdate);
 
     std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
     std::pair<std::size_t, std::size_t> getSelfIndex() {return selfNodeIndex;}
@@ -91,6 +91,7 @@ private:
 
     bool stable = true;
     bool updated = false;
+    bool wasUpdated = false;
 
     std::vector<NeighborNode> neighbors;
 
