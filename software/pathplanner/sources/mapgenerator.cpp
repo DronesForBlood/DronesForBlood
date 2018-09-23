@@ -43,59 +43,16 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     for(std::size_t i = 0; i < map->size(); i++) {
         for(std::size_t j = 0; j < map->at(i).size(); j++) {
             std::vector<std::shared_ptr<Node>> neighborNodes;
-            calculateNeighborsTest(i, j, neighborNodes, map);
+            calculateNeighbors(i, j, neighborNodes, map);
             std::shared_ptr<Node> currentNode = map->at(i).at(j);
             currentNode->setNeighbors(neighborNodes);
         }
     }
 
     // Divide the nodes into square collections.
-    //divideIntoCollections(map, nodeCollections);
-
-    gridRows = map->size()/25;
-    gridCols = map->at(0).size()/25;
-
-    divideIntoCollectionsTest(map, nodeCollections);
+    divideIntoCollections(map, nodeCollections);
 
     std::cout << "Map size: " << map->size() << " x " << map->at(0).size() << std::endl;
-}
-
-/* Generates a simple test map of size mapSize x mapSize (see header).
- * One node is generated for each field on the map.
- * All the nodes are then given a pointer to their neighboring nodes.
- * The nodes are then split into square collections.
- */
-void MapGenerator::generateMapTest(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, std::vector<NodeCollection> &nodeCollections)
-{
-    //srand(time(0)); // Set a seed for the random generation of distances in the map. Used in nodes.h
-    map->clear();
-    nodeCollections.clear();
-
-    // Generate a simple map of nodes.
-    for(int i = 0; i < mapSizeRow; i++) {
-        std::vector<std::shared_ptr<Node>> row;
-        for(int j = 0; j < mapSizeCol; j++) {
-            std::pair<std::size_t, std::size_t> index(i,j);
-            std::pair<double, double> pos(i,j);
-            std::shared_ptr<Node> newNode = std::make_shared<Node>(index, pos);
-            newNode->setPointerToSelf(newNode);
-            row.push_back(newNode);
-        }
-        map->push_back(row);
-    }
-
-    // Give all nodes a pointer to their neighbors.
-    for(std::size_t i = 0; i < map->size(); i++) {
-        for(std::size_t j = 0; j < map->at(i).size(); j++) {
-            std::vector<std::shared_ptr<Node>> neighborNodes;
-            calculateNeighborsTest(i, j, neighborNodes, map);
-            std::shared_ptr<Node> currentNode = map->at(i).at(j);
-            currentNode->setNeighbors(neighborNodes);
-        }
-    }
-
-    // Divide the nodes into square collections.
-    divideIntoCollectionsTest(map, nodeCollections);
 }
 
 void MapGenerator::divideIntoCollections(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node> > > > map, std::vector<NodeCollection> &nodeCollections)
@@ -113,7 +70,7 @@ void MapGenerator::divideIntoCollections(std::shared_ptr<std::vector<std::vector
             if(j + cols > map->at(i).size())
                 cols = map->at(i).size() - j;
 
-            getSliceTest(i, j, rows, cols, map, temp);
+            getSlice(i, j, rows, cols, map, temp);
             nodeCollections.push_back(temp);
         }
     }
@@ -122,7 +79,7 @@ void MapGenerator::divideIntoCollections(std::shared_ptr<std::vector<std::vector
 /* Calculates and returns the neighbors of a given node.
  * Currently the neighbors are found in a square. Should be changed to hexagon. Look up paper in wiki for instructions.
  */
-void MapGenerator::calculateNeighborsTest(std::size_t row, std::size_t col, std::vector<std::shared_ptr<Node> > &neighborNodes, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map)
+void MapGenerator::calculateNeighbors(std::size_t row, std::size_t col, std::vector<std::shared_ptr<Node> > &neighborNodes, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map)
 {
     // Top line
     if(row > 0 && col > 0)
@@ -154,40 +111,11 @@ void MapGenerator::calculateNeighborsTest(std::size_t row, std::size_t col, std:
         neighborNodes.push_back(map->at(row + 1).at(col + 1));
 }
 
-/* Divides the nodes into collections.
- * gridRows decides how many collections there should be pr. row. Same with gridCols.
- * If gridRows = 2 and gridCols = 5, 2*5 = 10 collections are made.
- * If each collection cannot have an equal amount of nodes, the 'overflow' nodes are added to the last collection(s).
- * Each collection runs in its own thread.
- */
-void MapGenerator::divideIntoCollectionsTest(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, std::vector<NodeCollection> &nodeCollections)
-{
-    std::size_t rowCount = map->size() / gridRows;
-    std::size_t colCount = map->at(0).size() / gridCols;
-
-    for(std::size_t i = 0; i < gridRows; i++) {
-        for(std::size_t j = 0; j < gridCols; j++) {
-        NodeCollection temp;
-
-        std::size_t thisRowCount = rowCount;
-        if((i+1) % gridRows == 0)
-            thisRowCount += map->size() % gridRows;
-
-        std::size_t thisColCount = colCount;
-        if((j+1) % gridCols == 0)
-            thisColCount += map->at(0).size() % gridCols;
-
-        getSliceTest(i*rowCount, j*colCount, thisRowCount, thisColCount, map, temp);
-        nodeCollections.push_back(temp);
-        }
-    }
-}
-
 /* Takes a slice of the map and adds it to the collection.
  * row,col: Top left position of the slice.
  * rowCount,colCount: Size of the slice.
  */
-void MapGenerator::getSliceTest(std::size_t row, std::size_t col, std::size_t rowCount, std::size_t colCount, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, NodeCollection &collection)
+void MapGenerator::getSlice(std::size_t row, std::size_t col, std::size_t rowCount, std::size_t colCount, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, NodeCollection &collection)
 {
     std::vector<std::vector<std::shared_ptr<Node> > > temp;
     for(std::size_t i = 0; i < rowCount; i++)
@@ -202,20 +130,20 @@ double MapGenerator::calcMeterDistanceBetweensCoords(std::pair<double, double> s
     double lat2 = endCoord.first;
     double lon2 = endCoord.second;
 
-    lat1 = lat1 * pi / 180.;
-    lat2 = lat2 * pi / 180.;
-    lon1 = lon1 * pi / 180.;
-    lon2 = lon2 * pi / 180.;
+    lat1 = lat1 * PI / 180.;
+    lat2 = lat2 * PI / 180.;
+    lon1 = lon1 * PI / 180.;
+    lon2 = lon2 * PI / 180.;
 
     double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
-    double distanceMeters = distance_radians * radiusEarthMeters;
+    double distanceMeters = distance_radians * RADIUS_EARTH_METERS;
     return distanceMeters;
 }
 
 std::pair<double, double> MapGenerator::calcShiftedCoord(std::pair<double, double> coord, double dxMeters, double dyMeters)
 {
-    double newLat = coord.first  + (dyMeters / radiusEarthMeters) * (180. / pi);
-    double newLon = coord.second + (dxMeters / radiusEarthMeters) * (180. / pi) / cos(coord.first * pi/180.);
+    double newLat = coord.first  + (dyMeters / RADIUS_EARTH_METERS) * (180. / PI);
+    double newLon = coord.second + (dxMeters / RADIUS_EARTH_METERS) * (180. / PI) / cos(coord.first * PI/180.);
 
     std::pair<double,double> newCoord(newLat, newLon);
     return newCoord;

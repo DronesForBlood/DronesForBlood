@@ -14,7 +14,6 @@ NodeCollection::~NodeCollection()
     threadRunning = false;
     while(!threadClosed)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
 }
 
 void NodeCollection::addNode(std::shared_ptr<Node> node)
@@ -62,8 +61,8 @@ void NodeCollection::nodeChecker()
         while(!*checkNodesAgain && threadRunning && !pauseThread)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-        if(pauseThread)
-            continue;
+        //if(pauseThread)
+        //    continue;
 
         nodeReadyMutex->lock();
         *checkNodesAgain = false;
