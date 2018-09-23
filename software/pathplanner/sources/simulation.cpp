@@ -63,7 +63,7 @@ void Simulation::runSingle()
         bool succes = test.getPathToDestination(path);
         if(!succes || path.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            std::cout << "EMPTY!" << std::endl;
+            //std::cout << "EMPTY!" << std::endl;
             continue;
         }
         i++;

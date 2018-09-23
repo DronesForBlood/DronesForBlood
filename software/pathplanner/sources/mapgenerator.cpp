@@ -50,7 +50,12 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     }
 
     // Divide the nodes into square collections.
-    divideIntoCollections(map, nodeCollections);
+    //divideIntoCollections(map, nodeCollections);
+
+    gridRows = map->size()/25;
+    gridCols = map->at(0).size()/25;
+
+    divideIntoCollectionsTest(map, nodeCollections);
 
     std::cout << "Map size: " << map->size() << " x " << map->at(0).size() << std::endl;
 }

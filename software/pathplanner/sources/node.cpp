@@ -24,6 +24,7 @@ void Node::resetNode()
 
     stable = true;
     updated = false;
+    wasUpdated = false;
 
     pointerToSource = nullptr;
 }
@@ -83,18 +84,20 @@ void Node::setNextStable(bool val)
 {
     stable = val;
     for(NeighborNode &neighbor : neighbors) {
-        if(pointerToSelf.lock() == neighbor.node.lock()->getPointerToSource()) {
-            neighbor.node.lock()->setNextStable(val);
+        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
+        if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->setNextStable(val);
         }
         else {
-            neighbor.node.lock()->setStable(val);
-            neighbor.node.lock()->unlockNodeReady();
+            neighborNode->setStable(val);
+            neighborNode->unlockNodeReady();
         }
     }
 }
 
 void Node::setPenalty(double val)
 {
+    //std::cout << "C\n";
     double difference = val - penalty;
     cost += difference;
     penalty = val;
@@ -104,24 +107,30 @@ void Node::setPenalty(double val)
     if(!updated)
         return;
 
-    addToNextCost(difference);
+    //std::cout << "c\n"; // Crashed after this
+    addToNextCost(difference, false);
+    //std::cout << "D\n";
     setNextStable(stable);
+    //std::cout << "E\n";
 }
 
 void Node::setCostAndUpdate(double val)
 {
+    //std::cout << "A\n";
     double difference = val - cost;
-    addToNextCost(difference);
+    addToNextCost(difference, true);
     cost = val;
+    //std::cout << "B\n";
 }
 
-void Node::addToNextCost(double val)
+void Node::addToNextCost(double val, bool mayUpdate)
 {
-    updated = true;
+    if(mayUpdate && wasUpdated)
+        updated = true;
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
-            neighborNode->addToNextCost(val);
+            neighborNode->addToNextCost(val, mayUpdate);
             neighborNode->addToCost(val);
         }
     }
@@ -131,6 +140,7 @@ void Node::setNodeAsInit()
 {
     stable = false;
     updated = true;
+    wasUpdated = true;
     pointerToSource = nullptr;
     sourceNodeIndex = selfNodeIndex;
 
