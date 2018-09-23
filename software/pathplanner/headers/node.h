@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 
+#include "headers/defines.h"
 
 class Node;
 
@@ -60,25 +61,17 @@ public:
     void addToNextCost(double val, bool mayUpdate);
 
     std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
-    std::pair<std::size_t, std::size_t> getSelfIndex() {return selfNodeIndex;}
     std::pair<std::size_t, std::size_t> getSourceIndex() {return sourceNodeIndex;}
     std::shared_ptr<Node> getPointerToSource() {return pointerToSource;}
 
     void setNodeAsInit();
     void updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeIndex, double newCost);
-    void setSource(std::pair<std::size_t, std::size_t> source) {sourceNodeIndex = source;}
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
-
 
 private:
     int calcMeterDistanceBetweensCoords(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
 
 private:
-    const double pi = 3.14159265359;
-    const double radiusEarthMeters = 6371000.0;
-    const double minimumDistanceDifference = 25;
-
-
     std::weak_ptr<Node> pointerToSelf;
     std::shared_ptr<Node> pointerToSource = nullptr;
     std::pair<std::size_t, std::size_t> selfNodeIndex;

@@ -25,6 +25,7 @@ set(SOURCES
     sources/pathfinder.cpp
     sources/simulation.cpp
 
+    headers/defines.h
     headers/mapcontroller.h
     headers/mapgenerator.h
     headers/node.h

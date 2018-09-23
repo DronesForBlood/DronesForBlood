@@ -47,7 +47,7 @@ void Node::checkAndUpdateNeighbors()
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
         double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
-        if((costToMove < neighborNode->getCost() - minimumDistanceDifference || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
+        if((costToMove < neighborNode->getCost() - MINIMUM_DISTANCE_CHANGE || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
@@ -89,7 +89,7 @@ void Node::setNextStable(bool val)
             neighborNode->setNextStable(val);
         }
         else {
-            neighborNode->setStable(val);
+            neighborNode->setStable(false);
             neighborNode->unlockNodeReady();
         }
     }
@@ -97,30 +97,24 @@ void Node::setNextStable(bool val)
 
 void Node::setPenalty(double val)
 {
-    //std::cout << "C\n";
     double difference = val - penalty;
     cost += difference;
     penalty = val;
-    //std::cout << "P: " << cost << std::endl;
     stable = false;
 
     if(!updated)
         return;
 
-    //std::cout << "c\n"; // Crashed after this
     addToNextCost(difference, false);
-    //std::cout << "D\n";
+
     setNextStable(stable);
-    //std::cout << "E\n";
 }
 
 void Node::setCostAndUpdate(double val)
 {
-    //std::cout << "A\n";
     double difference = val - cost;
     addToNextCost(difference, true);
     cost = val;
-    //std::cout << "B\n";
 }
 
 void Node::addToNextCost(double val, bool mayUpdate)
@@ -153,7 +147,6 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
 {
     this->sourceNodeIndex = sourceNodeIndex;
     cost = newCost;
-
 }
 
 int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
@@ -163,12 +156,12 @@ int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, 
     double lat2 = endCoord.first;
     double lon2 = endCoord.second;
 
-    lat1 = lat1 * pi / 180.;
-    lat2 = lat2 * pi / 180.;
-    lon1 = lon1 * pi / 180.;
-    lon2 = lon2 * pi / 180.;
+    lat1 = lat1 * PI / 180.;
+    lat2 = lat2 * PI / 180.;
+    lon1 = lon1 * PI / 180.;
+    lon2 = lon2 * PI / 180.;
 
     double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
-    int distanceMeters = int(distance_radians * radiusEarthMeters);
+    int distanceMeters = int(distance_radians * RADIUS_EARTH_METERS);
     return distanceMeters;
 }

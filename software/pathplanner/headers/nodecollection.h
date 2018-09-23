@@ -34,7 +34,6 @@ private:
    std::shared_ptr<std::mutex> nodeReadyMutex;
    std::shared_ptr<std::thread> checkerThread;
    bool *checkNodesAgain = new bool(false);
-   bool stable = false;
    bool pauseThread = false;
    bool isPaused = true;
    bool threadRunning = false;
