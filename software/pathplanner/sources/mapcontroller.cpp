@@ -14,7 +14,7 @@ MapController::~MapController()
 void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
 {
     MapGenerator generator;
-    generator.generateMap(map, nodeCollections, startCoord, endCoord, 25, 10000, 5000);
+    generator.generateMap(map, nodeCollections, startCoord, endCoord, 100, 10000, 5000);
     pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
@@ -43,16 +43,19 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 {
     currentHeading = std::make_shared<std::pair<std::size_t, std::size_t>>(getClosestNodeIndex(headingCoord));
 
+    /*
     std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
     iterationCounter++;
+    std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
+    timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
+    std::cout << "Time2: " << timeCounter/iterationCounter << "  " << iterationCounter << std::endl;
+    */
 
     for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
         if(*currentHeading.get() == *it) {
             solver.setCurrentHeading(currentHeading);
 
-            std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
-            timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
-            std::cout << "Time2: " << timeCounter/iterationCounter << "  " << iterationCounter << std::endl;
+
             return;
         }
     }
