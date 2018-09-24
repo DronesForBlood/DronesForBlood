@@ -12,15 +12,25 @@ class DroneFSM():
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
-        # Drone parameters
+        # FSM flags. Outputs
+        self.ARMED = False
+        self.TAKE_OFF = False
+        self.LAND = False
+        self.FLY = False
+        self.CALCULATE_PATH = False
+        self.EMERGENCY_LANDING = False
+        # Drone parameters. FSM inputs
         self.height = 0
         self.position = [None, None]
+        self.destination = [None, None]
         self.route = []
         self.distance_to_station = 0
         self.armed = False
         self.batt_ok = False
         self.comm_ok = False
         self.on_air = False
+        self.new_waypoint = False
+        self.new_path = False
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
@@ -35,7 +45,11 @@ class DroneFSM():
                 self.__state = "armed"
         # ARMED state
         elif self.__state == "armed":
-            if self.route and self.batt_ok and self.comm_ok:
+            if self.destination and self.batt_ok and self.comm_ok:
+                self.__state = "new_plan"
+        # NEW PLAN state
+        elif self.__state == "new_plan":
+            if self.route:
                 self.__state = "taking_off"
         # TAKING OFF state
         elif self.__state == "taking_off":
@@ -47,6 +61,8 @@ class DroneFSM():
                 self.__state = "recover_comm"
             elif not self.batt_ok:
                 self.__state = "new_destination"
+            elif self.new_waypoint:
+                self.CALCULATE_PATH = True
             elif not self.route:
                 self.__state = "landing"
         # RECOVER COMM state
@@ -67,7 +83,8 @@ class DroneFSM():
         # NEW PATH state
         elif self.__state == "new_path":
             #TODO: Wait until confirmation of new path
-            self.__state = "flying"
+            if self.new_path:
+                self.__state = "flying"
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
             pass
@@ -92,13 +109,18 @@ class DroneFSM():
             pass
         # ARMED state
         elif self.__state == "armed":
-            pass
+            self.ARMED = True
+        # NEW PLAN state
+        elif self.__state == "new_plan":
+            self.CALCULATE_PATH = True
         # TAKING OFF state
         elif self.__state == "taking_off":
-            pass
+            self.CALCULATE_PATH = False
+            self.TAKE_OFF = True
         # FLYING state
         elif self.__state == "flying":
-            pass
+            self.TAKE_OFF = False
+            self.CALCULATE_PATH = False
         # RECOVER COMM state
         elif self.__state == "recover_comm":
             pass
@@ -107,10 +129,10 @@ class DroneFSM():
             pass
         # NEW PATH state
         elif self.__state == "new_path":
-            pass
+            self.CALCULATE_PATH = True
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
-            pass
+            self.EMERGENCY_LANDING = True
         # LANDING state
         elif self.__state == "landing":
             pass
