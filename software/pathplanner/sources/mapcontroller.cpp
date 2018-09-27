@@ -11,10 +11,10 @@ MapController::~MapController()
 
 }
 
-void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength)
 {
     MapGenerator generator;
-    generator.generateMap(map, nodeCollections, startCoord, endCoord, 100, 10000, 5000);
+    generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
     pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
@@ -64,21 +64,25 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
     solver.setInitialPosition(currentHeading);
 }
 
+void MapController::updatePenaltyOfArea(std::pair<double,double> position, double radius, double penalty)
+{
+    std::vector<std::shared_ptr<Node>> nodes;
+    for(auto &it : *map.get())
+        for(auto &it2 : it)
+            if(calcMeterDistanceBetweensCoords(position, it2->getWorldCoordinate()) < radius) {
+                nodes.push_back(it2);
+                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(it2->getNodeIndex().second), int(it2->getNodeIndex().first)));
+                color->val[2] = 255;
+            }
+
+    solver.updatePenaltyOfNodeGroup(nodes, penalty);
+}
+
 void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
 {
     cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(col), int(row)));
     color->val[2] = 255;
     solver.updatePenaltyOfNode(row, col, penalty);
-}
-
-void MapController::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > &positions, double penalty)
-{
-    for(std::pair<std::size_t, std::size_t> &pos : positions) {
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(pos.second), int(pos.first)));
-        color->val[2] = 255;
-    }
-
-    solver.updatePenaltyOfNodeGroup(positions, penalty);
 }
 
 bool MapController::getPathToDestination(std::vector<std::pair<double, double> > &path)
@@ -127,7 +131,7 @@ void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_
     currentPath = path;
 
     cv::imshow("image", pathImage);
-    cv::waitKey(1);
+    cv::waitKey(100);
 }
 
 std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair<double, double> worldCoord)
@@ -206,7 +210,7 @@ double MapController::calcMeterDistanceBetweensCoords(std::pair<double, double> 
     startCoord.second = startCoord.second * PI / 180.;
     endCoord.second = endCoord.second * PI / 180.;
 
-    if(startCoord.first - endCoord.first < 0.000000001 && startCoord.second - endCoord.second < 0.000000001)
+    if(startCoord.first - endCoord.first < 0.0000001 && startCoord.second - endCoord.second < 0.0000001 && startCoord.first - endCoord.first > -0.0000001 && startCoord.second - endCoord.second > -0.0000001)
         return 0;
 
     double distance_radians = acos(sin(startCoord.first) * sin(endCoord.first) + cos(startCoord.first) * cos(endCoord.first) * cos(startCoord.second - endCoord.second));

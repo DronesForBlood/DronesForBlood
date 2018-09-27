@@ -76,12 +76,12 @@ void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double pe
     resumeSolver();
 }
 
-void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > positions, double penalty)
+void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &nodes, double penalty)
 {
     pauseSolver();
 
-    for(std::pair<std::size_t, std::size_t> &pos : positions)
-        map->at(pos.first).at(pos.second)->setPenalty(penalty);
+    for(auto &node : nodes)
+        node->setPenalty(penalty);
 
     resumeSolver();
 }

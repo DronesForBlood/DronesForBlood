@@ -15,22 +15,27 @@ include_directories( SYSTEM
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-# ADD ALL SOURCES AND FREE HEADERS HERE
+# ADD ALL SOURCES AND HEADERS HERE
 set(SOURCES
     sources/main.cpp
     sources/mapcontroller.cpp
     sources/mapgenerator.cpp
     sources/node.cpp
     sources/nodecollection.cpp
+    sources/pathexporter.cpp
     sources/pathfinder.cpp
+    sources/pathshortener.cpp
     sources/simulation.cpp
 
+    headers/coordconverter.h
     headers/defines.h
     headers/mapcontroller.h
     headers/mapgenerator.h
     headers/node.h
     headers/nodecollection.h
+    headers/pathexporter.h
     headers/pathfinder.h
+    headers/pathshortener.h
     headers/simulation.h
 )
 

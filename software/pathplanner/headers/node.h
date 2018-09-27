@@ -60,6 +60,7 @@ public:
     void setCostAndUpdate(double val);
     void addToNextCost(double val, bool mayUpdate);
 
+    std::pair<std::size_t, std::size_t> getNodeIndex() {return selfNodeIndex;}
     std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
     std::pair<std::size_t, std::size_t> getSourceIndex() {return sourceNodeIndex;}
     std::shared_ptr<Node> getPointerToSource() {return pointerToSource;}

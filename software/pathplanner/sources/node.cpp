@@ -100,6 +100,10 @@ void Node::setPenalty(double val)
     double difference = val - penalty;
     cost += difference;
     penalty = val;
+
+    if(difference < 0.1 && difference > -0.1)
+        return;
+
     stable = false;
 
     if(!updated)
