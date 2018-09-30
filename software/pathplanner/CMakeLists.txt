@@ -7,10 +7,15 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED) 
+find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs )
+
+
+
 include_directories( SYSTEM
     ${OpenCV_INCLUDE_DIRS}
 )
+
 
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -24,6 +29,7 @@ set(SOURCES
     sources/nodecollection.cpp
     sources/pathfinder.cpp
     sources/simulation.cpp
+    sources/rosMsg.cpp
 
     headers/defines.h
     headers/mapcontroller.h
@@ -32,12 +38,25 @@ set(SOURCES
     headers/nodecollection.h
     headers/pathfinder.h
     headers/simulation.h
+    headers/rosMsg.h
 )
+
+
+include_directories(
+${catkin_INCLUDE_DIRS} 
+) 
+
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     )
 
+
 target_link_libraries(${PROJECT_NAME}
     ${OpenCV_LIBRARIES}
     )
+
+target_link_libraries(${PROJECT_NAME}
+    ${catkin_LIBRARIES}
+    )
+

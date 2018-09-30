@@ -14,7 +14,7 @@ MapController::~MapController()
 void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
 {
     MapGenerator generator;
-    generator.generateMap(map, nodeCollections, startCoord, endCoord, 100, 10000, 5000);
+    generator.generateMap(map, nodeCollections, startCoord, endCoord, 100, 10000, 5000); // dist between nodes, widht, dist from start node and back 
     pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
@@ -28,7 +28,7 @@ std::pair<std::size_t, std::size_t> MapController::getMapSize()
 /* Start the solver
  * It waits to ensure that the solver is in fact ready
  */
-void MapController::startSolver(std::pair<double, double> worldCoord)
+void MapController::startSolver(std::pair<double, double> worldCoord) // takes start coordinate 
 {
     //std::cout << "Scalar: " << std::is_scalar<std::pair<std::size_t, std::size_t>>::value << std::endl;
 
