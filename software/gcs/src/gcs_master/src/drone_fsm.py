@@ -143,3 +143,6 @@ class DroneFSM():
         else:
             raise ValueError("Unrecognized state '{}'".format(self.__state))
         return
+
+    def get_state(self):
+        return self.__state
