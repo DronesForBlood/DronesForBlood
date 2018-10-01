@@ -10,10 +10,15 @@
 int main(int argc, char **argv)
 {
 
-    rosMsg msg;
 
 
-    ros::init(argc, argv, "pathplaner")
+
+
+    ros::init(argc, argv, "pathplaner");
+    rosMsg rosMsgObject;
+
+    ros::spin();
+
 
 
     

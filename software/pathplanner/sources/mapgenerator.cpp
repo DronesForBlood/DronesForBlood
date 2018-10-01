@@ -29,7 +29,7 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
 
         for(std::size_t j = 0; j < mapSizeY + 1; j++) {
             std::pair<double,double> coord = calcShiftedCoord(shiftedCoord, normalToUse.second * distanceBetweenNodes*j, normalToUse.first * distanceBetweenNodes*j);
-            //std::cout << coord.first << ", " << coord.second << std::endl;
+            //std::cout << std::setprecision(20) <<  coord.first << ", " << coord.second << std::endl;
 
             std::pair<std::size_t, std::size_t> index(i,j);
             std::shared_ptr<Node> newNode = std::make_shared<Node>(index, coord);
