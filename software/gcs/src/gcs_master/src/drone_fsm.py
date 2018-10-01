@@ -78,7 +78,7 @@ class DroneFSM():
                 #TODO: Returning to the 'flying' state while having low battery
                 # will provoke going to an endless loop.
                 self.__state = "new_path"
-            elif self.distance_to_station > self.max_lowbatt_distance::
+            elif self.distance_to_station > self.max_lowbatt_distance:
                 self.__state = "emergency_landing"
         # NEW PATH state
         elif self.__state == "new_path":
