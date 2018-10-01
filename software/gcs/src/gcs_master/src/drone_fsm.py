@@ -35,6 +35,14 @@ class DroneFSM():
         # FSM parameters
         self.__state = "start"
 
+    def update_fsm(self):
+        """
+        Update the state of the FSM, and the outputs afterwards.
+        """
+        self.update_state()
+        self.update_outputs()
+        return
+
     def update_state(self):
         """
         Update the state of the FSM, based on the state variables.
@@ -45,7 +53,9 @@ class DroneFSM():
                 self.__state = "armed"
         # ARMED state
         elif self.__state == "armed":
-            if self.destination and self.batt_ok and self.comm_ok:
+            if not self.armed:
+                self.__state = "start"
+            elif self.destination and self.batt_ok and self.comm_ok:
                 self.__state = "new_plan"
         # NEW PLAN state
         elif self.__state == "new_plan":
@@ -106,7 +116,7 @@ class DroneFSM():
         """
         # START state
         if self.__state == "start":
-            pass
+            self.ARMED = False
         # ARMED state
         elif self.__state == "armed":
             self.ARMED = True
