@@ -20,7 +20,8 @@ Node::Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> 
 void Node::resetNode()
 {
     cost = -1.;
-    penalty = 0.;
+    myPenalty = 0.;
+    totalPenalty = 0.;
 
     stable = true;
     updated = false;
@@ -43,9 +44,12 @@ void Node::checkAndUpdateNeighbors()
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
-        double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
-        if((costToMove < neighborNode->getCost() - MINIMUM_DISTANCE_CHANGE || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
+        int costToMove = neighbor.distance + cost;
+        int penaltyToMove = neighborNode->getPenalty() + totalPenalty + neighborNode->getPenaltyForDynamicZones(cost);
+        int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty() - MINIMUM_DISTANCE_CHANGE;
+        if((costToMove + penaltyToMove < neighborTotalCost || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
+            neighborNode->setTotalPentaly(penaltyToMove);
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
             neighborNode->setPointerToSource(pointerToSelf.lock());
@@ -92,11 +96,11 @@ void Node::setNextStable(bool val)
     }
 }
 
-void Node::setPenalty(double val)
+void Node::setPenalty(int val)
 {
-    double difference = val - penalty;
-    cost += difference;
-    penalty = val;
+    int difference = val - myPenalty;
+    totalPenalty += difference;
+    myPenalty = val;
 
     if(difference < 0.1 && difference > -0.1)
         return;
@@ -107,20 +111,17 @@ void Node::setPenalty(double val)
     if(!updated)
         return;
 
-    addToNextCost(difference, false);
-
-    setNextStable(stable);
-
+    addToNextTotalPenalty(difference, false);
 }
 
-void Node::setCostAndUpdate(double val)
+void Node::setCostAndUpdate(int val)
 {
     double difference = val - cost;
     addToNextCost(difference, true);
     cost = val;
 }
 
-void Node::addToNextCost(double val, bool mayUpdate)
+void Node::addToNextCost(int val, bool mayUpdate)
 {
     if(mayUpdate && wasUpdated)
         updated = true;
@@ -135,6 +136,41 @@ void Node::addToNextCost(double val, bool mayUpdate)
     }
 }
 
+void Node::addToNextTotalPenalty(int val, bool mayUpdate)
+{
+    if(mayUpdate && wasUpdated)
+        updated = true;
+    for(NeighborNode &neighbor : neighbors) {
+        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
+        if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->lockAccessNode();
+            neighborNode->addToNextTotalPenalty(val, mayUpdate);
+            neighborNode->addToTotalPenalty(val);
+            neighborNode->unlockAccessNode();
+        }
+        else {
+            neighborNode->setStable(false);
+            neighborNode->unlockNodeReady();
+        }
+    }
+}
+
+int Node::getPenaltyForDynamicZones(int cost)
+{
+    int arrivalTime = int(std::time(nullptr)) + cost / DRONE_MAX_SPEED;
+
+    int penalty = 0;
+    for(auto it = dynamicPenalties.begin(); it != dynamicPenalties.end(); it++) {
+        if(arrivalTime >= it->epochFrom) {
+            if(arrivalTime <= it->epochTo)
+                penalty += it->penalty;
+            else
+                dynamicPenalties.erase(it);
+        }
+    }
+    return penalty;
+}
+
 void Node::setNodeAsInit()
 {
     stable = false;
@@ -144,7 +180,9 @@ void Node::setNodeAsInit()
     sourceNodeIndex = selfNodeIndex;
 
     setCostAndUpdate(0);
+    //addToNextTotalPenalty(myPenalty - totalPenalty, true);
 
+    totalPenalty = myPenalty;
     unlockNodeReady();
 }
 

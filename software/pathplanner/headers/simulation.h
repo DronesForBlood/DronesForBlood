@@ -18,6 +18,9 @@ public:
     ~Simulation();
 
 private:
+    void realSim();
+    void mapSim();
+    void droneSim();
     void runSingle();
 
 private:
