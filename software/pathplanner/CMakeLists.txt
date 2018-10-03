@@ -27,8 +27,9 @@ set(SOURCES
     sources/pathshortener.cpp
     sources/simulation.cpp
 
-    headers/coordconverter.h
-    headers/defines.h
+    sources/watch/watchdrone.cpp
+    sources/watch/watchzone.cpp
+
     headers/mapcontroller.h
     headers/mapgenerator.h
     headers/node.h
@@ -37,6 +38,13 @@ set(SOURCES
     headers/pathfinder.h
     headers/pathshortener.h
     headers/simulation.h
+
+    headers/watch/watchdrone.h
+    headers/watch/watchzone.h
+
+    headers/global/coordconverter.h
+    headers/global/defines.h
+    headers/global/geofunctions.h
 )
 
 add_executable(${PROJECT_NAME}

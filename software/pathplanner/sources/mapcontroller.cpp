@@ -66,14 +66,53 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 
 void MapController::updatePenaltyOfArea(std::pair<double,double> position, double radius, double penalty)
 {
-    std::vector<std::shared_ptr<Node>> nodes;
+    //WatchZone zone(map, position, radius);
+    //std::vector<std::shared_ptr<Node>> nodes = zone.getNodesInArea();
+
+    std::vector<std::pair<double,double>> polygonCoordinates;
+
+    int x = rand() % 201;
+    int y = rand() % 993;
+
+    polygonCoordinates.push_back(map->at(x).at(y)->getWorldCoordinate());
+
+    for(int i = 0; i < 6; i++) {
+        x += rand() % 100 - 50;
+        y += rand() % 100 - 50;
+        if(x > 200)
+            x = 200;
+        if(y > 800)
+            y = 800;
+
+        if(x < 0)
+            x = 0;
+        if(y < 0)
+            y = 0;
+        polygonCoordinates.push_back(map->at(x).at(y)->getWorldCoordinate());
+    }
+
+    //polygonCoordinates.push_back(polygonCoordinates.front());
+
+
+    WatchZone zone2(map, polygonCoordinates);
+    std::vector<std::shared_ptr<Node>> nodes = zone2.getNodesInArea();
+
+
+    for(auto it : nodes) {
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(it->getNodeIndex().second), int(it->getNodeIndex().first)));
+        color->val[2] = 255;
+    }
+
+
+    /*
     for(auto &it : *map.get())
         for(auto &it2 : it)
-            if(calcMeterDistanceBetweensCoords(position, it2->getWorldCoordinate()) < radius) {
+            if(GeoFunctions::calcMeterDistanceBetweensCoords(position, it2->getWorldCoordinate()) < radius) {
                 nodes.push_back(it2);
                 cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(it2->getNodeIndex().second), int(it2->getNodeIndex().first)));
                 color->val[2] = 255;
             }
+    */
 
     solver.updatePenaltyOfNodeGroup(nodes, penalty);
 }
@@ -137,7 +176,7 @@ void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_
 std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair<double, double> worldCoord)
 {
     std::pair<double, double> nodeCoord = map->at(0).at(0)->getWorldCoordinate();
-    double smallestDistance =  calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
+    double smallestDistance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
 
     int currentI = 0;
     int currentJ = 0;
@@ -153,7 +192,7 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
 
                 if(currentI + i >= 0 && currentI + i < int(map->size()) && currentJ + j >= 0 && currentJ + j < int(map->at(0).size())) {
                     nodeCoord = map->at(std::size_t(currentI + i)).at(std::size_t(currentJ + j))->getWorldCoordinate();
-                    double distance = calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
+                    double distance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
 
                     if(distance < smallestDistance) {
                         smallestDistance = distance;
@@ -201,19 +240,4 @@ bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos
         return true;
 
     return makePathToDestination(sourcePos, path);
-}
-
-double MapController::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
-{
-    startCoord.first = startCoord.first * PI / 180.;
-    endCoord.first = endCoord.first * PI / 180.;
-    startCoord.second = startCoord.second * PI / 180.;
-    endCoord.second = endCoord.second * PI / 180.;
-
-    if(startCoord.first - endCoord.first < 0.0000001 && startCoord.second - endCoord.second < 0.0000001 && startCoord.first - endCoord.first > -0.0000001 && startCoord.second - endCoord.second > -0.0000001)
-        return 0;
-
-    double distance_radians = acos(sin(startCoord.first) * sin(endCoord.first) + cos(startCoord.first) * cos(endCoord.first) * cos(startCoord.second - endCoord.second));
-    double distanceMeters = distance_radians * RADIUS_EARTH_METERS;
-    return distanceMeters;
 }

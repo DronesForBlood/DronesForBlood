@@ -9,6 +9,7 @@
 #include <memory>
 #include <unistd.h>
 
+#include "headers/global/geofunctions.h"
 #include "headers/nodecollection.h"
 
 class MapGenerator
@@ -23,7 +24,6 @@ private:
     void calculateNeighbors(std::size_t row, std::size_t col, std::vector<std::shared_ptr<Node>> &neighborNodes, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map);
     void getSlice(std::size_t row, std::size_t col, std::size_t rowCount, std::size_t colCount, std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, NodeCollection &collection);
 
-    double calcMeterDistanceBetweensCoords(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
     std::pair<double,double> calcShiftedCoord(std::pair<double,double> coord, double dxMeters, double dyMeters);
     std::pair<double,double> calcNormalVector(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
 

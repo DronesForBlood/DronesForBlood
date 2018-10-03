@@ -22,6 +22,7 @@ public:
     void setCurrentHeading(std::shared_ptr<std::pair<std::size_t,std::size_t>> heading);
     void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);
     void updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node> > &nodes, double penalty);
+    void threadTest(std::vector<std::shared_ptr<Node> > nodes, double penalty, bool *done);
 
 private:
     void pauseSolver();

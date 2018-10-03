@@ -10,9 +10,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
-#include "headers/defines.h"
+#include "headers/global/defines.h"
+#include "headers/global/geofunctions.h"
 #include "headers/pathfinder.h"
 #include "headers/mapgenerator.h"
+#include "headers/watch/watchzone.h"
 
 class MapController
 {
@@ -35,7 +37,6 @@ public:
 private:
     std::pair<std::size_t, std::size_t> getClosestNodeIndex(std::pair<double, double> worldCoord);
     bool makePathToDestination(std::pair<std::size_t,std::size_t> pos, std::vector<std::pair<std::size_t, std::size_t> > &path);
-    double calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord);
 
 private:
     cv::Mat pathImage;

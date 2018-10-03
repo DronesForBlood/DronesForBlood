@@ -48,6 +48,7 @@ void Simulation::runSingle()
 
     int i = 0;
 
+    std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
     while(true) {
 
         bool succes = test.getPathToDestination(path);
@@ -73,7 +74,7 @@ void Simulation::runSingle()
             std::size_t randRow = rand() % mapSizeRow;
             std::size_t randCol = rand() % mapSizeCol;
 
-            test.updatePenaltyOfArea(test.getWorldCoordAtIndex(randRow, randCol), radius, 1000);
+            test.updatePenaltyOfArea(test.getWorldCoordAtIndex(randRow, randCol), radius, 10000);
         }
     }
 
@@ -93,6 +94,6 @@ void Simulation::runSingle()
     std::cout << "Iterations: " << i << std::endl;
 
 
-    //std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
-    //std::cout << "Time to complete: " << std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count() << std::endl;
+    std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
+    std::cout << "Time to complete: " << std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count() << std::endl;
 }

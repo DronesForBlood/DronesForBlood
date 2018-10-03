@@ -9,7 +9,8 @@
 #include <thread>
 #include <mutex>
 
-#include "headers/defines.h"
+#include "headers/global/defines.h"
+#include "headers/global/geofunctions.h"
 
 class Node;
 
@@ -18,7 +19,6 @@ struct NeighborNode {
     NeighborNode(std::weak_ptr<Node> node, int distance) {
         this->node = node;
         this->distance = distance;
-        //std::cout << distance << std::endl;
     }
     std::weak_ptr<Node> node;
     int distance;
@@ -70,7 +70,6 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    int calcMeterDistanceBetweensCoords(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
 
 private:
     std::weak_ptr<Node> pointerToSelf;
@@ -93,7 +92,7 @@ private:
     std::shared_ptr<std::mutex> nodeReadyMutex;
     bool *checkNodesAgain;
 
-
+    int epochETA = 0;
 };
 
 #endif // NODE_H

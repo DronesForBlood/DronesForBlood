@@ -31,13 +31,10 @@ void Node::resetNode()
 
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
-    //std::cout << "start" << std::endl;
     for(std::weak_ptr<Node> neighbor : nodes) {
-        //double distance = sqrt(pow(worldCoordinate.first - neighbor.lock()->getWorldCoordinate().first, 2) + pow(worldCoordinate.second - neighbor.lock()->getWorldCoordinate().second, 2));
-        int distance = calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
+        int distance = int(GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate()));
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
-        //std::cout << neighbor.lock()->getWorldCoordinate().first << " " << neighbor.lock()->getWorldCoordinate().second << std::endl;
     }
 }
 
@@ -104,6 +101,7 @@ void Node::setPenalty(double val)
     if(difference < 0.1 && difference > -0.1)
         return;
 
+
     stable = false;
 
     if(!updated)
@@ -112,6 +110,7 @@ void Node::setPenalty(double val)
     addToNextCost(difference, false);
 
     setNextStable(stable);
+
 }
 
 void Node::setCostAndUpdate(double val)
@@ -128,8 +127,10 @@ void Node::addToNextCost(double val, bool mayUpdate)
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->lockAccessNode();
             neighborNode->addToNextCost(val, mayUpdate);
             neighborNode->addToCost(val);
+            neighborNode->unlockAccessNode();
         }
     }
 }
@@ -151,21 +152,4 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
 {
     this->sourceNodeIndex = sourceNodeIndex;
     cost = newCost;
-}
-
-int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
-{
-    double lat1 = startCoord.first;
-    double lon1 = startCoord.second;
-    double lat2 = endCoord.first;
-    double lon2 = endCoord.second;
-
-    lat1 = lat1 * PI / 180.;
-    lat2 = lat2 * PI / 180.;
-    lon1 = lon1 * PI / 180.;
-    lon2 = lon2 * PI / 180.;
-
-    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
-    int distanceMeters = int(distance_radians * RADIUS_EARTH_METERS);
-    return distanceMeters;
 }
