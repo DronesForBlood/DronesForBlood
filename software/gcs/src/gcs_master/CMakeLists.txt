@@ -38,3 +38,8 @@ include_directories(
 #  ${catkin_LIBRARIES}
 #)
 
+install(PROGRAMS
+     src/drone_fsm.py
+     src/main.py
+     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
