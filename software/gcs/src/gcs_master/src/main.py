@@ -36,7 +36,7 @@ class GcsMasterNode():
                                              geometry_msgs.msg.Point,
                                              queue_size=1)
         self.calc_path_pub = rospy.Publisher("dfb/gcs/master/calculate_path",
-                                             std_msgs.Bool, queue_size=1)
+                                             std_msgs.msg.Bool, queue_size=1)
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM()
 
