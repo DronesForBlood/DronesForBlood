@@ -11,7 +11,7 @@ PathShortener::~PathShortener()
 
 }
 
-void PathShortener::shortenPath(std::vector<std::pair<double, double> > path, std::vector<std::pair<double, double> > &shortPath, double epsilon)
+void PathShortener::shortenPath(std::vector<std::pair<double, double> > &path, std::vector<std::pair<double, double> > &shortPath, double epsilon)
 {
     /*
     std::pair<double,double> p1(55.362397, 10.422111);
@@ -23,10 +23,14 @@ void PathShortener::shortenPath(std::vector<std::pair<double, double> > path, st
 
     douglasPeucker(path, epsilon, shortPath);
 
+    /*
     std::cout << path.size() << std::endl;
     std::cout << shortPath.size() << std::endl;
-    //for(auto it : shortPath)
-    //    std::cout << it.first << " " << it.second << std::endl;
+    for(auto it : path)
+        std::cout << it.first << " " << it.second << std::endl;
+    for(auto it : shortPath)
+        std::cout << it.first << " " << it.second << std::endl;
+        */
 
 }
 

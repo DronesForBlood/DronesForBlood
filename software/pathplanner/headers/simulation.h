@@ -19,12 +19,27 @@ public:
 
 private:
     void realSim();
-    void mapSim();
     void droneSim();
+    void mapSim();
+    void utmSim(bool *stop, bool *stopped);
+
+    void setupMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, int nodeDistance, int width, int padLength);
+    void setNewHeading(std::pair<double, double> newHeading);
+    void setCurrentPosition(std::pair<double, double> newPosition);
+    bool getPath(std::vector<std::pair<double, double> > &path);
+
     void runSingle();
 
 private:
-   Pathfinder pathfinder;
+   MapController *controller;
+
+   bool test = false;
+
+   bool newHeadingSet = false;
+   std::pair<double, double> currentHeading;
+
+   bool newPositionSet = false;
+   std::pair<double, double> currentPosition;
 
 };
 

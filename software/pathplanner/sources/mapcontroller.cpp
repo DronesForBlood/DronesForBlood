@@ -18,6 +18,13 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
+
+
+    cv::imshow("DroneSimulator 2000", pathImage);
+    cv::waitKey(100);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    mapReady = true;
 }
 
 std::pair<std::size_t, std::size_t> MapController::getMapSize()
@@ -43,25 +50,21 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 {
     currentHeading = std::make_shared<std::pair<std::size_t, std::size_t>>(getClosestNodeIndex(headingCoord));
 
-    /*
-    std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
-    iterationCounter++;
-    std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
-    timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
-    std::cout << "Time2: " << timeCounter/iterationCounter << "  " << iterationCounter << std::endl;
-    */
-
     for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
         if(*currentHeading.get() == *it) {
             solver.setCurrentHeading(currentHeading);
-
-
             return;
         }
     }
 
     std::cout << "SETTING AS INIT!" << std::endl;
     solver.setInitialPosition(currentHeading);
+}
+
+void MapController::setCurrentPosition(std::pair<double, double> currentCoord)
+{
+    printCurrentPositionImage(currentCoord);
+    currentPosition = currentCoord;
 }
 
 void MapController::updatePenaltyOfArea(std::pair<double,double> position, double radius, double penalty)
@@ -131,13 +134,54 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
 
     bool succes = makePathToDestination(goalPosition, nodePath);
 
-    if(succes)
-        printPathImage(nodePath);
+    if(succes) {
+        for(const auto &nodeIndex : nodePath)
+            path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
 
-    for(const auto &nodeIndex : nodePath)
-        path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
+        PathShortener pathShortener;
+        std::vector<std::pair<double, double> > shortPathCoords;
+        pathShortener.shortenPath(path, shortPathCoords, 100);
+
+        std::vector<std::pair<std::size_t, std::size_t> > shortPath;
+
+        for(auto &it : shortPathCoords)
+            shortPath.push_back(getClosestNodeIndex(it));
+
+        printPathImage(nodePath);
+        printShortPathImage(shortPath);
+        currentPath = nodePath;
+        currentShortPath = shortPath;
+        path = shortPathCoords;
+
+    }
 
     return succes;
+}
+
+void MapController::printCurrentPositionImage(std::pair<double, double> newPosition)
+{
+    int squareSize = 5;
+    std::pair<size_t, size_t> newIndex = getClosestNodeIndex(newPosition);
+    std::pair<size_t, size_t> previousIndex = getClosestNodeIndex(currentPosition);
+
+    for(int j = int(previousIndex.second) - squareSize; j < int(previousIndex.second) + squareSize; j++)
+        for(int k = int(previousIndex.first) - squareSize; k < int(previousIndex.first) + squareSize; k++) {
+            if(isInsideMap(k,j)) {
+                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
+                color->val[0] = 0;
+            }
+        }
+
+    for(int j = int(newIndex.second) - squareSize; j < int(newIndex.second) + squareSize; j++)
+        for(int k = int(newIndex.first) - squareSize; k < int(newIndex.first) + squareSize; k++) {
+            if(isInsideMap(k,j)) {
+                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
+                color->val[0] = 255;
+            }
+        }
+
+    cv::imshow("DroneSimulator 2000", pathImage);
+    cv::waitKey(1);
 }
 
 void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_t>> &path)
@@ -149,28 +193,66 @@ void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_
             break;
         }
         cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
-        color->val[0] = 0;
-        color->val[1] = 100;
+        color->val[1] = 0;
     }
 
     if(currentPositionIndex != 0)
         for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
             cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
-
-            color->val[0] = 255;
-            color->val[1] = 0;
+            color->val[1] = 100;
         }
 
     for(std::size_t i = 0; i < path.size(); i++) {
         cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(path[i].second), int(path[i].first)));
-        color->val[0] = 0;
         color->val[1] = 255;
     }
 
-    currentPath = path;
+    cv::imshow("DroneSimulator 2000", pathImage);
+    cv::waitKey(1);
+}
 
-    cv::imshow("image", pathImage);
-    cv::waitKey(100);
+void MapController::printShortPathImage(std::vector<std::pair<std::size_t, std::size_t> > &shortPath)
+{
+    int squareSize = 5;
+    std::size_t currentPositionIndex = 0;
+    for(std::size_t i = 0; i < currentShortPath.size(); i++) {
+        if(currentShortPath[i] == *currentHeading.get()) {
+            currentPositionIndex = i;
+            break;
+        }
+        for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
+            for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
+                if(isInsideMap(k,j)) {
+                    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
+                    color->val[1] = 0;
+                }
+            }
+    }
+
+    if(currentPositionIndex != 0)
+        for(std::size_t i = currentPositionIndex; i < currentShortPath.size(); i++) {
+            for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
+                for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
+                    if(isInsideMap(k,j)) {
+                        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
+                        color->val[1] = 100;
+                    }
+                }
+        }
+
+    for(std::size_t i = 0; i < shortPath.size(); i++) {
+        for(int j = int(shortPath[i].second) - squareSize; j < int(shortPath[i].second) + squareSize; j++)
+            for(int k = int(shortPath[i].first) - squareSize; k < int(shortPath[i].first) + squareSize; k++) {
+                if(isInsideMap(k,j)) {
+                    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
+                    color->val[1] = 255;
+                }
+
+            }
+    }
+
+    cv::imshow("DroneSimulator 2000", pathImage);
+    cv::waitKey(1);
 }
 
 std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair<double, double> worldCoord)
@@ -240,4 +322,18 @@ bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos
         return true;
 
     return makePathToDestination(sourcePos, path);
+}
+
+bool MapController::isInsideMap(int row, int col)
+{
+    if(row < 0 || col < 0)
+        return false;
+
+    if(row >= int(map->size()))
+        return false;
+
+    if(col >= int(map->at(std::size_t(row)).size()))
+        return false;
+
+    return true;
 }

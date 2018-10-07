@@ -16,7 +16,7 @@ public:
     PathShortener();
     ~PathShortener();
 
-    void shortenPath(std::vector<std::pair<double, double>> path, std::vector<std::pair<double, double>> &shortPath, double epsilon);
+    void shortenPath(std::vector<std::pair<double, double> > &path, std::vector<std::pair<double, double>> &shortPath, double epsilon);
 
 private:
     void douglasPeucker(std::vector<std::pair<double, double> > &pointList, double epsilon, std::vector<std::pair<double, double> > &out);
