@@ -24,7 +24,6 @@ public:
     void updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node> > &nodes, double penalty);
     void threadTest(std::vector<std::shared_ptr<Node> > nodes, double penalty, bool *done);
 
-private:
     void pauseSolver();
     void resumeSolver();
 

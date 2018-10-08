@@ -20,7 +20,7 @@ public:
 private:
     void realSim();
     void droneSim();
-    void mapSim();
+    void mapSim(bool *stop, bool *stopped);
     void utmSim(bool *stop, bool *stopped);
 
     void setupMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, int nodeDistance, int width, int padLength);
@@ -28,12 +28,14 @@ private:
     void setCurrentPosition(std::pair<double, double> newPosition);
     bool getPath(std::vector<std::pair<double, double> > &path);
 
+    bool updatePenaltyAreaCircle();
+    bool updatePenaltyAreaPolygon();
     void runSingle();
 
 private:
    MapController *controller;
 
-   bool test = false;
+   bool flightPathCompromised = false;
 
    bool newHeadingSet = false;
    std::pair<double, double> currentHeading;

@@ -17,11 +17,36 @@ Node::Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> 
     worldCoordinate = coordinate;
 }
 
+void Node::addDynamicPenalty(int penalty, int epochFrom, int epochTo)
+{
+    DynamicPenalty dynamicPenalty(penalty, epochFrom, epochTo);
+    dynamicPenalties.push_back(dynamicPenalty);
+
+    int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    int lateArrivalTime = currentTime + (cost + 500) / DRONE_MAX_SPEED;
+    int earlyArrivalTime = currentTime + (cost - 500) / DRONE_MAX_SPEED;
+
+    int difference = 0;
+    if(earlyArrivalTime >= dynamicPenalty.epochFrom)
+        if(lateArrivalTime <= dynamicPenalty.epochTo)
+            difference = dynamicPenalty.penalty;
+
+    if(difference > 0) {
+        penalty += difference;
+        totalPenalty += difference;
+
+        stable = false;
+
+        addToNextTotalPenalty(difference, false);
+    }
+
+}
+
 void Node::resetNode()
 {
     cost = -1.;
-    myPenalty = 0.;
-    totalPenalty = 0.;
+    //myPenalty = 0.;
+    totalPenalty = myPenalty;
 
     stable = true;
     updated = false;
@@ -157,15 +182,17 @@ void Node::addToNextTotalPenalty(int val, bool mayUpdate)
 
 int Node::getPenaltyForDynamicZones(int cost)
 {
-    int arrivalTime = int(std::time(nullptr)) + cost / DRONE_MAX_SPEED;
+    int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    int lateArrivalTime = currentTime + (cost + 500) / DRONE_MAX_SPEED;
+    int earlyArrivalTime = currentTime + (cost - 500) / DRONE_MAX_SPEED;
 
     int penalty = 0;
     for(auto it = dynamicPenalties.begin(); it != dynamicPenalties.end(); it++) {
-        if(arrivalTime >= it->epochFrom) {
-            if(arrivalTime <= it->epochTo)
+        if(earlyArrivalTime >= it->epochFrom) {
+            if(lateArrivalTime <= it->epochTo)
                 penalty += it->penalty;
-            else
-                dynamicPenalties.erase(it);
+            //else
+            //    dynamicPenalties.erase(it);
         }
     }
     return penalty;

@@ -43,6 +43,7 @@ public:
     ~Node();
 
     Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate);
+    void addDynamicPenalty(int penalty, int epochFrom, int epochTo);
     void resetNode();
     void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);

@@ -26,6 +26,7 @@ set(SOURCES
     sources/pathfinder.cpp
     sources/pathshortener.cpp
     sources/simulation.cpp
+    sources/visualizer.cpp
 
     sources/watch/watchdrone.cpp
     sources/watch/watchzone.cpp
@@ -38,6 +39,7 @@ set(SOURCES
     headers/pathfinder.h
     headers/pathshortener.h
     headers/simulation.h
+    headers/visualizer.h
 
     headers/watch/watchdrone.h
     headers/watch/watchzone.h

@@ -15,13 +15,11 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
 {
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
-    pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
+
+    visualizer = std::make_shared<Visualizer>(int(map->size()), int(map->at(0).size()));
+
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
-
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(100);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     mapReady = true;
@@ -63,68 +61,42 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 
 void MapController::setCurrentPosition(std::pair<double, double> currentCoord)
 {
-    printCurrentPositionImage(currentCoord);
+    visualizer->printCurrentPositionImage(getClosestNodeIndex(currentCoord));
     currentPosition = currentCoord;
 }
 
-void MapController::updatePenaltyOfArea(std::pair<double,double> position, double radius, double penalty)
+bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
-    //WatchZone zone(map, position, radius);
-    //std::vector<std::shared_ptr<Node>> nodes = zone.getNodesInArea();
+    solver.pauseSolver();
+    std::shared_ptr<WatchZone> zone;
 
-    std::vector<std::pair<double,double>> polygonCoordinates;
+    if(epochValidFrom < 0 || epochValidTo < 0)
+        zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
+    else
+        zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
 
-    int x = rand() % 201;
-    int y = rand() % 993;
+    watchZones.push_back(zone);
 
-    polygonCoordinates.push_back(map->at(x).at(y)->getWorldCoordinate());
+    std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
 
-    for(int i = 0; i < 6; i++) {
-        x += rand() % 100 - 50;
-        y += rand() % 100 - 50;
-        if(x > 200)
-            x = 200;
-        if(y > 800)
-            y = 800;
+    if(epochValidFrom < 0 || epochValidTo < 0)
+        solver.updatePenaltyOfNodeGroup(nodes, penalty);
 
-        if(x < 0)
-            x = 0;
-        if(y < 0)
-            y = 0;
-        polygonCoordinates.push_back(map->at(x).at(y)->getWorldCoordinate());
-    }
+    bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
-    //polygonCoordinates.push_back(polygonCoordinates.front());
-
-
-    WatchZone zone2(map, polygonCoordinates);
-    std::vector<std::shared_ptr<Node>> nodes = zone2.getNodesInArea();
-
-
-    for(auto it : nodes) {
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(it->getNodeIndex().second), int(it->getNodeIndex().first)));
-        color->val[2] = 255;
-    }
-
-
-    /*
-    for(auto &it : *map.get())
-        for(auto &it2 : it)
-            if(GeoFunctions::calcMeterDistanceBetweensCoords(position, it2->getWorldCoordinate()) < radius) {
-                nodes.push_back(it2);
-                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(it2->getNodeIndex().second), int(it2->getNodeIndex().first)));
-                color->val[2] = 255;
-            }
-    */
-
-    solver.updatePenaltyOfNodeGroup(nodes, penalty);
+    solver.resumeSolver();
+    return intersectsWithFlightPath;
 }
 
-void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
+bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty)
 {
-    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(col), int(row)));
-    color->val[2] = 255;
-    solver.updatePenaltyOfNode(row, col, penalty);
+    WatchZone zone(map, polygonCoordinates, visualizer);
+    std::vector<std::shared_ptr<Node>> nodes = zone.getNodesInArea();
+
+    solver.updatePenaltyOfNodeGroup(nodes, penalty);
+
+    bool intersectsWithFlightPath = zone.checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+    return intersectsWithFlightPath;
 }
 
 bool MapController::getPathToDestination(std::vector<std::pair<double, double> > &path)
@@ -147,8 +119,9 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
         for(auto &it : shortPathCoords)
             shortPath.push_back(getClosestNodeIndex(it));
 
-        printPathImage(nodePath);
-        printShortPathImage(shortPath);
+        visualizer->printPathImage(nodePath, *currentHeading.get());
+        visualizer->printShortPathImage(shortPath, *currentHeading.get());
+
         currentPath = nodePath;
         currentShortPath = shortPath;
         path = shortPathCoords;
@@ -158,110 +131,15 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     return succes;
 }
 
-void MapController::printCurrentPositionImage(std::pair<double, double> newPosition)
-{
-    int squareSize = 5;
-    std::pair<size_t, size_t> newIndex = getClosestNodeIndex(newPosition);
-    std::pair<size_t, size_t> previousIndex = getClosestNodeIndex(currentPosition);
-
-    for(int j = int(previousIndex.second) - squareSize; j < int(previousIndex.second) + squareSize; j++)
-        for(int k = int(previousIndex.first) - squareSize; k < int(previousIndex.first) + squareSize; k++) {
-            if(isInsideMap(k,j)) {
-                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                color->val[0] = 0;
-            }
-        }
-
-    for(int j = int(newIndex.second) - squareSize; j < int(newIndex.second) + squareSize; j++)
-        for(int k = int(newIndex.first) - squareSize; k < int(newIndex.first) + squareSize; k++) {
-            if(isInsideMap(k,j)) {
-                cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                color->val[0] = 255;
-            }
-        }
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
-}
-
-void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_t>> &path)
-{
-    std::size_t currentPositionIndex = 0;
-    for(std::size_t i = 0; i < currentPath.size(); i++) {
-        if(currentPath[i] == *currentHeading.get()) {
-            currentPositionIndex = i;
-            break;
-        }
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
-        color->val[1] = 0;
-    }
-
-    if(currentPositionIndex != 0)
-        for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
-            cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
-            color->val[1] = 100;
-        }
-
-    for(std::size_t i = 0; i < path.size(); i++) {
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(path[i].second), int(path[i].first)));
-        color->val[1] = 255;
-    }
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
-}
-
-void MapController::printShortPathImage(std::vector<std::pair<std::size_t, std::size_t> > &shortPath)
-{
-    int squareSize = 5;
-    std::size_t currentPositionIndex = 0;
-    for(std::size_t i = 0; i < currentShortPath.size(); i++) {
-        if(currentShortPath[i] == *currentHeading.get()) {
-            currentPositionIndex = i;
-            break;
-        }
-        for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
-            for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
-                if(isInsideMap(k,j)) {
-                    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                    color->val[1] = 0;
-                }
-            }
-    }
-
-    if(currentPositionIndex != 0)
-        for(std::size_t i = currentPositionIndex; i < currentShortPath.size(); i++) {
-            for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
-                for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
-                    if(isInsideMap(k,j)) {
-                        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                        color->val[1] = 100;
-                    }
-                }
-        }
-
-    for(std::size_t i = 0; i < shortPath.size(); i++) {
-        for(int j = int(shortPath[i].second) - squareSize; j < int(shortPath[i].second) + squareSize; j++)
-            for(int k = int(shortPath[i].first) - squareSize; k < int(shortPath[i].first) + squareSize; k++) {
-                if(isInsideMap(k,j)) {
-                    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                    color->val[1] = 255;
-                }
-
-            }
-    }
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
-}
-
 std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair<double, double> worldCoord)
 {
-    std::pair<double, double> nodeCoord = map->at(0).at(0)->getWorldCoordinate();
+    int currentI = int(map->size()/2);
+    int currentJ = int(map->at(0).size()/2);
+
+    std::pair<double, double> nodeCoord = map->at(size_t(currentI)).at(size_t(currentJ))->getWorldCoordinate();
+
     double smallestDistance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
 
-    int currentI = 0;
-    int currentJ = 0;
     int newI = 0;
     int newJ = 0;
     bool repeat = true;
@@ -272,7 +150,7 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
                 if(i == 0 && j == 0)
                     continue;
 
-                if(currentI + i >= 0 && currentI + i < int(map->size()) && currentJ + j >= 0 && currentJ + j < int(map->at(0).size())) {
+                if(isInsideMap(currentI + i, currentJ + j)) {
                     nodeCoord = map->at(std::size_t(currentI + i)).at(std::size_t(currentJ + j))->getWorldCoordinate();
                     double distance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
 
