@@ -7,7 +7,6 @@ with that version.
 """
 # Standard libraries 
 import unittest
-import sys
 # Third-party libraries
 import rospy
 # Local libraries
