@@ -1,9 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
+"""
+This module is meant to test the drone_fsm module from gcs_master.
+
+It has to be run with python2, as the library rostest is only compatible
+with that version.
+"""
 # Standard libraries 
 import unittest
 import sys
+# Third-party libraries
+import rospy
 # Local libraries
-from src.drone_fsm import DroneFSM
+from gcs_master.drone_fsm import DroneFSM
 
 
 ## DroneFSM state transitions test suite.
@@ -386,4 +394,6 @@ class TestFSMBehaviours(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    rospy.init_node("test_fsm_node", anonymous=True)
+    import rostest
+    rostest.rosrun("gcs_master", "fsm_test", TestFSMTransitions)
