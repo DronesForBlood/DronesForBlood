@@ -25,24 +25,42 @@ class GcsMasterNode():
 
     def __init__(self):
         # Subscribers configuration
-        rospy.Subscriber("/dfb/ui/destination", geometry_msgs.msg.Point,
-                         self.ui_callback, queue_size=1)
-        rospy.Subscriber("/dfb/gcs/dronelink", geometry_msgs.msg.Point,
-                         self.dronelink_callback, queue_size=1)
-        rospy.Subscriber("/dfb/gcs/path_planner", geometry_msgs.msg.Point,
-                         self.planner_callback, queue_size=1)
+        rospy.Subscriber('path', mavlink_lora_mision_list, main, queue_size=1)
+        rospy.Subscriber('mavlink/drone/ack', mavlink_lora_command_ack, main, queue_size=1)
+        rospy.Subscriber('mavlink/drone/error', std_msgs.msg.Empty, queue_size=1)
+
+        rospy.Subscriber("/dfb/ui/destination", geometry_msgs.msg.Point, self.ui_callback, queue_size=1)
+        rospy.Subscriber("/dfb/gcs/dronelink", geometry_msgs.msg.Point, self.dronelink_callback, queue_size=1)
+        rospy.Subscriber("/dfb/gcs/path_planner", geometry_msgs.msg.Point, self.planner_callback, queue_size=1)
+
         # Publishers configuration
-        self.pos_publisher = rospy.Publisher("dfb/gcs/master/current_position",
-                                             geometry_msgs.msg.Point,
-                                             queue_size=1)
-        self.calc_path_pub = rospy.Publisher("dfb/gcs/master/calculate_path",
-                                             std_msgs.Bool, queue_size=1)
+        self.path_request = rospy.Publisher('pathreq', std_msgs.msg.Empty, queue_size=1)
+        self.pos_publisher = rospy.Publisher("dfb/gcs/master/current_position", geometry_msgs.msg.Point, queue_size=1)
+        self.mavlink_drone_arm = rospy.Publisher('mavlink/drone/arm', std_msgs.msg.bool, queue_size=1)
+        self.mavlink_drone_takeoff = rospy.Publisher('mavlink/drone/takeoff', std_msgs.msg.Empty, queue_size=1)
+
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM()
 
     def update_flags(self):
         if self.state_machine.CALCULATE_PATH:
             self.calc_path_pub.publish(True)
+            self.state_machine.CALCULATE_PATH = False
+
+        if self.state_machine.ARMED:
+            print("Hi")
+
+        if self.state_machine.TAKE_OFF:
+            print("Hi")
+
+        if self.state_machine.LAND:
+            print("hi")
+
+        if self.state_machine.FLY:
+            print("hi")
+
+        if self.state_machine.EMERGENCY_LANDING:
+            print("shits fucked")
 
     def ui_callback(self, data):
         self.state_machine.destination = [data.x, data.y]
