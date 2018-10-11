@@ -127,6 +127,7 @@ class DroneFSM():
 
         # LANDED state
         elif self.__state == "landed":
+            pass
             # Something something, goto start
 
         # Non-valid state
