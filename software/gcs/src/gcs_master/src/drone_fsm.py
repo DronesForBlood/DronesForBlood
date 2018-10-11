@@ -28,11 +28,12 @@ class DroneFSM():
         self.distance_to_station = 0	    # Remaining distance?
         self.ready = False
         self.armed = False			        # Armed / Disarmed
+        self.acknowledge = False            # Drone acknowledg 
         self.batt_ok = False			    # Battery status
         self.comm_ok = False			    # Comlink status
         self.on_air = False			        # Whether it is in the air?
-        self.new_waypoint = False		    # ?? If new waypoint is available?
-        self.new_path = False			    # ?? If new path is available?
+        self.new_waypoint = False		    # New waypoint is available?
+        self.new_path = False			    # New path is available?
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
@@ -50,38 +51,29 @@ class DroneFSM():
             elif self.msg == "RC_LINK_LOSS":                 # Commlink error
                 self.__state = "recover_comm"
 
-        # START state
+        # START state. Wait until a new path is requested.
         if self.__state == "start":
-            if self.msg._connection_header["topic"] == "/path":     # If message comes from path topic, read route
-                self.route = self.msg           		            # Read route
+            if self.new_path:
+                self.__state = "armed"
 
-            elif self.msg._connection_header["topic"] == "/mavlink/drone/ack":	 # Reponse from arm request
-                if self.msg == 1:
-                    self.msg = 0  		  # Clear message before next state.
-                    self.__state = "armed"        # Proceed to next state.
-
-        # ARMED state
+        # ARMED state. Wait until mavlink acknowledges the drone is  armed.
         elif self.__state == "armed":	
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":     # If MavLink acknowledges, proceed to next state
-                if self.msg == 1:
-                    self.msg = 0		# Clear msg before next state.
-                    self.__state = "taking_off"
+            if self.acknowledge:
+                self.__state = "taking_off"
+                self.acknowledge = False
 
-        # TAKING OFF state
+        # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
+        # and the path planner sent the first waypoint.
         elif self.__state == "taking_off":
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":             # HOW TO DETECT TAKEOFF?
-                if self.msg == 1: 
-                    self.msg = 0
-                    self.__state = "flying"
+            if self.acknowledge and self.new_waypoint:
+                self.__state = "flying"
+                self.acknowledge = False
+                self.new_waypoint = False
 
-        # FLYING state
+        # FLYING state. If there are no more waypoints, landing has to start.
         elif self.__state == "flying":
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":   # If destination is reached, what message is sent?
-                self.msg = 0
+            if not self.route:
                 self.__state = "landing"
-
-            elif self.msg._connection_header["topic"] == "/path":  # If message comes from path topic, read route
-                self.route = self.msg    # Read route
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
@@ -94,17 +86,15 @@ class DroneFSM():
             # What now?
             pass
 
-        # LANDING state - NECESSARY? 
+        # LANDING state
+        # TODO NECESSARY? 
         elif self.__state == "landing":
             #if self.msg = DRONE LANDED
             self.__state = "landed"
 
         # LANDED state
         elif self.__state == "landed":
-            self.route = 0
-            if self.msg._connection_header["topic"] == "/userlink/start":
-                print("Go to start")
-                # Something something, goto start
+            # Something something, goto start
 
         # Non-valid state
         else:
