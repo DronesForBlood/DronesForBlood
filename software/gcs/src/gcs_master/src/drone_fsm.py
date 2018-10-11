@@ -3,8 +3,11 @@
 Finite-State-Machine (FSM) class implementing the drone behaviour.
 """
 # Standard libraries
-import std_msgs.msg
+# Third-party libraries
+import numpy as np
 import rospy
+import std_msgs.msg
+
 
 class DroneFSM():
 
@@ -13,18 +16,22 @@ class DroneFSM():
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
+        # Threshold distances
+        self.new_waypoint_distance = 5      # Distance for getting a new waypoint
+        self.dest_reached_distance = 25     # Distance for starting landing
         # FSM flags. Outputs
-        self.ARMED = False
+        self.ARM = False
         self.TAKE_OFF = False
         self.LAND = False
         self.FLY = False
         self.CALCULATE_PATH = False
         self.EMERGENCY_LANDING = False
+        self.WAYPOINT_REACHED = False
         # Drone parameters. FSM inputs
         self.height = 0				        # Altitude
         self.position = [None, None]	 	# Current position
         self.destination = [None, None]	 	# Next waypoint
-        self.route = [] 			        # Entire path
+        self.next_waypoint = [None, None]   # Coordinates of next waypoint
         self.distance_to_station = 0	    # Remaining distance?
         self.ready = False
         self.armed = False			        # Armed / Disarmed
@@ -32,12 +39,11 @@ class DroneFSM():
         self.batt_ok = False			    # Battery status
         self.comm_ok = False			    # Comlink status
         self.on_air = False			        # Whether it is in the air?
-        self.new_waypoint = False		    # New waypoint is available?
-        self.new_path = False			    # New path is available?
+        self.new_waypoint = False		    # New waypoint is available
+        self.new_operation = False			# New operation is requested
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
-        self.msg = 0            # Message type, route, waypoint, position etc.
 
     def update_state(self):
         """
@@ -51,13 +57,14 @@ class DroneFSM():
             elif self.msg == "RC_LINK_LOSS":                 # Commlink error
                 self.__state = "recover_comm"
 
-        # START state. Wait until a new path is requested.
+        # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_path:
-                self.__state = "armed"
+            if self.new_operation:
+                self.__state = "arm"
+                self.new_operation = False
 
-        # ARMED state. Wait until mavlink acknowledges the drone is  armed.
-        elif self.__state == "armed":	
+        # ARM state. Wait until mavlink acknowledges the drone is armed.
+        elif self.__state == "arm":	
             if self.acknowledge:
                 self.__state = "taking_off"
                 self.acknowledge = False
@@ -72,8 +79,12 @@ class DroneFSM():
 
         # FLYING state. If there are no more waypoints, landing has to start.
         elif self.__state == "flying":
-            if not self.route:
-                self.__state = "landing"
+            if self.new_waypoint:
+                dist_to_destination = np.linalg.norm(
+                        np.array(self.next_waypoint)-np.array(self.destination))
+                if dist_to_destination < self.dest_reached_distance:
+                    self.__state = "landing"
+                self.new_waypoint = False
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
@@ -89,8 +100,8 @@ class DroneFSM():
         # LANDING state
         # TODO NECESSARY? 
         elif self.__state == "landing":
-            #if self.msg = DRONE LANDED
-            self.__state = "landed"
+            if False:
+                self.__state = "landed"
 
         # LANDED state
         elif self.__state == "landed":
@@ -106,14 +117,14 @@ class DroneFSM():
         """
         Update the output variables of the FSM.
         """
-        # START state
+        # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
-            if self.route == 0: # If route is empty
-                self.CALCULATE_PATH = True
+            pass
 
-        # ARMED state
-        elif self.__state == "armed":
-            self.ARMED = True
+        # ARM state
+        elif self.__state == "arm":
+            self.CALCULATE_PATH = True
+            self.ARM = True
 
         # TAKING OFF state
         elif self.__state == "taking_off":
@@ -124,6 +135,10 @@ class DroneFSM():
         elif self.__state == "flying":
             self.TAKE_OFF = False
             self.CALCULATE_PATH = False
+            dist_to_waypoint = np.linalg.norm(
+                    np.array(self.position)-np.array(self.next_waypoint))
+            if dist_to_waypoint < self.new_waypoint_distance:
+                self.WAYPOINT_REACHED = True
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
