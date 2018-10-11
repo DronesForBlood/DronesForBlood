@@ -30,7 +30,7 @@ public:
     void setCurrentHeading(std::pair<double, double> headingCoord);
     void setCurrentPosition(std::pair<double, double> currentCoord);
     bool updatePenaltyOfAreaCircle(std::pair<double,double> position, double radius, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
-    bool updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty);
+    bool updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
     bool getPathToDestination(std::vector<std::pair<double, double> > &path);
 
     std::pair<double,double> getWorldCoordAtIndex(std::size_t row, std::size_t col) {return map->at(row).at(col)->getWorldCoordinate();}

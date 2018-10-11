@@ -16,7 +16,7 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
-    visualizer = std::make_shared<Visualizer>(int(map->size()), int(map->at(0).size()));
+    visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
 
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
@@ -61,7 +61,8 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 
 void MapController::setCurrentPosition(std::pair<double, double> currentCoord)
 {
-    visualizer->printCurrentPositionImage(getClosestNodeIndex(currentCoord));
+    //visualizer->printCurrentPositionImage(getClosestNodeIndex(currentCoord));
+    visualizer->setCurrentPosition(getClosestNodeIndex(currentCoord));
     currentPosition = currentCoord;
 }
 
@@ -79,23 +80,39 @@ bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position
 
     std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
 
+    solver.resumeSolver();
     if(epochValidFrom < 0 || epochValidTo < 0)
         solver.updatePenaltyOfNodeGroup(nodes, penalty);
 
+
     bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
-    solver.resumeSolver();
     return intersectsWithFlightPath;
 }
 
-bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty)
+bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
-    WatchZone zone(map, polygonCoordinates, visualizer);
-    std::vector<std::shared_ptr<Node>> nodes = zone.getNodesInArea();
+    solver.pauseSolver();
+    std::shared_ptr<WatchZone> zone;
 
-    solver.updatePenaltyOfNodeGroup(nodes, penalty);
+    if(epochValidFrom < 0 || epochValidTo < 0)
+        zone = std::make_shared<WatchZone>(map, polygonCoordinates, visualizer);
+    else
+        zone = std::make_shared<WatchZone>(map, polygonCoordinates, visualizer, epochValidFrom, epochValidTo);
 
-    bool intersectsWithFlightPath = zone.checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+    watchZones.push_back(zone);
+
+    std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
+
+    solver.resumeSolver();
+    if(epochValidFrom < 0 || epochValidTo < 0)
+        solver.updatePenaltyOfNodeGroup(nodes, penalty);
+
+    std::cout << "DONE" << std::endl;
+
+
+    bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+
     return intersectsWithFlightPath;
 }
 
@@ -119,8 +136,11 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
         for(auto &it : shortPathCoords)
             shortPath.push_back(getClosestNodeIndex(it));
 
-        visualizer->printPathImage(nodePath, *currentHeading.get());
-        visualizer->printShortPathImage(shortPath, *currentHeading.get());
+        //visualizer->printPathImage(nodePath, *currentHeading.get());
+        //visualizer->printShortPathImage(shortPath, *currentHeading.get());
+        visualizer->setCurrentPath(nodePath);
+        visualizer->setCurrentShortPath(shortPath);
+        visualizer->setCurrentHeading(*currentHeading.get());
 
         currentPath = nodePath;
         currentShortPath = shortPath;

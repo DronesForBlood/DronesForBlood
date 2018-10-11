@@ -1,4 +1,4 @@
-#ifndef SIMULATION_H
+﻿#ifndef SIMULATION_H
 #define SIMULATION_H
 
 #include <utility>
@@ -29,7 +29,9 @@ private:
     bool getPath(std::vector<std::pair<double, double> > &path);
 
     bool updatePenaltyAreaCircle();
+    bool updatePenaltyAreaCircleDynamic();
     bool updatePenaltyAreaPolygon();
+    bool updatePenaltyAreaPolygonDynamic();
     void runSingle();
 
 private:

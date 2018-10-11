@@ -8,6 +8,7 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <opencv2/core/core.hpp>
 
 #include "headers/global/defines.h"
 #include "headers/global/geofunctions.h"
@@ -43,6 +44,8 @@ public:
     ~Node();
 
     Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate);
+    void addToColor(int r, int g, int b);
+    cv::Scalar getColor() {return color;}
     void addDynamicPenalty(int penalty, int epochFrom, int epochTo);
     void resetNode();
     void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
@@ -89,6 +92,7 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
+    bool willBeInDynamicZone(DynamicPenalty &dynamic);
 
 private:
     std::weak_ptr<Node> pointerToSelf;
@@ -115,6 +119,8 @@ private:
     bool *checkNodesAgain;
 
     int epochETA = 0;
+
+    cv::Scalar color;
 };
 
 #endif // NODE_H

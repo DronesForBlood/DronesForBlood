@@ -9,30 +9,14 @@ Simulation::Simulation()
 {
     while(true) {
         controller = new MapController;
-        std::cout << "Here -1" << std::endl;
         realSim();
-        std::cout << "Here 0" << std::endl;
         delete  controller;
-        std::cout << "Here 1" << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        std::cout << "Here 2" << std::endl;
         controller = new MapController;
-        std::cout << "Here 3" << std::endl;
         flightPathCompromised = false;
         newHeadingSet = false;
         newPositionSet = false;
-        std::cout << "Here 4" << std::endl;
     }
-    /*
-    int i = 1;
-    while(true) {
-        srand(i++);
-        runSingle();
-    }
-
-    while(true)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-    */
 }
 
 Simulation::~Simulation()
@@ -89,6 +73,9 @@ void Simulation::droneSim()
             continue;
         }
 
+        //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        //getPath(path);
+
         if(path.size() < 2)
             break;
 
@@ -109,8 +96,11 @@ void Simulation::droneSim()
         stepPrSecond.first = (currentPosition.first - newPosition.first) / timeToMove;
         stepPrSecond.second = (currentPosition.second - newPosition.second) / timeToMove;
 
+        std::time_t timeOverSlept = 0;
         for(int i = 0; i < timeToMove; i++) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            std::time_t start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 + timeOverSlept));
+            timeOverSlept = 1000 - (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - start);
             currentPosition.first -= stepPrSecond.first;
             currentPosition.second -= stepPrSecond.second;
             if(flightPathCompromised)
@@ -169,10 +159,23 @@ void Simulation::utmSim(bool *stop, bool *stopped)
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
         bool wasCompromised = flightPathCompromised;
-        if(rand() % 1 == 0)
-            flightPathCompromised = updatePenaltyAreaCircle();
-        else
-            flightPathCompromised = updatePenaltyAreaPolygon();
+        if(rand() % 2 == 0) {
+
+            std::cout << "??" << std::endl;
+            if(rand() % 2 == 0)
+                flightPathCompromised = updatePenaltyAreaCircle();
+            else
+                flightPathCompromised = updatePenaltyAreaCircleDynamic();
+        }
+        else {
+            std::cout << "?" << std::endl;
+            if (rand() % 2 == 0) {
+                std::cout << "!" << std::endl;
+                flightPathCompromised = updatePenaltyAreaPolygon();
+            }
+            else
+                flightPathCompromised = updatePenaltyAreaPolygonDynamic();
+        }
 
         if(wasCompromised)
             flightPathCompromised = true;
@@ -217,9 +220,21 @@ bool Simulation::updatePenaltyAreaCircle()
     std::size_t randRow = rand() % mapSizeRow;
     std::size_t randCol = rand() % mapSizeCol;
 
+    return controller->updatePenaltyOfAreaCircle(controller->getWorldCoordAtIndex(randRow, randCol), radius, 10000);
+}
+
+bool Simulation::updatePenaltyAreaCircleDynamic()
+{
+    std::size_t mapSizeRow = controller->getMapSize().first;
+    std::size_t mapSizeCol = controller->getMapSize().second;
+
+    double radius = rand() % 3900 + 100;
+    std::size_t randRow = mapSizeRow/2; //rand() % mapSizeRow;
+    std::size_t randCol = rand() % mapSizeCol;
+
     std::time_t from = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     from += 5;
-    std::time_t to = from + 5;
+    std::time_t to = from + 15;
 
     return controller->updatePenaltyOfAreaCircle(controller->getWorldCoordAtIndex(randRow, randCol), radius, 10000, from, to);
 }
@@ -254,6 +269,42 @@ bool Simulation::updatePenaltyAreaPolygon()
     //polygonCoordinates.push_back(polygonCoordinates.front());
 
     return controller->updatePenaltyOfAreaPolygon(polygonCoordinates, 10000);
+}
+
+bool Simulation::updatePenaltyAreaPolygonDynamic()
+{
+    size_t mapSizeRow = controller->getMapSize().first;
+    size_t mapSizeCol = controller->getMapSize().second;
+
+    size_t x = rand() % mapSizeRow;
+    size_t y = rand() % mapSizeCol;
+
+    std::vector<std::pair<double,double>> polygonCoordinates;
+
+    polygonCoordinates.push_back(controller->getWorldCoordAtIndex(x, y));
+
+    for(int i = 0; i < 6; i++) {
+        x += rand() % 100 - 50;
+        y += rand() % 100 - 50;
+        if(x > 200)
+            x = 200;
+        if(y > 800)
+            y = 800;
+
+        if(x < 0)
+            x = 0;
+        if(y < 0)
+            y = 0;
+        polygonCoordinates.push_back(controller->getWorldCoordAtIndex(x, y));
+    }
+
+    //polygonCoordinates.push_back(polygonCoordinates.front());
+
+    std::time_t from = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    from += 5;
+    std::time_t to = from + 15;
+
+    return controller->updatePenaltyOfAreaPolygon(polygonCoordinates, 10000, from, to);
 }
 
 void Simulation::runSingle()

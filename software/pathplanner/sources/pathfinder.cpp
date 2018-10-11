@@ -74,6 +74,15 @@ void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &no
 {
     pauseSolver();
 
+    /*
+    for(auto it : nodes)
+        it->setUpdated(false);
+
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->setStable(false);
+            */
+
     //*
     size_t nrBunches = std::size_t(nodes.size()/50.);
     if(nrBunches > 8)

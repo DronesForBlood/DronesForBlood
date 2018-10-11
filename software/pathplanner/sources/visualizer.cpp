@@ -6,8 +6,9 @@ Visualizer::Visualizer()
 
 }
 
-Visualizer::Visualizer(int mapRows, int mapCols)
+Visualizer::Visualizer(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap, int mapRows, int mapCols)
 {
+    map = aMap;
     pathImage = cv::Mat(mapRows, mapCols, CV_8UC3, cv::Scalar(0, 0, 0));
 
     previousPosition.first = -1;
@@ -15,89 +16,115 @@ Visualizer::Visualizer(int mapRows, int mapCols)
 
     cv::imshow("DroneSimulator 2000", pathImage);
     cv::waitKey(100);
+
+    threadRunning = true;
+    threadClosed = false;
+    printThread = std::shared_ptr<std::thread>(new std::thread(&Visualizer::printImage,this));
+    printThread->detach();
 }
 
 Visualizer::~Visualizer()
 {
-
+    threadRunning = false;
+    while(!threadClosed)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
-void Visualizer::setColorOfPixel(std::pair<int, int> pixel, int r, int g, int b)
+void Visualizer::setCurrentPosition(std::pair<int, int> newPosition)
 {
-    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(pixel.second, pixel.first));
-    if(b >= 0)
-        color->val[0] = uchar(b);
-    if(g >= 0)
-        color->val[1] = uchar(g);
-    if(r >= 0)
-        color->val[2] = uchar(r);
-
+       previousPosition = currentPosition;
+       currentPosition = newPosition;
 }
 
-void Visualizer::printCurrentPositionImage(std::pair<int, int> newPosition)
+void Visualizer::setCurrentPath(std::vector<std::pair<size_t, size_t> > path)
+{
+    previousPath = currentPath;
+    currentPath = path;
+}
+
+void Visualizer::setCurrentShortPath(std::vector<std::pair<size_t, size_t> > shortPath)
+{
+    previousShortPath = currentShortPath;
+    currentShortPath = shortPath;
+}
+
+void Visualizer::setCurrentHeading(std::pair<size_t, size_t> heading)
+{
+    currentHeading = heading;
+}
+
+void Visualizer::printImage()
+{
+    while(threadRunning) {
+        pathImage = cv::Scalar(0,0,0);
+
+        for(auto &it : *map.get())
+            for(auto &it2 : it) {
+                std::pair<size_t, size_t> index = it2->getNodeIndex();
+                cv::Vec3b *pixelColor = &pathImage.at<cv::Vec3b>(cv::Point(int(index.second), int(index.first)));
+                cv::Scalar nodeColor = it2->getColor();
+                for(int i = 0; i < 3; i++) {
+                    if(nodeColor[i] > 255)
+                        pixelColor->val[i] = 255;
+                    else if(nodeColor[i] < 0)
+                        pixelColor->val[i] = 0;
+                    else
+                        pixelColor->val[i] = uchar(nodeColor[i]);
+                }
+            }
+
+
+        printCurrentPositionImage();
+        printPathImage();
+        printShortPathImage();
+
+        cv::imshow("DroneSimulator 2000", pathImage);
+        cv::waitKey(1);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+
+    threadClosed = true;
+}
+
+void Visualizer::printCurrentPositionImage()
 {
     if(previousPosition.first != -1)
         for(int j = int(previousPosition.second) - squareSize; j < int(previousPosition.second) + squareSize; j++)
             for(int k = int(previousPosition.first) - squareSize; k < int(previousPosition.first) + squareSize; k++) {
                 if(isInsideMap(k,j)) {
                     cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                    color->val[0] = 0;
+                    color->val[1] = 0;
                 }
             }
 
-    for(int j = int(newPosition.second) - squareSize; j < int(newPosition.second) + squareSize; j++)
-        for(int k = int(newPosition.first) - squareSize; k < int(newPosition.first) + squareSize; k++) {
+    for(int j = int(currentPosition.second) - squareSize; j < int(currentPosition.second) + squareSize; j++)
+        for(int k = int(currentPosition.first) - squareSize; k < int(currentPosition.first) + squareSize; k++) {
             if(isInsideMap(k,j)) {
                 cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                color->val[0] = 255;
+                color->val[1] = 255;
             }
         }
-
-    previousPosition = newPosition;
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
 }
 
-void Visualizer::printPathImage(std::vector<std::pair<size_t, size_t> > &path, std::pair<size_t, size_t> currentHeading)
+void Visualizer::printPathImage()
 {
-    std::size_t currentPositionIndex = 0;
-    for(std::size_t i = 0; i < currentPath.size(); i++) {
-        if(currentPath[i] == currentHeading) {
-            currentPositionIndex = i;
-            break;
-        }
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
+    for(std::size_t i = 0; i < previousPath.size(); i++) {
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(previousPath[i].second), int(previousPath[i].first)));
         color->val[1] = 0;
     }
 
-    if(currentPositionIndex != 0)
-        for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
-            cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
-            color->val[1] = 100;
-        }
-
-    for(std::size_t i = 0; i < path.size(); i++) {
-        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(path[i].second), int(path[i].first)));
-        color->val[1] = 255;
+    for(std::size_t i = 0; i < currentPath.size(); i++) {
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
+        color->val[1] = 200;
     }
-
-    currentPath = path;
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
 }
 
-void Visualizer::printShortPathImage(std::vector<std::pair<size_t, size_t> > &shortPath, std::pair<size_t, size_t> currentHeading)
+void Visualizer::printShortPathImage()
 {
-    std::size_t currentPositionIndex = 0;
-    for(std::size_t i = 0; i < currentShortPath.size(); i++) {
-        if(currentShortPath[i] == currentHeading) {
-            currentPositionIndex = i;
-            break;
-        }
-        for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
-            for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
+    for(std::size_t i = 0; i < previousShortPath.size(); i++) {
+        for(int j = int(previousShortPath[i].second) - squareSize; j < int(previousShortPath[i].second) + squareSize; j++)
+            for(int k = int(previousShortPath[i].first) - squareSize; k < int(previousShortPath[i].first) + squareSize; k++) {
                 if(isInsideMap(k,j)) {
                     cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
                     color->val[1] = 0;
@@ -105,32 +132,16 @@ void Visualizer::printShortPathImage(std::vector<std::pair<size_t, size_t> > &sh
             }
     }
 
-    if(currentPositionIndex != 0)
-        for(std::size_t i = currentPositionIndex; i < currentShortPath.size(); i++) {
-            for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
-                for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
-                    if(isInsideMap(k,j)) {
-                        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                        color->val[1] = 100;
-                    }
-                }
-        }
-
-    for(std::size_t i = 0; i < shortPath.size(); i++) {
-        for(int j = int(shortPath[i].second) - squareSize; j < int(shortPath[i].second) + squareSize; j++)
-            for(int k = int(shortPath[i].first) - squareSize; k < int(shortPath[i].first) + squareSize; k++) {
+    for(std::size_t i = 0; i < currentShortPath.size(); i++) {
+        for(int j = int(currentShortPath[i].second) - squareSize; j < int(currentShortPath[i].second) + squareSize; j++)
+            for(int k = int(currentShortPath[i].first) - squareSize; k < int(currentShortPath[i].first) + squareSize; k++) {
                 if(isInsideMap(k,j)) {
                     cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(j), int(k)));
-                    color->val[1] = 255;
+                    color->val[1] = 200;
                 }
 
             }
     }
-
-    currentShortPath = shortPath;
-
-    cv::imshow("DroneSimulator 2000", pathImage);
-    cv::waitKey(1);
 }
 
 bool Visualizer::isInsideMap(int row, int col)

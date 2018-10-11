@@ -18,7 +18,7 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
     findNodesInAreaPolygon();
 
     for(auto it : nodesInArea)
-        visualizer->setColorOfPixel(it->getNodeIndex(), 255, -1, -1);
+        it->addToColor(255, 0, 0);
 }
 
 WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap, std::vector<std::pair<double, double> > polygonCoords, std::shared_ptr<Visualizer> aVisualizer, time_t epochValidFrom, time_t epochValidTo)
@@ -35,10 +35,19 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
 
     findNodesInAreaPolygon();
 
+
     for(auto it : nodesInArea) {
         it->addDynamicPenalty(10000, int(epochValidFrom), int(epochValidTo));
-        visualizer->setColorOfPixel(it->getNodeIndex(), 100, -1, -1);
+        it->addToColor(100, 0, 0);
     }
+
+    /*
+    for(auto &it : *map.get())
+        for(auto &it2 : it) {
+            it2->setStable(false);
+            it2->unlockNodeReady();
+        }
+        */
 
     threadStopped = false;
     dynamicThread = std::shared_ptr<std::thread>(new std::thread(&WatchZone::handleDynamicVisualization,this));
@@ -58,7 +67,7 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
     findNodesInAreaCircle();
 
     for(auto it : nodesInArea)
-        visualizer->setColorOfPixel(it->getNodeIndex(), 255, -1, -1);
+        it->addToColor(255, 0, 0);
 }
 
 WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap, std::pair<double, double> circleMidpointCoord, double radius, std::shared_ptr<Visualizer> aVisualizer, time_t epochValidFrom, time_t epochValidTo)
@@ -78,7 +87,7 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
 
     for(auto it : nodesInArea) {
         it->addDynamicPenalty(10000, validFrom, validTo);
-        visualizer->setColorOfPixel(it->getNodeIndex(), 100, -1, -1);
+        it->addToColor(100, 0, 0);
     }
 
     threadStopped = false;
@@ -179,7 +188,7 @@ void WatchZone::handleDynamicVisualization()
     }
 
     for(auto it : nodesInArea)
-        visualizer->setColorOfPixel(it->getNodeIndex(), 255, -1, -1);
+       it->addToColor(100, 0, 0);
 
     int timeUntilStop = validTo - std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     while(timeUntilStop > 0) {
@@ -192,7 +201,7 @@ void WatchZone::handleDynamicVisualization()
     }
 
     for(auto it : nodesInArea)
-        visualizer->setColorOfPixel(it->getNodeIndex(), 0, -1, -1);
+        it->addToColor(-200, 0, 0);
 
     threadStopped = true;
 }
