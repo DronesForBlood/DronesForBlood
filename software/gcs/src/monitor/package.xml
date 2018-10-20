@@ -2,7 +2,7 @@
 <package>
   <name>monitor</name>
   <version>1.0.0</version>
-  <description>The monitor node. Monitors other nodes for performance and erros</description>
+  <description>The monitor node. Monitors other nodes for performance and errors aswell as the current status of the drone</description>
 
   <maintainer email="fande14@student.sdu.dk">Frederik Mazur Andersen</maintainer>
   <license>BSD</license>
