@@ -52,6 +52,14 @@ class DroneFSM():
         # FSM parameters
         self.__state = "start"
 
+    def update_fsm(self):
+        """
+        Update the state of the FSM, and the outputs afterwards.
+        """
+        self.update_state()
+        self.update_outputs()
+        return
+
     def update_state(self):
         """
         Update the state of the FSM, based on the state variables.
@@ -95,10 +103,24 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            #If we're here, drone has landed, unless we can abort?
-            # Go to take-off state?
-            pass
-
+            if self.comm_ok and self.on_air:
+                self.__state = "new_path"
+            elif self.comm_ok and not self.on_air:
+                self.__state = "landed"
+            #TODO: recovered comm timer.
+        # NEW DESTINATION state
+        elif self.__state == "new_destination":
+            if self.distance_to_station <= self.max_lowbatt_distance:
+                #TODO: Returning to the 'flying' state while having low battery
+                # will provoke going to an endless loop.
+                self.__state = "new_path"
+            elif self.distance_to_station > self.max_lowbatt_distance:
+                self.__state = "emergency_landing"
+        # NEW PATH state
+        elif self.__state == "new_path":
+            #TODO: Wait until confirmation of new path
+            if self.new_path:
+                self.__state = "flying"
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
             # What now?
@@ -112,6 +134,7 @@ class DroneFSM():
 
         # LANDED state
         elif self.__state == "landed":
+            pass
             # Something something, goto start
 
         # Non-valid state
@@ -168,3 +191,5 @@ class DroneFSM():
             raise ValueError("Unrecognized state '{}'".format(self.__state))
         return
 
+    def get_state(self):
+        return self.__state
