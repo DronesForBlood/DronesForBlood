@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""
+GCS master node. Inits a node and imports main script
+"""
+# Third-party libraries
+import rospy
+# Local libraries
+from gcs_master import gcs_master
+
+
+if __name__ == "__main__":
+    rospy.init_node("gcs_master", anonymous=True)
+    gcs_master.main()
