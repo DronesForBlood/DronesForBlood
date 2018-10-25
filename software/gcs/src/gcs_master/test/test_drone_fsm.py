@@ -33,65 +33,40 @@ class TestFSMTransitions(unittest.TestCase):
         self.assertFalse(self.dronefsm.EMERGENCY_LANDING)
         self.assertEqual(self.dronefsm.get_state(), "start")
     
-    def test_start_to_armed_transition(self):
+    def test_start_to_arm_transition(self):
         """
         Test the transition from the start to the armed state.
         """
         # Actions for getting to the desired state.
-        self.dronefsm.armed = True
+        self.dronefsm.new_operation = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "armed")
-        self.assertTrue(self.dronefsm.ARMED)
+        self.assertEqual(self.dronefsm.get_state(), "arm")
+        self.assertFalse(self.dronefsm.new_operation)
+        self.assertTrue(self.dronefsm.ARM)
+        self.assertTrue(self.dronefsm.CALCULATE_PATH)
     
     def test_start_to_disarmed_transition(self):
         """
-        Test the transition: start-->armed-->start.
+        Test the transition:
         """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.armed = False
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "start")
-        self.assertFalse(self.dronefsm.ARMED)
-
-    def test_start_to_newplan_transition(self):
-        """
-        Test the transition: start-->armed-->new_plan.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "new_plan")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertTrue(self.dronefsm.CALCULATE_PATH)
+        self.assertTrue(False)
 
     def test_start_to_takingoff_transition(self):
         """
-        Test the transition: start-->armed-->new_plan-->taking_off.
+        Test the transition: start-->arm-->taking_off.
         """
         # Actions for getting to the desired state.
-        self.dronefsm.armed = True
+        self.dronefsm.new_operation = True
         self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
+        self.dronefsm.acknowledge = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
         self.assertEqual(self.dronefsm.get_state(), "taking_off")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
+        self.assertFalse(self.dronefsm.acknowledge)
         self.assertTrue(self.dronefsm.TAKE_OFF)
-        
+        self.assertFalse(self.dronefsm.CALCULATE_PATH)
+
     def test_start_to_flying_transition(self):
         """
         Test the transition: start-->...-->taking_off-->flying.
