@@ -12,30 +12,29 @@ In order to ensure the correct working of the FSM, there must be mutexes
 placed in order to avoid variable changes while evolving the states.
 """
 # Standard libraries
-
 # Third-party libraries
 import rospy
 import geometry_msgs.msg
 import std_msgs.msg
 import pymap3d as pm
 # Local libraries
-import drone_fsm
+from gcs_master import drone_fsm
 
 
 class GcsMasterNode():
 
     def __init__(self):
         # Subscribers configuration
-        rospy.Subscriber('userlink/start', geometry_msgs.msg.Point, ui_callback, queue_size=1)
-        rospy.Subscriber('pathplanner/waypoint/receive', mavlink_lora_mision_list, planner_callback, queue_size=1)
-        rospy.Subscriber('mavlink/drone/ack', mavlink_lora_command_ack, dronelink_callback, queue_size=1)
-        rospy.Subscriber('mavlink/drone/error', mavlink_lora_statustext, dronelink_callback, queue_size=1)
-        rospy.Subscriber('mavlink/drone/position', mavlink_lora_pos, dronelink_callback, queue_size=1)
+        rospy.Subscriber('userlink/start', geometry_msgs.msg.Point, self.ui_callback, queue_size=1)
+        # rospy.Subscriber('pathplanner/waypoint/receive', mavlink_lora_mision_list, planner_callback, queue_size=1)
+        # rospy.Subscriber('mavlink/drone/ack', mavlink_lora_command_ack, dronelink_callback, queue_size=1)
+        # rospy.Subscriber('mavlink/drone/error', mavlink_lora_statustext, dronelink_callback, queue_size=1)
+        # rospy.Subscriber('mavlink/drone/position', mavlink_lora_pos, dronelink_callback, queue_size=1)
 
         # Publishers configuration
-        self.waypoint_request = rospy.Publisher('pathplanner/waypoint/request', std_msgs.msg.bool, queue_size=1)
-        self.mavlink_drone_arm = rospy.Publisher('mavlink/drone/arm', std_msgs.msg.bool, queue_size=1)
-        self.mavlink_drone_takeoff = rospy.Publisher('mavlink/drone/takeoff', std_msgs.msg.bool, queue_size=1)
+        self.waypoint_request = rospy.Publisher('pathplanner/waypoint/request', std_msgs.msg.Bool, queue_size=1)
+        self.mavlink_drone_arm = rospy.Publisher('mavlink/drone/arm', std_msgs.msg.Bool, queue_size=1)
+        self.mavlink_drone_takeoff = rospy.Publisher('mavlink/drone/takeoff', std_msgs.msg.Bool, queue_size=1)
         self.mavlink_drone_Waypoint = rospy.Publisher('mavlink/drone/waypoint', geometry_msgs.msg.Point, queue_size=1)
 
         # Create an instance of the drone finite-state-machine class.
@@ -116,12 +115,7 @@ class GcsMasterNode():
 
 
 def main():
-    # Init node and publisher object
-    rospy.init_node("gcs_master", anonymous=True)
     # Instantiate the gcs_master node class and run it
     gcs_master = GcsMasterNode()
     gcs_master.run()
     return
-
-if __name__ == "__main__":
-    main()

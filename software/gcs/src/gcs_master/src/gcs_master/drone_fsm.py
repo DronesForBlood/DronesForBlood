@@ -30,7 +30,7 @@ class DroneFSM():
         self.EMERGENCY_LANDING = False
         self.WAYPOINT_REACHED = False
         # Drone parameters. FSM inputs
-        self.altitude = 0				        # Altitude
+        self.altitude = 0				    # Altitude
         self.position = [None, None]	 	# Current position
         self.destination = [None, None]	 	# Next waypoint
         self.ack = False
@@ -42,13 +42,11 @@ class DroneFSM():
         self.batt_ok = False			    # Battery status
         self.comm_ok = False			    # Comlink status
         self.on_air = False			        # Whether it is in the air
-
-        # Path related vars
+        # Path related variables
         self.new_path = False			    # If new path is available		   
         self.new_waypoint = False		    # New waypoint is available
         self.new_operation = False			# New operation is requested
         self.max_lowbatt_distance = max_lowbatt_distance
-
         # FSM parameters
         self.__state = "start"
 
@@ -64,13 +62,13 @@ class DroneFSM():
         """
         Update the state of the FSM, based on the state variables.
         """
-        # Check for errors first!
-        if self.msg._connection_header["topic"] == "/mavlink/drone/error":
-            if self.msg == "BATTERY_ERROR":                                         # Battery error
-                self.__state = "emergency_landing"
+        # TODO:Check for errors first!
+        # if self.msg._connection_header["topic"] == "/mavlink/drone/error":
+        #     if self.msg == "BATTERY_ERROR":                                         # Battery error
+        #         self.__state = "emergency_landing"
 
-            elif self.msg == "RC_LINK_LOSS":                                        # Commlink error
-                self.__state = "recover_comm"
+        #     elif self.msg == "RC_LINK_LOSS":                                        # Commlink error
+        #         self.__state = "recover_comm"
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
