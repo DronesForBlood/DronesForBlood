@@ -3,8 +3,11 @@
 Finite-State-Machine (FSM) class implementing the drone behaviour.
 """
 # Standard libraries
-import std_msgs.msg
+# Third-party libraries
+import numpy as np
 import rospy
+import std_msgs.msg
+
 
 class DroneFSM():
 
@@ -13,32 +16,41 @@ class DroneFSM():
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
+        # Threshold distances
+        self.new_waypoint_distance = 5      # Distance for getting a new waypoint
+        self.dest_reached_distance = 25     # Distance for starting landing
         # FSM flags. Outputs
         self.ARMED = False
         self.READY = False
+        self.ARM = False
         self.TAKE_OFF = False
         self.LAND = False
         self.FLY = False
         self.CALCULATE_PATH = False
         self.EMERGENCY_LANDING = False
-
+        self.WAYPOINT_REACHED = False
         # Drone parameters. FSM inputs
         self.altitude = 0				        # Altitude
         self.position = [None, None]	 	# Current position
         self.destination = [None, None]	 	# Next waypoint
         self.ack = False
+        self.next_waypoint = [None, None]   # Coordinates of next waypoint
+        self.distance_to_station = 0	    # Remaining distance?
+        self.ready = False
         self.armed = False			        # Armed / Disarmed
+        self.acknowledge = False            # Drone acknowledg 
         self.batt_ok = False			    # Battery status
         self.comm_ok = False			    # Comlink status
         self.on_air = False			        # Whether it is in the air
 
         # Path related vars
-        self.new_path = False			    # If new path is available
-        self.new_waypoint = False		    # If new waypoint is available
+        self.new_path = False			    # If new path is available		   
+        self.new_waypoint = False		    # New waypoint is available
+        self.new_operation = False			# New operation is requested
+        self.max_lowbatt_distance = max_lowbatt_distance
 
         # FSM parameters
         self.__state = "start"
-        self.msg = 0            # Message type, route, waypoint, position etc.
 
     def update_state(self):
         """
@@ -52,38 +64,34 @@ class DroneFSM():
             elif self.msg == "RC_LINK_LOSS":                                        # Commlink error
                 self.__state = "recover_comm"
 
-        # START state
+        # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.msg._connection_header["topic"] == "/path":                     # If message comes from path topic, read route
-                self.route = self.msg           		                            # Read route
+            if self.new_operation:
+                self.__state = "arm"
+                self.new_operation = False
 
-            elif self.msg._connection_header["topic"] == "/mavlink/drone/ack":	    # Response from arm request
-                if self.msg == 1:
-                    self.msg = 0  		                                            # Clear message before next state.
-                    self.__state = "armed"                                          # Proceed to next state.
+        # ARM state. Wait until mavlink acknowledges the drone is armed.
+        elif self.__state == "arm":	
+            if self.acknowledge:
+                self.__state = "taking_off"
+                self.acknowledge = False
 
-        # ARMED state
-        elif self.__state == "armed":	
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":        # If MavLink acknowledges, proceed to next state
-                if self.msg == 1:
-                    self.msg = 0		                                            # Clear msg before next state.
-                    self.__state = "taking_off"
-
-        # TAKING OFF state
+        # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
+        # and the path planner sent the first waypoint.
         elif self.__state == "taking_off":
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":        # HOW TO DETECT TAKEOFF?
-                if self.msg == 1: 
-                    self.msg = 0
-                    self.__state = "flying"
+            if self.acknowledge and self.new_waypoint:
+                self.__state = "flying"
+                self.acknowledge = False
+                self.new_waypoint = False
 
-        # FLYING state
+        # FLYING state. If there are no more waypoints, landing has to start.
         elif self.__state == "flying":
-            if self.msg._connection_header["topic"] == "/mavlink/drone/ack":        # If destination is reached, what message is sent?
-                self.msg = 0
-                self.__state = "landing"
-
-            elif self.msg._connection_header["topic"] == "/path":                   # If message comes from path topic, read route
-                self.route = self.msg                                               # Read route
+            if self.new_waypoint:
+                dist_to_destination = np.linalg.norm(
+                        np.array(self.next_waypoint)-np.array(self.destination))
+                if dist_to_destination < self.dest_reached_distance:
+                    self.__state = "landing"
+                self.new_waypoint = False
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
@@ -96,17 +104,15 @@ class DroneFSM():
             # What now?
             pass
 
-        # LANDING state - NECESSARY? 
+        # LANDING state
+        # TODO NECESSARY? 
         elif self.__state == "landing":
-            #if self.msg = DRONE LANDED
-            self.__state = "landed"
+            if False:
+                self.__state = "landed"
 
         # LANDED state
         elif self.__state == "landed":
-            self.route = 0
-            if self.msg._connection_header["topic"] == "/userlink/start":
-                print("Go to start")
-                # Something something, goto start
+            # Something something, goto start
 
         # Non-valid state
         else:
@@ -118,16 +124,14 @@ class DroneFSM():
         """
         Update the output variables of the FSM.
         """
-        # START state
+        # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
-            if self.route == 0: # If route is empty
-                self.CALCULATE_PATH = True
-            else:
-                self.READY = True
+            pass
 
-        # ARMED state
-        elif self.__state == "armed":
-            self.ARMED = True
+        # ARM state
+        elif self.__state == "arm":
+            self.CALCULATE_PATH = True
+            self.ARM = True
 
         # TAKING OFF state
         elif self.__state == "taking_off":
@@ -138,6 +142,10 @@ class DroneFSM():
         elif self.__state == "flying":
             self.TAKE_OFF = False
             self.CALCULATE_PATH = False
+            dist_to_waypoint = np.linalg.norm(
+                    np.array(self.position)-np.array(self.next_waypoint))
+            if dist_to_waypoint < self.new_waypoint_distance:
+                self.WAYPOINT_REACHED = True
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
