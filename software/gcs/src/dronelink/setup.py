@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+
 from distutils.core import setup
 from catkin_pkg.python_setup import generate_distutils_setup
 
-d = generate_distutils_setup(
-  scripts=['src/node.py'],)
-setup(**d)
+setup_args = generate_distutils_setup(
+     packages=['gcs_master'],
+     package_dir={'': 'src'}
+)
 
+setup(**setup_args)
