@@ -25,15 +25,19 @@ class GcsMasterNode():
 
     def __init__(self):
         # Subscribers configuration
-        rospy.Subscriber('userlink/start', geometry_msgs.msg.Point, self.ui_callback, queue_size=1)
+        rospy.Subscriber('dronelink/start', std_msgs.msg.Bool,
+                         self.ui_start_callback, queue_size=1)
         # rospy.Subscriber('pathplanner/waypoint/receive', mavlink_lora_mision_list, planner_callback, queue_size=1)
         # rospy.Subscriber('mavlink/drone/ack', mavlink_lora_command_ack, dronelink_callback, queue_size=1)
         # rospy.Subscriber('mavlink/drone/error', mavlink_lora_statustext, dronelink_callback, queue_size=1)
         # rospy.Subscriber('mavlink/drone/position', mavlink_lora_pos, dronelink_callback, queue_size=1)
 
         # Publishers configuration
+        self.path_request_pub = rospy.Publisher("gcs_master/path_request",
+                                            std_msgs.msg.Bool, queue_size=1)
         self.waypoint_request = rospy.Publisher('pathplanner/waypoint/request', std_msgs.msg.Bool, queue_size=1)
-        self.mavlink_drone_arm = rospy.Publisher('mavlink/drone/arm', std_msgs.msg.Bool, queue_size=1)
+        self.drone_arm_pub = rospy.Publisher("gcs_master/arm",
+                                                 std_msgs.msg.Bool, queue_size=1)
         self.mavlink_drone_takeoff = rospy.Publisher('mavlink/drone/takeoff', std_msgs.msg.Bool, queue_size=1)
         self.mavlink_drone_Waypoint = rospy.Publisher('mavlink/drone/waypoint', geometry_msgs.msg.Point, queue_size=1)
 
@@ -42,11 +46,11 @@ class GcsMasterNode():
 
     def update_flags(self):
         if self.state_machine.CALCULATE_PATH:
-            self.path_request.publish(True)
+            self.path_request_pub.publish(True)
             self.state_machine.CALCULATE_PATH = False
 
-        if self.state_machine.ARMED:
-            self.mavlink_drone_arm.publish(True)
+        if self.state_machine.ARM:
+            self.drone_arm_pub.publish(True)
             self.state_machine.ARMED = False
 
         if self.state_machine.TAKE_OFF:
@@ -65,6 +69,10 @@ class GcsMasterNode():
 
         if self.state_machine.EMERGENCY_LANDING:
             print("shits fucked")
+
+    def ui_start_callback(self, data):
+        self.state_machine.new_operation = True
+        return
 
     def ui_callback(self, data):
         self.state_machine.destination = [data.x, data.y]
@@ -109,6 +117,7 @@ class GcsMasterNode():
             self.state_machine.update_outputs()
             # Publish the flags of the FSM.
             self.update_flags()
+            print("State: {}".format(self.state_machine.get_state()))
             # Finish the loop cycle.
             rate.sleep()
         return
