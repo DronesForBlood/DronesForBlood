@@ -27,11 +27,13 @@ struct NeighborNode {
 
 struct DynamicPenalty {
     DynamicPenalty() {}
-    DynamicPenalty(int penalty, int epochFrom, int epochTo) {
+    DynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo) {
+        this->ID = ID;
         this->penalty = penalty;
         this->epochFrom = epochFrom;
         this->epochTo = epochTo;
     }
+    std::string ID;
     int penalty;
     int epochFrom;
     int epochTo;
@@ -46,7 +48,9 @@ public:
     Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate);
     void addToColor(int r, int g, int b);
     cv::Scalar getColor() {return color;}
-    void addDynamicPenalty(int penalty, int epochFrom, int epochTo);
+    bool checkIfNodeIsInDangerZone(double distanceToNode);
+    void removeDynamicPenalty(std::string ID);
+    void addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo);
     void resetNode();
     void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);
@@ -92,7 +96,7 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    bool willBeInDynamicZone(DynamicPenalty &dynamic);
+    bool willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode);
 
 private:
     std::weak_ptr<Node> pointerToSelf;

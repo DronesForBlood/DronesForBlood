@@ -11,7 +11,7 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     map->clear();
     nodeCollections.clear();
 
-    double length =  GeoFunctions::calcMeterDistanceBetweensCoords(startCoord, endCoord);
+    double length = GeoFunctions::calcMeterDistanceBetweensCoords(startCoord, endCoord);
 
     std::size_t mapSizeX = std::size_t(width/distanceBetweenNodes);
     std::size_t mapSizeY = std::size_t((length + 2*padLength)/distanceBetweenNodes);

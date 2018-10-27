@@ -66,23 +66,60 @@ void MapController::setCurrentPosition(std::pair<double, double> currentCoord)
     currentPosition = currentCoord;
 }
 
+bool MapController::updateDrone(std::string aDroneID, std::string aName, int operationStatus, int trackingEntry, int aGPSTimestamp, std::pair<double, double> position, std::pair<double, double> nextPosition)
+{
+    map->at(getClosestNodeIndex(position).first).at(getClosestNodeIndex(position).second)->addToColor(255,0,0);
+    //map->at(getClosestNodeIndex(nextPosition).first).at(getClosestNodeIndex(nextPosition).second)->addToColor(255,255,255);
+    std::pair<double, double> midPoint(nextPosition.first + (position.first - nextPosition.first) / 2, nextPosition.second + (position.second - nextPosition.second) / 2);
+    //map->at(getClosestNodeIndex(midPoint).first).at(getClosestNodeIndex(midPoint).second)->addToColor(255,255,255);
+
+    std::shared_ptr<WatchDrone> drone = std::make_shared<WatchDrone>(map, aDroneID, aName, operationStatus, trackingEntry, aGPSTimestamp);
+
+
+    bool exists = false;
+    for(auto &it : watchDrones)
+        if(it->getID() == aDroneID) {
+            drone = it;
+            exists = true;
+            break;
+        }
+
+    if(!exists)
+        watchDrones.push_back(drone);
+
+    drone->setNextWaypoint(nextPosition, 1, 1, 1, 1);
+
+    solver.pauseSolver();
+    drone->updateCurrentPosition(position, 100, 10, 100);
+    solver.resumeSolver();
+
+    bool intersectsWithFlightPath = drone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+
+    if(intersectsWithFlightPath)
+        return checkIfIntersectionIsDangerous();
+    return false;
+}
+
 bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
-    solver.pauseSolver();
     std::shared_ptr<WatchZone> zone;
 
-    if(epochValidFrom < 0 || epochValidTo < 0)
+    bool staticZone = (epochValidFrom < 0 || epochValidTo < 0);
+
+    if(staticZone) {
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
-    else
+        std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
+        solver.updatePenaltyOfNodeGroup(nodes, penalty);
+    }
+    else {
+        solver.pauseSolver();
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
+        solver.resumeSolver();
+    }
 
     watchZones.push_back(zone);
 
-    std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
 
-    solver.resumeSolver();
-    if(epochValidFrom < 0 || epochValidTo < 0)
-        solver.updatePenaltyOfNodeGroup(nodes, penalty);
 
 
     bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
@@ -107,9 +144,6 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
     solver.resumeSolver();
     if(epochValidFrom < 0 || epochValidTo < 0)
         solver.updatePenaltyOfNodeGroup(nodes, penalty);
-
-    std::cout << "DONE" << std::endl;
-
 
     bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
@@ -234,4 +268,26 @@ bool MapController::isInsideMap(int row, int col)
         return false;
 
     return true;
+}
+
+bool MapController::checkIfIntersectionIsDangerous()
+{
+    std::cout << "Checking for danger" << std::endl;
+    bool onCurrentPath = false;
+    for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
+        if(!onCurrentPath && *it == getClosestNodeIndex(currentPosition))
+            onCurrentPath = true;
+
+        if(onCurrentPath) {
+            double distanceToNode = GeoFunctions::calcMeterDistanceBetweensCoords(currentPosition, (*map)[it->first][it->second]->getWorldCoordinate());
+            if((*map)[it->first][it->second]->checkIfNodeIsInDangerZone(distanceToNode)) {
+                std::cout << "DANGER" << std::endl;
+                return true;
+            }
+        }
+
+        if(*currentHeading.get() == *it)
+            return false;
+    }
+    return false;
 }

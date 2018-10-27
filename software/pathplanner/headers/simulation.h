@@ -11,6 +11,26 @@
 
 #include "headers/mapcontroller.h"
 
+struct Drone {
+    Drone() {}
+    Drone(std::string aDroneID, std::string aName, int operationStatus, int trackingEntry, int aGPSTimestamp) {
+        this->droneID = aDroneID;
+        this->name = aName;
+        this->operationStatus = operationStatus;
+        this->trackingEntry = trackingEntry;
+        this->GPSTimestamp = aGPSTimestamp;
+    }
+    std::string droneID;
+    std::string name;
+    int operationStatus;
+    int trackingEntry;
+    int GPSTimestamp;
+    std::pair<double,double> currentPos;
+    std::pair<double,double> nextPos;
+    bool init = false;
+
+};
+
 class Simulation
 {
 public:
@@ -28,6 +48,7 @@ private:
     void setCurrentPosition(std::pair<double, double> newPosition);
     bool getPath(std::vector<std::pair<double, double> > &path);
 
+    bool updateDrone(int index);
     bool updatePenaltyAreaCircle();
     bool updatePenaltyAreaCircleDynamic();
     bool updatePenaltyAreaPolygon();
@@ -36,6 +57,7 @@ private:
 
 private:
    MapController *controller;
+   std::vector<Drone> drones;
 
    bool flightPathCompromised = false;
 

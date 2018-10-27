@@ -37,8 +37,8 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
 
 
     for(auto it : nodesInArea) {
-        it->addDynamicPenalty(10000, int(epochValidFrom), int(epochValidTo));
-        it->addToColor(100, 0, 0);
+        it->addDynamicPenalty("ZONE", 10000, int(epochValidFrom), int(epochValidTo));
+        it->addToColor(100, 0, 50);
     }
 
     /*
@@ -86,8 +86,8 @@ WatchZone::WatchZone(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Nod
     findNodesInAreaCircle();
 
     for(auto it : nodesInArea) {
-        it->addDynamicPenalty(10000, validFrom, validTo);
-        it->addToColor(100, 0, 0);
+        it->addDynamicPenalty("ZONE", 10000, validFrom, validTo);
+        it->addToColor(100, 0, 50);
     }
 
     threadStopped = false;
@@ -118,7 +118,7 @@ bool WatchZone::checkLineIntersect(std::pair<double, double> p1, std::pair<doubl
                 return true;
     }
     else {
-        // NOT OPTIMAL
+        // NOT OPTIMAL. Check https://math.stackexchange.com/questions/275529/check-if-line-intersects-with-circles-perimeter
         double distance = GeoFunctions::calcMeterDistanceBetweensCoords(p1, p2);
         int points = int(distance / 50);
         std::pair<double, double> checkPoint = p1;
@@ -188,7 +188,7 @@ void WatchZone::handleDynamicVisualization()
     }
 
     for(auto it : nodesInArea)
-       it->addToColor(100, 0, 0);
+       it->addToColor(100, 0, 50);
 
     int timeUntilStop = validTo - std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     while(timeUntilStop > 0) {
@@ -201,7 +201,7 @@ void WatchZone::handleDynamicVisualization()
     }
 
     for(auto it : nodesInArea)
-        it->addToColor(-200, 0, 0);
+        it->addToColor(-200, 0, -100);
 
     threadStopped = true;
 }

@@ -10,6 +10,28 @@
 namespace GeoFunctions
 {
 
+static inline std::pair<double, double> calcShiftedCoord(std::pair<double, double> coord, double dxMeters, double dyMeters)
+{
+    double newLat = coord.first  + (dyMeters / RADIUS_EARTH_METERS) * (180. / PI);
+    double newLon = coord.second + (dxMeters / RADIUS_EARTH_METERS) * (180. / PI) / cos(coord.first * PI/180.);
+
+    std::pair<double,double> newCoord(newLat, newLon);
+    return newCoord;
+}
+
+static inline std::pair<double, double> calcNormalVector(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    double dx = endCoord.first - startCoord.first;
+    double dy = endCoord.second - startCoord.second;
+    std::pair<double,double> normalToLine(-dy, dx);
+
+    double magnitude = sqrt(pow(normalToLine.first, 2) + pow(normalToLine.second, 2));
+    normalToLine.first = normalToLine.first / magnitude;
+    normalToLine.second = normalToLine.second / magnitude;
+
+    return normalToLine;
+}
+
 static inline double calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
 {
     startCoord.first = startCoord.first * PI / 180.;
@@ -52,6 +74,28 @@ static inline bool pointIsInsidePolygon(std::vector<std::pair<double,double>> &p
          c = !c;
     }
     return c;
+}
+
+static inline double calcAngle(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    startCoord.first = startCoord.first * PI / 180.;
+    endCoord.first = endCoord.first * PI / 180.;
+    startCoord.second = startCoord.second * PI / 180.;
+    endCoord.second = endCoord.second * PI / 180.;
+
+    double dLon = (endCoord.second - startCoord.second);
+
+    double y = sin(dLon) * cos(endCoord.first);
+    double x = cos(startCoord.first) * sin(endCoord.first) - sin(startCoord.first) * cos(endCoord.first) * cos(dLon);
+
+    double brng = atan2(y, x);
+
+    brng = brng / PI * 180;
+    brng = int(brng + 360) % 360;
+
+    //brng = 360 - brng; // count degrees counter-clockwise - remove to make clockwise
+
+    return brng;
 }
 
 }

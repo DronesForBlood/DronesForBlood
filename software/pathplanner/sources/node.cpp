@@ -28,14 +28,50 @@ void Node::addToColor(int r, int g, int b)
     color[2] += r;
 }
 
-void Node::addDynamicPenalty(int penalty, int epochFrom, int epochTo)
+bool Node::checkIfNodeIsInDangerZone(double distanceToNode)
 {
-    DynamicPenalty dynamicPenalty(penalty, epochFrom, epochTo);
-    dynamicPenalties.push_back(dynamicPenalty);
+    for(auto &it : dynamicPenalties)
+        if(willBeInDynamicZone(it, distanceToNode))
+            return true;
+    return false;
+}
+
+void Node::removeDynamicPenalty(std::string ID)
+{
+    for(int i = 0; i < dynamicPenalties.size(); i++)
+        if(dynamicPenalties[i].ID == ID) {
+            dynamicPenalties.erase(dynamicPenalties.begin(), dynamicPenalties.begin() + i);
+            break;
+        }
+}
+
+void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo)
+{
+    DynamicPenalty *dynamicPenalty;
+
+    bool exists = false;
+    for(auto &it : dynamicPenalties)
+        if(it.ID == ID) {
+            dynamicPenalty = &it;
+            dynamicPenalty->ID = ID;
+            dynamicPenalty->penalty = penalty;
+            dynamicPenalty->epochFrom = epochFrom;
+            dynamicPenalty->epochTo = epochTo;
+            exists = true;
+            break;
+        }
+
+
+
+    if(!exists) {
+        DynamicPenalty newDynamicPenalty(ID, penalty, epochFrom, epochTo);
+        dynamicPenalties.push_back(newDynamicPenalty);
+        dynamicPenalty = &newDynamicPenalty;
+    }
 
     int difference = 0;
-    if(willBeInDynamicZone(dynamicPenalty))
-        difference = dynamicPenalty.penalty;
+    if(willBeInDynamicZone(*dynamicPenalty, cost))
+        difference = dynamicPenalty->penalty;
 
     //updated = false;
 
@@ -138,7 +174,6 @@ void Node::setPenalty(int val)
     if(difference < 0.1 && difference > -0.1)
         return;
 
-
     stable = false;
 
     if(!updated)
@@ -190,13 +225,9 @@ void Node::addToNextTotalPenalty(int val, bool mayUpdate)
 
 int Node::getPenaltyForDynamicZones(int cost)
 {
-    int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    int lateArrivalTime = currentTime + (cost - 1000) / DRONE_MAX_SPEED;
-    int earlyArrivalTime = currentTime + (cost + 1000) / DRONE_MAX_SPEED;
-
     int penalty = 0;
     for(auto it = dynamicPenalties.begin(); it != dynamicPenalties.end(); it++)
-        if(willBeInDynamicZone(*it))
+        if(willBeInDynamicZone(*it, cost))
             penalty = it->penalty;
 
     return penalty;
@@ -223,11 +254,18 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
     cost = newCost;
 }
 
-bool Node::willBeInDynamicZone(DynamicPenalty &dynamic)
+bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode)
 {
     int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    int lateArrivalTime = currentTime + (cost - 1000) / DRONE_MAX_SPEED;
-    int earlyArrivalTime = currentTime + (cost + 1000) / DRONE_MAX_SPEED;
+    int lateArrivalTime = currentTime + (distanceToNode - 1000) / DRONE_MAX_SPEED;
+    int earlyArrivalTime = currentTime + (distanceToNode + 1000) / DRONE_MAX_SPEED;
+
+    /*
+    std::cout << "earlyArrivalTime:  " << earlyArrivalTime << std::endl;
+    std::cout << "dynamic.epochFrom: " << dynamic.epochFrom << std::endl;
+    std::cout << "lateArrivalTime:   " << lateArrivalTime << std::endl;
+    std::cout << "dynamic.epochTo:   " << dynamic.epochTo << std::endl;
+    */
 
     if(currentTime < dynamic.epochTo)
         if(earlyArrivalTime >= dynamic.epochFrom)

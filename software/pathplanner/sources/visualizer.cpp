@@ -81,7 +81,7 @@ void Visualizer::printImage()
         cv::imshow("DroneSimulator 2000", pathImage);
         cv::waitKey(1);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     threadClosed = true;
