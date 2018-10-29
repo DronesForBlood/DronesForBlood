@@ -165,7 +165,7 @@ class DroneFSM():
 
         # TAKING OFF state
         elif self.__state == "taking_off":
-            self.CALCULATE_PATH = False
+            pass
 
         # FLYING state
         elif self.__state == "flying":

@@ -28,16 +28,22 @@ except ModuleNotFoundError:
 class GcsMasterNode():
 
     # Node variables
-    HEARBEAT_PERIOD = 0.5
+    HEARBEAT_PERIOD = 0.5       # Seconds
+    HEARTBEAT_TIMEOUT = 1.5     # Seconds
 
     def __init__(self):
         # Subscribers configuration
-        rospy.Subscriber("mavlink_heartbeat", std_msgs.msg.Bool,
+        rospy.Subscriber("mavlink_drone_heartbeat",
+                         mavlink_lora.msg.mavlink_lora_heartbeat,
                          self.heartbeat_callback, queue_size=1)
         rospy.Subscriber('dronelink/start', std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
 
         # Publishers configuration
+        self.heartbeat_pub = rospy.Publisher(
+                "mavlink_heartbeat",
+                mavlink_lora.msg.mavlink_lora_heartbeat,
+                queue_size=1)
         self.drone_arm_pub = rospy.Publisher(
                 "mavlink_interface/command/arm_disarm",
                 std_msgs.msg.Bool,
@@ -50,23 +56,18 @@ class GcsMasterNode():
                 "gcs_master/calculate_path",
                 std_msgs.msg.Bool,
                 queue_size=1)
-        self.waypoint_request = rospy.Publisher('pathplanner/waypoint/request', std_msgs.msg.Bool, queue_size=1)
-        self.heartbeat_pub = rospy.Publisher("mavlink_heartbeat",
-                                             std_msgs.msg.Bool, queue_size=1)
-
-        self.mavlink_drone_Waypoint = rospy.Publisher('mavlink/drone/waypoint', geometry_msgs.msg.Point, queue_size=1)
 
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM()
-        # Timestamps variables
-        self.heartbeat_time = 0.0
+
+        # Timestamps variables. Sending time set to zero for forcing the sending
+        # of a heartbeat in the first iteration.
+        self.heartbeat_send_time = 0.0
+        self.heartbeat_receive_time = rospy.get_time()
         # hearbeat flag. Starts true so the heartbeat is sent for the first time
-        self.heartbeat_ok = True
+        self.heartbeat_ok = False
 
     def update_flags(self):
-        if self.state_machine.CALCULATE_PATH:
-            self.path_request_pub.publish(True)
-            self.state_machine.CALCULATE_PATH = False
 
         if self.state_machine.ARM:
             self.drone_arm_pub.publish(True)
@@ -88,20 +89,20 @@ class GcsMasterNode():
             self.state_machine.CALCULATE_PATH = False
 
         if self.state_machine.FLY:
-            print("hi")
+            pass
 
         if self.state_machine.WAYPOINT_REACHED:
-            self.waypoint_request.publish(True)
-            self.state_machine.WAYPOINT_REACHED = False
+            pass
 
         if self.state_machine.LAND:
-            print("hi")
+            pass
 
         if self.state_machine.EMERGENCY_LANDING:
             print("shits fucked")
 
     def heartbeat_callback(self, data):
         self.heartbeat_ok = True
+        self.heartbeat_receive_time = rospy.get_time()
 
     def ui_start_callback(self, data):
         self.state_machine.new_operation = True
@@ -140,13 +141,19 @@ class GcsMasterNode():
         return
 
     def send_heartbeat(self):
-        if self.heartbeat_ok:
-            self.heartbeat_ok = False
-            self.heartbeat_time = rospy.get_time()
-            self.heartbeat_pub.publish(True)
-            print("BIP")
-        else:
-            print("Missing heartbeat from drone")
+        """
+        Broadcast a heartbeat containing the GCS basic information.
+        """
+        msg = mavlink_lora.msg.mavlink_lora_heartbeat()
+        msg.type = 6
+        msg.autopilot = 8
+        msg.base_mode = 192
+        msg.custom_mode = 0
+        msg.system_status = 4
+        msg.system_id = 255
+        self.heartbeat_pub.publish(msg)
+        self.heartbeat_send_time = rospy.get_time()
+        print("BIP")
         return
 
     def run(self):
@@ -162,8 +169,15 @@ class GcsMasterNode():
             # Publish the flags of the FSM.
             self.update_flags()
             # Publish the heartbeat with the adequate rate
-            if now > self.heartbeat_time + self.HEARBEAT_PERIOD:
+            if now > self.heartbeat_send_time + self.HEARBEAT_PERIOD:
                 self.send_heartbeat()
+            # Reset the received heartbeat. If false, dronelink is lost.
+            if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
+                if self.heartbeat_ok:
+                    self.heartbeat_ok = False
+                else:
+                    print("Dronelink lost")
+                    self.heartbeat_receive_time = rospy.get_time()
             # Finish the loop cycle.
             rate.sleep()
         return
