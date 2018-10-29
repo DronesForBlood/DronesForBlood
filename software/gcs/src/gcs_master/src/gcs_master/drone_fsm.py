@@ -11,6 +11,8 @@ import std_msgs.msg
 
 class DroneFSM():
 
+    TIMEOUT = 5     # Seconds to wait for asking again for certain commands
+
     def __init__(self, max_lowbatt_distance=100):
         """
         :param int max_lowbatt_distance: maximum distance in meters that
@@ -33,22 +35,22 @@ class DroneFSM():
         self.altitude = 0				    # Altitude
         self.position = [None, None]	 	# Current position
         self.destination = [None, None]	 	# Next waypoint
-        self.ack = False
         self.next_waypoint = [None, None]   # Coordinates of next waypoint
         self.distance_to_station = 0	    # Remaining distance?
         self.ready = False
         self.armed = False			        # Armed / Disarmed
-        self.acknowledge = False            # Drone acknowledg 
+        self.acknowledge = False            # Mavlink acknowledge
         self.batt_ok = False			    # Battery status
         self.comm_ok = False			    # Comlink status
         self.on_air = False			        # Whether it is in the air
         # Path related variables
-        self.new_path = False			    # If new path is available		   
+        self.new_path = False			    # If new path is available
         self.new_waypoint = False		    # New waypoint is available
         self.new_operation = False			# New operation is requested
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
+        self.__state_timer = 0
 
     def update_fsm(self):
         """
@@ -75,8 +77,11 @@ class DroneFSM():
             if self.new_operation:
                 self.__state = "arm"
                 self.new_operation = False
+                # Restart timer for the new state, so it updates the flags asap.
+                self.__state_timer = 0.0
 
-        # ARM state. Wait until mavlink acknowledges the drone is armed.
+        # ARM state. Wait until mavlink acknowledges the drone implemented
+        # the take-off command.
         elif self.__state == "arm":	
             if self.acknowledge:
                 self.__state = "taking_off"
@@ -151,13 +156,16 @@ class DroneFSM():
 
         # ARM state
         elif self.__state == "arm":
-            self.CALCULATE_PATH = True
-            self.ARM = True
+            now = rospy.get_time()
+            if  now > self.__state_timer + self.TIMEOUT:
+                self.CALCULATE_PATH = True
+                self.TAKE_OFF = True
+                self.ARM = True
+                self.__state_timer = rospy.get_time()
 
         # TAKING OFF state
         elif self.__state == "taking_off":
             self.CALCULATE_PATH = False
-            self.TAKE_OFF = True
 
         # FLYING state
         elif self.__state == "flying":
