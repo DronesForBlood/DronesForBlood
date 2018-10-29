@@ -19,6 +19,8 @@ import std_msgs.msg
 import pymap3d as pm
 # Local libraries
 from gcs_master import drone_fsm
+import mavlink_lora.msg
+
 
 
 class GcsMasterNode():
@@ -32,26 +34,43 @@ class GcsMasterNode():
         # rospy.Subscriber('mavlink/drone/position', mavlink_lora_pos, dronelink_callback, queue_size=1)
 
         # Publishers configuration
+        self.drone_arm_pub = rospy.Publisher(
+                "mavlink_interface/command/arm_disarm",
+                std_msgs.msg.Bool,
+                queue_size=1)
+        self.drone_takeoff_pub = rospy.Publisher(
+                "mavlink_interface/command/takeoff",
+                mavlink_lora.msg.mavlink_lora_command_takeoff,
+                queue_size=1)
+        self.calc_path_pub = rospy.Publisher(
+                "gcs_master/calculate_path",
+                std_msgs.msg.Bool,
+                queue_size=1)
         self.waypoint_request = rospy.Publisher('pathplanner/waypoint/request', std_msgs.msg.Bool, queue_size=1)
-        self.mavlink_drone_arm = rospy.Publisher('mavlink/drone/arm', std_msgs.msg.Bool, queue_size=1)
-        self.mavlink_drone_takeoff = rospy.Publisher('mavlink/drone/takeoff', std_msgs.msg.Bool, queue_size=1)
         self.mavlink_drone_Waypoint = rospy.Publisher('mavlink/drone/waypoint', geometry_msgs.msg.Point, queue_size=1)
 
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM()
 
     def update_flags(self):
-        if self.state_machine.CALCULATE_PATH:
-            self.path_request.publish(True)
-            self.state_machine.CALCULATE_PATH = False
-
-        if self.state_machine.ARMED:
-            self.mavlink_drone_arm.publish(True)
-            self.state_machine.ARMED = False
+        if self.state_machine.ARM:
+            self.drone_arm_pub.publish(True)
+            self.state_machine.ARM = False
 
         if self.state_machine.TAKE_OFF:
-            self.mavlink_drone_takeoff.publish(True)
+            #TODO: Set the parameters to adequate values
+            msg = mavlink_lora.msg.mavlink_lora_command_takeoff()
+            msg.lattitude = None
+            msg.longtitude = None
+            msg.altitude = 50
+            msg.yaw_angle = float('NaN') # unchanged angle
+            msg.pitch = 0
+            self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
+
+        if self.state_machine.CALCULATE_PATH:
+            self.calc_path_pub.publish(True)
+            self.state_machine.CALCULATE_PATH = False
 
         if self.state_machine.FLY:
             print("hi")
