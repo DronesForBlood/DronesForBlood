@@ -8,17 +8,25 @@ set -e
 
 #docker network create --gateway ${networkgateway} --subnet ${networkgateway}/24 ${networkname}
 
-
+# Clean containers if they exist
+if [ ! "$(docker ps | grep simulation)" ]; then
+    if [ "$(docker ps -aq -f name=simulation)" ]; then
+        # cleanup
+        echo "Cleaning simulation ..."
+        docker container rm simulation
+    fi
+fi
 # enable access to xhost from container
 xhost +
-docker run -d --privileged \
+docker run -it --privileged \
 	--name simulation \
+	--env=LOCAL_USER_ID="$(id -u)" \
 	--network ${networkname} \
 	--ip ${simulation_ip} \
 	-e DISPLAY=:0 \
 	-v $DIR/../simulation/Firmware:/src/firmware/:rw \
 	-v "/tmp/.X11-unix:/tmp/.X11-unix:ro" \
-	crowdedlight/dronesforblood_gazebo:latest bash
+	crowdedlight/dronesforblood_gazebo:latest
 echo "Simulation container started"
 
 sleep 5
@@ -29,3 +37,4 @@ sleep 30
 
 # Source error handler
 source $DIR/error_handler.sh
+

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>monitor</name>
+  <name>dronelink</name>
   <version>1.0.0</version>
-  <description>The monitor node. Monitors other nodes for performance and errors aswell as the current status of the drone</description>
+  <description>The dronelink node. Does all the communication to and from the drone</description>
 
   <maintainer email="fande14@student.sdu.dk">Frederik Mazur Andersen</maintainer>
   <license>BSD</license>
