@@ -76,8 +76,8 @@ class GcsMasterNode():
         if self.state_machine.TAKE_OFF:
             #TODO: Set the parameters to adequate values
             msg = mavlink_lora.msg.mavlink_lora_command_takeoff()
-            msg.lattitude = None
-            msg.longtitude = None
+            msg.lattitude = 0
+            msg.longtitude = 0
             msg.altitude = 50
             msg.yaw_angle = float('NaN') # unchanged angle
             msg.pitch = 0
