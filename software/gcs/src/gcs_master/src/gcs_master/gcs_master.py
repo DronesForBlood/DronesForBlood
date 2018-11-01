@@ -112,8 +112,11 @@ class GcsMasterNode():
     def mavlink_ack_callback(self, data):
         command = data.command
         text = data.result_text
+        ack = False
+
+        ## Check if command is acknowledged
         if data.result == 0:
-            self.state_machine.acknowledge = True
+            ack = True
         # Temporarily rejected
         elif data.result == 1:
             pass
@@ -129,6 +132,14 @@ class GcsMasterNode():
         # Result in progress
         elif data.result == 5:
             pass
+
+        ## Check command to be acknowledged
+        if data.command == 22:
+            if ack:
+                self.state_machine.taking_off = True
+        if data.command == 99:
+            if ack:
+                self.state_machine.armed = True
         return
 
     def mavlink_pos_callback(self, data):

@@ -43,6 +43,7 @@ class DroneFSM():
         self.distance_to_station = 0        # Remaining distance?
         self.ready = False
         self.armed = False                  # Armed / Disarmed
+        self.taking_off = False             # Drone on taking-off operation
         self.acknowledge = False            # Mavlink acknowledge
         self.batt_ok = False                # Battery status
         self.comm_ok = False                # Comlink status
@@ -87,9 +88,8 @@ class DroneFSM():
         # ARM state. Wait until mavlink acknowledges the drone implemented
         # the take-off command.
         elif self.__state == "arm":	
-            if self.acknowledge:
+            if self.armed and self.taking_off:
                 self.__state = "taking_off"
-                self.acknowledge = False
 
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
