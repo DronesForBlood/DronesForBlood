@@ -38,7 +38,8 @@ class DroneFSM():
         self.longitude = None               # Drone longitude
         self.heading = None                 # Heading, in degrees
         self.position = [None, None]        # Current position
-        self.destination = [None, None]     # Next waypoint
+        self.destination = [None, None]     # Destination location
+        self.route = []                     # List of all waypoints
         self.next_waypoint = [None, None]   # Coordinates of next waypoint
         self.distance_to_station = 0        # Remaining distance?
         self.ready = False
@@ -94,10 +95,12 @@ class DroneFSM():
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
         elif self.__state == "taking_off":
-            if self.relative_alt>self.TAKEOFF_ALTITUDE and self.new_waypoint:
+            if self.relative_alt>self.TAKEOFF_ALTITUDE and self.route:
                 self.__state = "flying"
-                self.acknowledge = False
+                self.taking_off = False
                 self.new_waypoint = False
+                # Restart timer for the new state.
+                self.__state_timer = 0.0
 
         # FLYING state. If there are no more waypoints, landing has to start.
         elif self.__state == "flying":

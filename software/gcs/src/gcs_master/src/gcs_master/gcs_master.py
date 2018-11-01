@@ -42,6 +42,9 @@ class GcsMasterNode():
         rospy.Subscriber("mavlink_interface/command/ack",
                          mavlink_lora.msg.mavlink_lora_command_ack,
                          self.mavlink_ack_callback, queue_size=1)
+        rospy.Subscriber("pathplanner/mission_list",
+                         mavlink_lora.msg.mavlink_lora_mission_list,
+                         self.pathplanner_newplan_callback)
 
         # Publishers configuration
         self.heartbeat_pub = rospy.Publisher(
@@ -154,32 +157,8 @@ class GcsMasterNode():
         self.state_machine.destination = [data.x, data.y]
         return
 
-    def dronelink_callback(self, data):
-        self.state_machine.batt_ok = True
-        self.state_machine.comm_ok = True
-        if data._connection_header["topic"] == "/mavlink/drone/error":
-            # Differentiate between batt and comms error here.
-            self.state_machine.batt_ok = False
-            self.state_machine.comm_ok = False
-
-        elif data._connection_header["topic"] == "/mavlink/drone/ack":
-            if data[2] == 1:
-                self.state_machine.ack = True
-            else:
-                self.state_machine.ack = False
-
-        elif data._connection_header["topic"] == "/mavlink/drone/position":
-            # data[0] = header
-            # data[1] = time_usec
-            self.state_machine.position = [data[2], data[3]]
-            self.state_machine.altitude = data[4]
-            # data[5] = relative_altitude
-            # data[6] = heading
-        return
-
-    def planner_callback(self, data):
-        self.state_machine.waypoint = [data[0][0], data[0][1]]
-        self.state_machine.new_waypoint = True
+    def pathplanner_newplan_callback(self, data):
+        self.state_machine.route = data
         return
 
     def send_heartbeat(self):
