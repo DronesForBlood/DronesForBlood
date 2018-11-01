@@ -11,7 +11,8 @@ import std_msgs.msg
 
 class DroneFSM():
 
-    TIMEOUT = 5     # Seconds to wait for asking again for certain commands
+    TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
+    TAKEOFF_ALTITUDE = 20   # Altitude set point, in meters, after taking off
 
     def __init__(self, max_lowbatt_distance=100):
         """
@@ -22,7 +23,6 @@ class DroneFSM():
         self.new_waypoint_distance = 5      # Distance for getting a new waypoint
         self.dest_reached_distance = 25     # Distance for starting landing
         # FSM flags. Outputs
-        self.ARMED = False
         self.READY = False
         self.ARM = False
         self.TAKE_OFF = False
@@ -32,21 +32,25 @@ class DroneFSM():
         self.EMERGENCY_LANDING = False
         self.WAYPOINT_REACHED = False
         # Drone parameters. FSM inputs
-        self.altitude = 0				    # Altitude
-        self.position = [None, None]	 	# Current position
-        self.destination = [None, None]	 	# Next waypoint
+        self.altitude = None                # Absolute altitude
+        self.relative_alt = None            # Relative altitude
+        self.latitude = None                # Drone latitude
+        self.longitude = None               # Drone longitude
+        self.heading = None                 # Heading, in degrees
+        self.position = [None, None]        # Current position
+        self.destination = [None, None]     # Next waypoint
         self.next_waypoint = [None, None]   # Coordinates of next waypoint
-        self.distance_to_station = 0	    # Remaining distance?
+        self.distance_to_station = 0        # Remaining distance?
         self.ready = False
-        self.armed = False			        # Armed / Disarmed
+        self.armed = False                  # Armed / Disarmed
         self.acknowledge = False            # Mavlink acknowledge
-        self.batt_ok = False			    # Battery status
-        self.comm_ok = False			    # Comlink status
-        self.on_air = False			        # Whether it is in the air
+        self.batt_ok = False                # Battery status
+        self.comm_ok = False                # Comlink status
+        self.on_air = False                 # Whether it is in the air
         # Path related variables
-        self.new_path = False			    # If new path is available
-        self.new_waypoint = False		    # New waypoint is available
-        self.new_operation = False			# New operation is requested
+        self.new_path = False               # If new path is available
+        self.new_waypoint = False           # New waypoint is available
+        self.new_mission = False            # New operation is requested
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
@@ -74,9 +78,9 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_operation:
+            if self.new_mission:
                 self.__state = "arm"
-                self.new_operation = False
+                self.new_mission = False
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = 0.0
 
@@ -90,7 +94,7 @@ class DroneFSM():
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
         elif self.__state == "taking_off":
-            if self.acknowledge and self.new_waypoint:
+            if self.relative_alt>self.TAKEOFF_ALTITUDE and self.new_waypoint:
                 self.__state = "flying"
                 self.acknowledge = False
                 self.new_waypoint = False

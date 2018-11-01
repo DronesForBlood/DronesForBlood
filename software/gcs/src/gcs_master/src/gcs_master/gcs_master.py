@@ -37,6 +37,11 @@ class GcsMasterNode():
                          self.heartbeat_callback, queue_size=1)
         rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
+        rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
+                         self.mavlink_pos_callback, queue_size=1)
+        rospy.Subscriber("mavlink_interface/command/ack",
+                         mavlink_lora.msg.mavlink_lora_command_ack,
+                         self.mavlink_ack_callback, queue_size=1)
 
         # Publishers configuration
         self.heartbeat_pub = rospy.Publisher(
@@ -75,9 +80,10 @@ class GcsMasterNode():
         if self.state_machine.TAKE_OFF:
             #TODO: Set the parameters to adequate values
             msg = mavlink_lora.msg.mavlink_lora_command_takeoff()
-            msg.lattitude = 0
-            msg.longtitude = 0
-            msg.altitude = 50
+            msg.latitude = self.state_machine.latitude
+            msg.longtitude = self.state_machine.longitude
+            msg.altitude = (self.state_machine.altitude +
+                            self.state_machine.TAKEOFF_ALTITUDE)
             msg.yaw_angle = float('NaN') # unchanged angle
             msg.pitch = 0
             self.drone_takeoff_pub.publish(msg)
@@ -97,14 +103,44 @@ class GcsMasterNode():
             pass
 
         if self.state_machine.EMERGENCY_LANDING:
-            print("shits fucked")
+            rospy.logwarn("shits fucked")
 
     def heartbeat_callback(self, data):
         self.heartbeat_ok = True
         self.heartbeat_receive_time = rospy.get_time()
 
+    def mavlink_ack_callback(self, data):
+        command = data.command
+        text = data.result_text
+        if data.result == 0:
+            self.state_machine.acknowledge = True
+        # Temporarily rejected
+        elif data.result == 1:
+            pass
+        # Result denied
+        elif data.result == 2:
+            pass
+        # Result unsupported
+        elif data.result == 3:
+            pass
+        # Result failed
+        elif data.result == 4:
+            pass
+        # Result in progress
+        elif data.result == 5:
+            pass
+        return
+
+    def mavlink_pos_callback(self, data):
+        self.state_machine.latitude = data.lat
+        self.state_machine.longitude = data.lon
+        self.state_machine.altitude = data.alt
+        self.state_machine.relative_alt = data.relative_alt
+        self.state_machine.heading = data.heading
+        return
+
     def ui_start_callback(self, data):
-        self.state_machine.new_operation = True
+        self.state_machine.mission = True
         return
 
     def ui_callback(self, data):
@@ -152,7 +188,7 @@ class GcsMasterNode():
         msg.system_id = 255
         self.heartbeat_pub.publish(msg)
         self.heartbeat_send_time = rospy.get_time()
-        print("BIP")
+        rospy.logdebug("BIP")
         return
 
     def run(self):
@@ -175,7 +211,7 @@ class GcsMasterNode():
                 if self.heartbeat_ok:
                     self.heartbeat_ok = False
                 else:
-                    print("Dronelink lost")
+                    rospy.logwarn("Dronelink lost")
                     self.heartbeat_receive_time = rospy.get_time()
             # Finish the loop cycle.
             rate.sleep()
