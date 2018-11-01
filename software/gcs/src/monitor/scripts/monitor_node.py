@@ -57,7 +57,8 @@ class monitor:
         self.mav_mode = DotMap()
         # set defaults to handle if getting called before we get first msg
         self.mav_mode.base_mode = ""
-        self.mav_mode.arm_status = ""
+        self.mav_mode.sub_mode = ""
+        self.armed = ""
 
         # launch node
         rospy.init_node('monitor', disable_signals=True)
@@ -165,6 +166,60 @@ class monitor:
 
         return bm
 
+    def decode_arm(self, base_mode):
+        # arm status
+        armed = bool(base_mode & 0x80)
+
+        if armed:
+            return "ARMED"
+        else:
+            return "DISARMED"
+
+    def decode_custom_mode(self, custom_mode):
+        # submode first 8 bits, then base mode
+        sub_mode = custom_mode >> 24
+        base_mode = (custom_mode >> 16) & 0xFF
+
+        cm = DotMap()
+
+        if sub_mode == 1:
+            cm.sub_mode = "READY"
+        elif sub_mode == 2:
+            cm.sub_mode = "TAKEOFF"
+        elif sub_mode == 3:
+            cm.sub_mode = "LOITER"
+        elif sub_mode == 4:
+            cm.sub_mode = "MISSION"
+        elif sub_mode == 5:
+            cm.sub_mode = "RTL"
+        elif sub_mode == 6:
+            cm.sub_mode = "LAND"
+        elif sub_mode == 7:
+            cm.sub_mode = "RTGS"
+        elif sub_mode == 8:
+            cm.sub_mode = "FOLLOW_TARGET"
+        elif sub_mode == 9:
+            cm.sub_mode = "PRECLAND"
+
+        if base_mode == 1:
+            cm.base_mode = "MANUAL"
+        elif base_mode == 2:
+            cm.base_mode = "ALTITUDE CONTROL"
+        elif base_mode == 3:
+            cm.base_mode = "POSITION CONTROL"
+        elif base_mode == 4:
+            cm.base_mode = "AUTO"
+        elif base_mode == 5:
+            cm.base_mode = "ACRO"
+        elif base_mode == 6:
+            cm.base_mode = "OFFBOARD"
+        elif base_mode == 7:
+            cm.base_mode = "STABILIZED"
+        elif base_mode == 8:
+            cm.base_mode = "RATTITUDE"
+
+        return cm
+
     def on_global_pos_msg(self, msg):
         self.mutex.acquire()
         # Update current position
@@ -188,10 +243,12 @@ class monitor:
 
     def on_heartbeat_msg(self, msg):
         self.mutex.acquire()
-        # update base_mode and custom_mode, by decoding function
-        self.mav_mode = self.decode_base_mode(msg.base_mode)
 
-        # custom mode? maybe
+        # update base_mode and sub_mode,by decoding function.
+        self.mav_mode = self.decode_custom_mode(msg.custom_mode)
+        # update arm status from base_mode flags
+        self.armed = self.decode_arm(msg.base_mode)
+
         self.mutex.release()
 
     def on_set_position_target_local_ned_msg(self, msg):
@@ -243,7 +300,8 @@ class monitor:
         data.last_heard = last_update_text
         data.last_sys_status = last_heard_status_text
         data.base_mode = self.mav_mode.base_mode
-        data.armed = self.mav_mode.arm_status
+        data.sub_mode = self.mav_mode.sub_mode
+        data.armed = self.armed
         data.battery = batt_text
         data.curr_pos = pos_text
         data.curr_alt = alt_text
@@ -268,7 +326,8 @@ class monitor:
 
         data.last_heard = "Never"
         data.last_sys_status = "Never"
-        data.base_mode = "Unknown"
+        data.mav_mode.sub_mode = "Unknown"
+        data.mav_mode.base_mode = "Unknown"
         data.armed = "Unknown"
         data.battery = "Unknown"
         data.curr_pos = "Unknown"

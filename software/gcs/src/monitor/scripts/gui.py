@@ -84,12 +84,14 @@ class MonitorGUI(npyscreen.NPSAppManaged):
 
         #### ARMED ####
         row1 = "Base Mode: {2}{0}{3}{1}".format(data.base_mode,
-                                                data.armed,
+                                                data.sub_mode,
                                                 " " * int(4 * self.X_SCALING_FACTOR),
                                                 " " * int(9 * self.X_SCALING_FACTOR))
 
-        row2 = "Battery:   {1}{0}".format(data.battery,
-                                        " " * int(4 * self.X_SCALING_FACTOR))
+        row2 = "Battery:  {2}{0}{3}{1}".format(data.battery,
+                                                data.armed,
+                                                " " * int(4 * self.X_SCALING_FACTOR),
+                                                " " * int(9 * self.X_SCALING_FACTOR))
 
         self.armed_view.value = row1 + "\n" + row2
         self.armed_view.update(clear=True)
