@@ -200,3 +200,6 @@ CATKIN_IGNORE
 
 # Mavlink private package
 mavlink_lora/
+
+# Log files
+log/
