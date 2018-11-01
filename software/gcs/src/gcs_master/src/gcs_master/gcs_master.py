@@ -16,7 +16,6 @@ placed in order to avoid variable changes while evolving the states.
 import rospy
 import geometry_msgs.msg
 import std_msgs.msg
-import pymap3d as pm
 # Local libraries
 from gcs_master import drone_fsm
 try:
@@ -33,15 +32,15 @@ class GcsMasterNode():
 
     def __init__(self):
         # Subscribers configuration
-        rospy.Subscriber("mavlink_drone_heartbeat",
+        rospy.Subscriber("mavlink_heartbeat_rx",
                          mavlink_lora.msg.mavlink_lora_heartbeat,
                          self.heartbeat_callback, queue_size=1)
-        rospy.Subscriber('dronelink/start', std_msgs.msg.Bool,
+        rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
 
         # Publishers configuration
         self.heartbeat_pub = rospy.Publisher(
-                "mavlink_heartbeat",
+                "mavlink_heartbeat_tx",
                 mavlink_lora.msg.mavlink_lora_heartbeat,
                 queue_size=1)
         self.drone_arm_pub = rospy.Publisher(
