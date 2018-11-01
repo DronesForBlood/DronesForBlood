@@ -68,8 +68,6 @@ class GcsMasterNode():
         # of a heartbeat in the first iteration.
         self.heartbeat_send_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
-        # hearbeat flag. Starts true so the heartbeat is sent for the first time
-        self.heartbeat_ok = False
 
     def update_flags(self):
 
@@ -106,15 +104,12 @@ class GcsMasterNode():
             rospy.logwarn("shits fucked")
 
     def heartbeat_callback(self, data):
-        self.heartbeat_ok = True
+        self.state_machine.comm_ok = True
         self.heartbeat_receive_time = rospy.get_time()
 
     def mavlink_ack_callback(self, data):
-        command = data.command
-        text = data.result_text
-        ack = False
-
         ## Check if command is acknowledged
+        ack = False
         if data.result == 0:
             ack = True
         # Temporarily rejected
@@ -137,6 +132,7 @@ class GcsMasterNode():
         if data.command == 22:
             if ack:
                 self.state_machine.taking_off = True
+        #TODO: write the correct command for the arm command
         if data.command == 99:
             if ack:
                 self.state_machine.armed = True
@@ -217,13 +213,11 @@ class GcsMasterNode():
             # Publish the heartbeat with the adequate rate
             if now > self.heartbeat_send_time + self.HEARBEAT_PERIOD:
                 self.send_heartbeat()
-            # Reset the received heartbeat. If false, dronelink is lost.
+            # Check if the drone heartbeat times out.
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
-                if self.heartbeat_ok:
-                    self.heartbeat_ok = False
-                else:
-                    rospy.logwarn("Dronelink lost")
-                    self.heartbeat_receive_time = rospy.get_time()
+                rospy.logwarn("Dronelink lost")
+                self.state_machine.comm_ok = False
+                self.heartbeat_receive_time = rospy.get_time()
             # Finish the loop cycle.
             rate.sleep()
         return
