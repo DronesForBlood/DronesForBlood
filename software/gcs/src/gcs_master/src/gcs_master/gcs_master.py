@@ -45,6 +45,9 @@ class GcsMasterNode():
         rospy.Subscriber("pathplanner/mission_list",
                          mavlink_lora.msg.mavlink_lora_mission_list,
                          self.pathplanner_newplan_callback)
+        rospy.Subscriber("mavlink_interface/mission/current",
+                         std_msgs.msg.UInt16,
+                         self.mavlink_currentmission_callback, queue_size=1)
 
         # Publishers configuration
         self.heartbeat_pub = rospy.Publisher(
@@ -62,6 +65,10 @@ class GcsMasterNode():
         self.calc_path_pub = rospy.Publisher(
                 "gcs_master/calculate_path",
                 std_msgs.msg.Bool,
+                queue_size=1)
+        self.new_mission_pub = rospy.Publisher(
+                "mavlink_interface/mission/mavlink_upload_mission",
+                mavlink_lora.msg.mavlink_lora_mission_list,
                 queue_size=1)
 
         # Create an instance of the drone finite-state-machine class.
@@ -94,8 +101,11 @@ class GcsMasterNode():
             self.calc_path_pub.publish(True)
             self.state_machine.CALCULATE_PATH = False
 
-        if self.state_machine.FLY:
-            pass
+        if self.state_machine.NEW_MISSION:
+            msg = mavlink_lora.msg.mavlink_lora_mission_list()
+            msg.waypoints = self.state_machine.current_path
+            self.new_mission_pub.publish(msg)
+            self.state_machine.NEW_MISSION = False
 
         if self.state_machine.WAYPOINT_REACHED:
             pass
@@ -117,26 +127,25 @@ class GcsMasterNode():
             ack = True
         # Temporarily rejected
         elif data.result == 1:
-            pass
+            rospy.logwarn("Command {} temp. rejected".format(data.command))
         # Result denied
         elif data.result == 2:
-            pass
+            rospy.logwarn("Command {} denied".format(data.command))
         # Result unsupported
         elif data.result == 3:
-            pass
+            rospy.logwarn("Command {}: result unsupported".format(data.command))
         # Result failed
         elif data.result == 4:
-            pass
+            rospy.logwarn("Command {}: result failed".format(data.command))
         # Result in progress
         elif data.result == 5:
-            pass
+            rospy.logwarn("Command {}: result in progress".format(data.command))
 
         ## Check command to be acknowledged
         if data.command == 22:
             if ack:
                 self.state_machine.taking_off = True
-        #TODO: write the correct command for the arm command
-        if data.command == 99:
+        if data.command == 400:
             if ack:
                 self.state_machine.armed = True
         return
@@ -149,6 +158,10 @@ class GcsMasterNode():
         self.state_machine.heading = data.heading
         return
 
+    def mavlink_currentmission_callback(self, data):
+        self.state_machine.current_mission = data.data
+        return
+
     def ui_start_callback(self, data):
         self.state_machine.mission = True
         return
@@ -158,7 +171,12 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
-        self.state_machine.route = data
+        self.state_machine.route = data.waypoints
+        if len(data.waypoints <= self.state_machine.MISSION_LENGTH):
+            self.state_machine.current_path = data.waypoints
+        else:
+            self.state_machine.current_path = (
+                    data.waypoints[0:self.state_machine.MISSION_LENGTH])
         return
 
     def send_heartbeat(self):

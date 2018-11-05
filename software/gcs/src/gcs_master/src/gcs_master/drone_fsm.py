@@ -13,6 +13,7 @@ class DroneFSM():
 
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     TAKEOFF_ALTITUDE = 20   # Altitude set point, in meters, after taking off
+    MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
     def __init__(self, max_lowbatt_distance=100):
         """
@@ -29,6 +30,7 @@ class DroneFSM():
         self.LAND = False
         self.FLY = False
         self.CALCULATE_PATH = False
+        self.NEW_MISSION = False
         self.EMERGENCY_LANDING = False
         self.WAYPOINT_REACHED = False
         # Drone parameters. FSM inputs
@@ -54,6 +56,8 @@ class DroneFSM():
         self.new_waypoint = False           # New waypoint is available
         self.new_mission = False            # New operation is requested
         self.max_lowbatt_distance = max_lowbatt_distance
+        self.current_mission = None
+        self.current_path = []
         # FSM parameters
         self.__state = "start"
         self.__state_timer = 0
@@ -98,7 +102,8 @@ class DroneFSM():
             if self.relative_alt>self.TAKEOFF_ALTITUDE and self.route:
                 self.__state = "flying"
                 self.taking_off = False
-                self.new_waypoint = False
+                # Atomic action. Send a new action when the taking off finishes
+                self.NEW_MISSION = True
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
 
@@ -176,12 +181,9 @@ class DroneFSM():
 
         # FLYING state
         elif self.__state == "flying":
-            self.TAKE_OFF = False
-            self.CALCULATE_PATH = False
-            dist_to_waypoint = np.linalg.norm(
-                    np.array(self.position)-np.array(self.next_waypoint))
-            if dist_to_waypoint < self.new_waypoint_distance:
-                self.WAYPOINT_REACHED = True
+            if self.current_mission > 0:
+                self.NEW_MISSION = True
+                self.CALCULATE_PATH = True
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
