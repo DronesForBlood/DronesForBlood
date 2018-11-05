@@ -42,6 +42,7 @@ class DroneFSM():
         self.distance_to_station = 0        # Remaining distance?
         self.armed = False                  # Armed / Disarmed
         self.taking_off = False             # Drone on taking-off operation
+        self.landed = False                 # Drone landed
         self.batt_ok = False                # Battery status
         self.comm_ok = False                # Comlink status
         # Path related variables
@@ -154,7 +155,7 @@ class DroneFSM():
         # LANDING state
         # TODO NECESSARY? 
         elif self.__state == "landing":
-            if False:
+            if self.landed:
                 self.__state = "start"
 
         # Non-valid state

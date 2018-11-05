@@ -70,6 +70,10 @@ class GcsMasterNode():
                 "mavlink_interface/mission/mavlink_upload_mission",
                 mavlink_lora.msg.mavlink_lora_mission_list,
                 queue_size=1)
+        self.drone_land_pub = rospy.Publisher(
+                "mavlink_interface/command/land",
+                mavlink_lora.msg.mavlink_lora_command_land,
+                queue_size=1)
 
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM()
@@ -107,11 +111,18 @@ class GcsMasterNode():
             self.new_mission_pub.publish(msg)
             self.state_machine.NEW_MISSION = False
 
-        if self.state_machine.WAYPOINT_REACHED:
-            pass
-
         if self.state_machine.LAND:
-            pass
+            msg = mavlink_lora.msg.mavlink_lora_command_land()
+            msg.lat = self.state_machine.latitude
+            msg.lon = self.state_machine.longitude
+            msg.altitude = (self.state_machine.altitude -
+                            self.state_machine.relative_alt)
+            msg.yaw_angle = float('NaN')
+            msg.abort_alt = 5
+            # 2: required precision land with irlock
+            msg.precision_land_mode = 2
+            self.drone_land_pub.publish(msg)
+            self.state_machine.LAND = False
 
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
@@ -148,6 +159,13 @@ class GcsMasterNode():
         if data.command == 400:
             if ack:
                 self.state_machine.armed = True
+        if data.command == 21:
+            if ack:
+                self.state_machine.landed = True
+        # TODO: Put proper mission ack command code
+        if data.command == 99:
+            if ack:
+                self.state_machine.new_mission = True
         return
 
     def mavlink_pos_callback(self, data):
@@ -159,7 +177,9 @@ class GcsMasterNode():
         return
 
     def mavlink_currentmission_callback(self, data):
-        self.state_machine.current_mission = data.data
+        # If first waypoint is reached, set the FSM flag to true
+        if data.data > 0:
+            self.state_machine.new_waypoint = True
         return
 
     def ui_start_callback(self, data):
@@ -172,6 +192,7 @@ class GcsMasterNode():
 
     def pathplanner_newplan_callback(self, data):
         self.state_machine.route = data.waypoints
+        self.state_machine.new_path = True
         if len(data.waypoints <= self.state_machine.MISSION_LENGTH):
             self.state_machine.current_path = data.waypoints
         else:
