@@ -11,12 +11,17 @@ import unittest
 import rospy
 # Local libraries
 from gcs_master.drone_fsm import DroneFSM
+try:
+    import mavlink_lora.msg
+except ModuleNotFoundError:
+    print("Mavlink module not found")
 
 
 ## DroneFSM state transitions test suite.
 class TestFSMTransitions(unittest.TestCase):
     def setUp(self):
         self.dronefsm = DroneFSM()
+        self.dronefsm.TAKEOFF_ALTITUDE = 25
 
     def tearDown(self):
         del self.dronefsm
@@ -25,12 +30,14 @@ class TestFSMTransitions(unittest.TestCase):
         """
         Test the default outputs and state.
         """
-        self.assertFalse(self.dronefsm.ARMED)
+        self.assertFalse(self.dronefsm.ARM)
         self.assertFalse(self.dronefsm.TAKE_OFF)
         self.assertFalse(self.dronefsm.LAND)
         self.assertFalse(self.dronefsm.FLY)
         self.assertFalse(self.dronefsm.CALCULATE_PATH)
+        self.assertFalse(self.dronefsm.NEW_MISSION)
         self.assertFalse(self.dronefsm.EMERGENCY_LANDING)
+        self.assertFalse(self.dronefsm.WAYPOINT_REACHED)
         self.assertEqual(self.dronefsm.get_state(), "start")
     
     def test_start_to_arm_transition(self):
@@ -38,13 +45,14 @@ class TestFSMTransitions(unittest.TestCase):
         Test the transition from the start to the armed state.
         """
         # Actions for getting to the desired state.
-        self.dronefsm.new_operation = True
+        self.dronefsm.new_mission = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
         self.assertEqual(self.dronefsm.get_state(), "arm")
-        self.assertFalse(self.dronefsm.new_operation)
+        self.assertFalse(self.dronefsm.new_mission)
         self.assertTrue(self.dronefsm.ARM)
         self.assertTrue(self.dronefsm.CALCULATE_PATH)
+        self.assertTrue(self.dronefsm.TAKE_OFF)
     
     def test_start_to_disarmed_transition(self):
         """
@@ -57,287 +65,204 @@ class TestFSMTransitions(unittest.TestCase):
         Test the transition: start-->arm-->taking_off.
         """
         # Actions for getting to the desired state.
-        self.dronefsm.new_operation = True
+        self.dronefsm.new_mission = True
         self.dronefsm.update_fsm()
-        self.dronefsm.acknowledge = True
+        self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
         self.assertEqual(self.dronefsm.get_state(), "taking_off")
-        self.assertFalse(self.dronefsm.acknowledge)
-        self.assertTrue(self.dronefsm.TAKE_OFF)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
 
     def test_start_to_flying_transition(self):
         """
         Test the transition: start-->...-->taking_off-->flying.
         """
         # Actions for getting to the desired state.
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
         self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
         self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
+        self.dronefsm.relative_alt = 30
         self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
+        # Add a mission of 1 item to the FSM route
+        item = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        item.x = 10
+        item.y = 10
+        item.z = 50
+        msg = mavlink_lora.msg.mavlink_lora_mission_list()
+        # More than oone waypoint is needed to avoid a transition to landing.
+        msg.waypoints.append(item)
+        msg.waypoints.append(item)
+        self.dronefsm.route = msg.waypoints
+        self.dronefsm.new_path = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
         self.assertEqual(self.dronefsm.get_state(), "flying")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
+        self.assertTrue(self.dronefsm.new_path)
+        self.assertFalse(self.dronefsm.taking_off)
+
+    def test_start_to_upload_mission_from_flying(self):
+        """
+        Test the transition: start-->...-->flying-->upload_mission.
+        """
+        # Actions for getting to the desired state.
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.relative_alt = 30
+        self.dronefsm.update_fsm()
+        # Add a mission of 1 item to the FSM route
+        item = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        item.x = 10
+        item.y = 10
+        item.z = 50
+        msg = mavlink_lora.msg.mavlink_lora_mission_list()
+        # More than oone waypoint is needed to avoid a transition to landing.
+        msg.waypoints.append(item)
+        msg.waypoints.append(item)
+        self.dronefsm.route = msg.waypoints
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.update_fsm()
+        # Check the state and relevant outputs.
+        self.assertEqual(self.dronefsm.get_state(), "upload_mission")
+        self.assertTrue(self.dronefsm.NEW_MISSION)
+    
+    def test_start_to_calculate_path(self):
+        """
+        Test the transition: start-->...-->flying-->calculate_path.
+        """
+        # Actions for getting to the desired state.
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.relative_alt = 30
+        self.dronefsm.update_fsm()
+        # Add a mission of 1 item to the FSM route
+        item = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        item.x = 10
+        item.y = 10
+        item.z = 50
+        msg = mavlink_lora.msg.mavlink_lora_mission_list()
+        # More than oone waypoint is needed to avoid a transition to landing.
+        msg.waypoints.append(item)
+        msg.waypoints.append(item)
+        self.dronefsm.route = msg.waypoints
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        # Note: The new_path variable will never set to false in a real example.
+        # It is forced here for getting to the state faster.
+        self.dronefsm.new_path = False
+        self.dronefsm.new_waypoint = True
+        self.dronefsm.update_fsm()
+        # Check the state and relevant outputs.
+        self.assertEqual(self.dronefsm.get_state(), "calculate_path")
+        self.assertTrue(self.dronefsm.CALCULATE_PATH)
+        self.assertFalse(self.dronefsm.new_path)
+    
+    def test_start_to_upload_mission_from_calculate_path(self):
+        """
+        Test the transition: start-->...-->calc_path-->upload_mission.
+        """
+        # Actions for getting to the desired state.
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.relative_alt = 30
+        self.dronefsm.update_fsm()
+        # Add a mission of 1 item to the FSM route
+        item = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        item.x = 10
+        item.y = 10
+        item.z = 50
+        msg = mavlink_lora.msg.mavlink_lora_mission_list()
+        # More than oone waypoint is needed to avoid a transition to landing.
+        msg.waypoints.append(item)
+        msg.waypoints.append(item)
+        self.dronefsm.route = msg.waypoints
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        # Note: The new_path variable will never set to false in a real example.
+        # It is forced here for getting to the state faster.
+        self.dronefsm.new_path = False
+        self.dronefsm.new_waypoint = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        # Check the state and relevant outputs.
+        self.assertEqual(self.dronefsm.get_state(), "upload_mission")
+        self.assertTrue(self.dronefsm.NEW_MISSION)
+        self.assertFalse(self.dronefsm.new_mission)
+
+    def test_start_to_flying_from_upload_mission(self):
+        """
+        Test the transition: start-->...-->upload_mission-->flying.
+        """
+        # Actions for getting to the desired state.
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.armed = True
+        self.dronefsm.taking_off = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.relative_alt = 30
+        self.dronefsm.update_fsm()
+        # Add a mission of 1 item to the FSM route
+        item = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        item.x = 10
+        item.y = 10
+        item.z = 50
+        msg = mavlink_lora.msg.mavlink_lora_mission_list()
+        # More than oone waypoint is needed to avoid a transition to landing.
+        msg.waypoints.append(item)
+        msg.waypoints.append(item)
+        self.dronefsm.route = msg.waypoints
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        # Note: The new_path variable will never set to false in a real example.
+        # It is forced here for getting to the state faster.
+        self.dronefsm.new_path = False
+        self.dronefsm.new_waypoint = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.new_path = True
+        self.dronefsm.update_fsm()
+        self.dronefsm.new_mission = True
+        self.dronefsm.update_fsm()
+        # Check the state and relevant outputs.
+        self.assertEqual(self.dronefsm.get_state(), "flying")
+        self.assertFalse(self.dronefsm.new_mission)
+        self.assertFalse(self.dronefsm.new_path)
 
     def test_start_to_recovercomm_transition(self):
         """
         Test the transition: start-->...-->flying-->recover_comm.
         """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = False
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "recover_comm")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
+        self.assertFalse(True)
 
-    def test_start_to_landed_from_lostcomm_transition(self):
+    def test_start_to_calculate_path_from_recovercomm(self):
         """
-        Test the transition: start-->...-->recover_comm-->landed.
+        Test the transition: start-->...-->recover_comm-->calculate_path
         """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = True
-        self.dronefsm.on_air = False
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "landed")
-        self.assertFalse(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
+        self.assertFalse(True)
 
-    def test_start_to_newpath_from_lostcomm_transition(self):
-        """
-        Test the transition: start-->...-->recover_comm-->new_path.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = True
-        self.dronefsm.on_air = True
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "new_path")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertTrue(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-
-    def test_start_to_flying_from_lostcomm_transition(self):
-        """
-        Test transition: start-->...-->recover_comm-->new_path-->flying.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.comm_ok = True
-        self.dronefsm.on_air = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.new_path = True
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "flying")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-
-    def test_start_to_newdest_transition(self):
-        """
-        Test the transition: start-->...-->flying-->new_destination.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.batt_ok = False
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "new_destination")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-
-    def test_start_to_emergencylanding_transition(self):
-        """
-        Test transition: start-->...-->new_destination-->emerg_landing.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.batt_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.distance_to_station = 110
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "emergency_landing")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-        self.assertTrue(self.dronefsm.EMERGENCY_LANDING)
-
-    def test_start_to_newpath_from_lowbatt_transition(self):
-        """
-        Test the transition: start-->...-->new_destination-->new_path.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.batt_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.distance_to_station = 90
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "new_path")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertTrue(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-
-    def test_start_to_newpath_from_lowbatt_transition(self):
-        """
-        Test the transition: start-->...-->new_destination-->new_path.
-        """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.batt_ok = False
-        self.dronefsm.update_fsm()
-        self.dronefsm.distance_to_station = 90
-        self.dronefsm.update_fsm()
-        self.dronefsm.new_path = True
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "flying")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
-
-    def test_start_to_landing_transition(self):
+    def test_start_to_landing(self):
         """
         Test the transition: start-->...-->flying-->landing.
         """
         # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = []
-        self.dronefsm.update_fsm()
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "landing")
-        self.assertTrue(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
+        self.assertFalse(True)
 
-    def test_start_to_landed_transition(self):
+    def test_start_to_start(self):
         """
-        Test the transition: start-->...-->landing-->landed.
+        Test the transition: start-->...-->landing-->start.
         """
-        # Actions for getting to the desired state.
-        self.dronefsm.armed = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.destination = [0, 0]
-        self.dronefsm.batt_ok = True
-        self.dronefsm.comm_ok = True
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = [[0,0], [50,50], [100,100]]
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 55
-        self.dronefsm.update_fsm()
-        self.dronefsm.route = []
-        self.dronefsm.update_fsm()
-        self.dronefsm.height = 0.1
-        # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "landed")
-        self.assertFalse(self.dronefsm.ARMED)
-        self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.TAKE_OFF)
+        self.assertFalse(True)
 
 
 ## DroneFSM class test
