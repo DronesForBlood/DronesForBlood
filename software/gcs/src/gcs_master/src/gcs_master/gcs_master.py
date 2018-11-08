@@ -70,6 +70,10 @@ class GcsMasterNode():
                 "mavlink_interface/mission/mavlink_upload_mission",
                 mavlink_lora.msg.mavlink_lora_mission_list,
                 queue_size=1)
+        self.start_mission_pub = rospy.Publisher(
+                "mavlink_interface/command/start_mission",
+                mavlink_lora.msg.mavlink_lora_command_start_mission,
+                queue_size=1)
         self.drone_land_pub = rospy.Publisher(
                 "mavlink_interface/command/land",
                 mavlink_lora.msg.mavlink_lora_command_land,
@@ -110,6 +114,13 @@ class GcsMasterNode():
             msg.waypoints = self.state_machine.current_path
             self.new_mission_pub.publish(msg)
             self.state_machine.NEW_MISSION = False
+
+        if self.state_machine.START_MISSION:
+            msg = mavlink_lora.msg.mavlink_lora_command_start_mission()
+            msg.first_item = 0
+            msg.last_item = 0
+            self.start_mission_pub.publish(msg)
+            self.state_machine.START_MISSION = False
 
         if self.state_machine.LAND:
             msg = mavlink_lora.msg.mavlink_lora_command_land()
@@ -162,8 +173,10 @@ class GcsMasterNode():
         if data.command == 21:
             if ack:
                 self.state_machine.landed = True
-        # TODO: Put proper mission ack command code
-        if data.command == 99:
+        if data.command == 73:
+            if ack:
+                self.state_machine.mission_ready = True
+        if data.command == 300:
             if ack:
                 self.state_machine.new_mission = True
         return

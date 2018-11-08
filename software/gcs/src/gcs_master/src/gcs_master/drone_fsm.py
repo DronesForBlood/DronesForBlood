@@ -28,6 +28,7 @@ class DroneFSM():
         self.TAKE_OFF = False
         self.LAND = False
         self.CALCULATE_PATH = False
+        self.START_MISSION = False
         self.NEW_MISSION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
@@ -48,7 +49,8 @@ class DroneFSM():
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
-        self.new_mission = False            # New operation is requested
+        self.mission_ready = False          # The drone received a mission
+        self.new_mission = False            # The drone has started the mission
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
@@ -113,6 +115,13 @@ class DroneFSM():
 
         # UPLOAD MISSION state
         elif self.__state == "upload_mission":
+            if self.mission_ready:
+                self.__state = "flying"
+                self.mission_ready = False
+                self.__state_timer = 0.0
+
+        # START MISSION state
+        elif self.__state == "start_mission":
             if self.new_mission:
                 self.__state = "flying"
                 self.new_mission = False
@@ -126,26 +135,7 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            if self.comm_ok and self.on_air:
-                self.__state = "new_path"
-            elif self.comm_ok and not self.on_air:
-                self.__state = "landed"
-            #TODO: recovered comm timer.
-
-        # NEW DESTINATION state
-        elif self.__state == "new_destination":
-            if self.distance_to_station <= self.max_lowbatt_distance:
-                #TODO: Returning to the 'flying' state while having low battery
-                # will provoke going to an endless loop.
-                self.__state = "new_path"
-            elif self.distance_to_station > self.max_lowbatt_distance:
-                self.__state = "emergency_landing"
-
-        # NEW PATH state
-        elif self.__state == "new_path":
-            #TODO: Wait until confirmation of new path
-            if self.new_path:
-                self.__state = "flying"
+            pass
 
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
@@ -153,7 +143,6 @@ class DroneFSM():
             pass
 
         # LANDING state
-        # TODO NECESSARY? 
         elif self.__state == "landing":
             if self.landed:
                 self.__state = "start"
@@ -198,6 +187,12 @@ class DroneFSM():
 
         # UPLOAD_MISSION state
         elif self.__state == "upload_mission":
+            now = rospy.get_time()
+            if now > self.__state_timer + self.TIMEOUT:
+                self.START_MISSION = True
+                self.__state_timer = rospy.get_time()
+
+        elif self.__state == "start_mission":
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
                 self.NEW_MISSION = True
