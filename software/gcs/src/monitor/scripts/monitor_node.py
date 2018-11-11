@@ -7,7 +7,8 @@ import struct
 from std_msgs.msg import Int8
 from monitor.srv import getstatus
 from threading import Lock
-from mavlink_lora.msg import mavlink_lora_set_position_target_local_ned, mavlink_lora_pos, mavlink_lora_heartbeat, mavlink_lora_statustext, mavlink_lora_attitude, mavlink_lora_status
+from mavlink_lora.msg import mavlink_lora_set_position_target_local_ned, mavlink_lora_pos, mavlink_lora_heartbeat, mavlink_lora_statustext, mavlink_lora_attitude, mavlink_lora_status, mavlink_lora_mission_list, mavlink_lora_mission_item_int, mavlink_lora_mission_current
+from std_msgs.msg import UInt16
 from math import pi, sqrt, sin, cos, atan2
 from gui import MonitorGUI
 import threading
@@ -60,6 +61,11 @@ class monitor:
         self.mav_mode.sub_mode = ""
         self.armed = ""
 
+        # Handle current target
+        self.mission_list = []
+        self.mission_current = None
+        self.mission_idx = 0
+
         # launch node
         rospy.init_node('monitor', disable_signals=True)
 
@@ -73,9 +79,11 @@ class monitor:
         rospy.Subscriber("mavlink_pos", mavlink_lora_pos, self.on_global_pos_msg)
         rospy.Subscriber("mavlink_attitude", mavlink_lora_attitude, self.on_mavlink_lora_attitude)
         rospy.Subscriber("mavlink_statustext", mavlink_lora_statustext, self.on_statustext_msg)
-        rospy.Subscriber("mavlink_heartbeat", mavlink_lora_heartbeat, self.on_heartbeat_msg)
+        rospy.Subscriber("mavlink_heartbeat_rx", mavlink_lora_heartbeat, self.on_heartbeat_msg)
         rospy.Subscriber("mavlink_status", mavlink_lora_status, self.on_mavlink_lora_status)
         rospy.Subscriber("mavlink_interface/command/set_target_position_local_ned", mavlink_lora_set_position_target_local_ned, self.on_set_position_target_local_ned_msg)
+        rospy.Subscriber("mavlink_interface/mission/mavlink_upload_mission", mavlink_lora_mission_list, self.new_mission)
+        rospy.Subscriber("mavlink_interface/mission/current", UInt16, self.update_current_mission)
 
         # Nodes to monitor
         #self.monitor_nodes.append(rospy.ServiceProxy("gcs/monitor/getstatus", getstatus))
@@ -90,6 +98,26 @@ class monitor:
 
         self.rate = rospy.Rate(self.update_interval)
         rospy.sleep(1)  # wait until everything is running
+
+    def new_mission(self, msg):
+        self.mutex.acquire()
+        self.mission_list = msg.waypoints
+        self.mutex.release()
+
+    def update_current_mission(self, msg):
+        self.mutex.acquire()
+        # set current mission item target
+        if len(self.mission_list) >= msg.data:
+            self.mission_current = self.mission_list[msg.data]
+
+            # set target lat, lon
+            self.target_lat = (float(self.mission_current.x) / 10**7)
+            self.target_lon = (float(self.mission_current.y) / 10**7)
+
+        # always update current waypoint, even if we don't have mission list
+        self.mission_idx = msg.data
+        
+        self.mutex.release()
 
     def fetchStatus(self, msg):
 
@@ -275,7 +303,7 @@ class monitor:
         # make string output for local variables
         batt_text = '%.1fV' % self.batt_volt
         pos_text = '%02.5f %03.5f' % (self.lat, self.lon)
-        alt_text = '%.1fm ' % (self.alt)
+        alt_text = '%.1fm ' % self.alt
         atti_text = 'Yaw: %03.1f Pitch: %03.1f Roll: %03.1f' % (self.yaw * 180 / pi, self.pitch * 180 / pi, self.roll * 180 / pi)
 
         dist_target_text = '%.1fm' % self.gcd_haversine(self.lat, self.lon, self.target_lat, self.target_lon)
@@ -307,6 +335,7 @@ class monitor:
         data.curr_alt = alt_text
         data.target_pos = target_pos_text
         data.dist_target = dist_target_text
+        data.target_seq = self.mission_idx
         data.attitude = atti_text
         data.statustext = self.statustext_buffer
 
@@ -333,6 +362,7 @@ class monitor:
         data.curr_pos = "Unknown"
         data.curr_alt = "Unknown"
         data.target_pos = "Unknown"
+        data.target_seq = "0"
         data.dist_target = "Unknown"
         data.attitude = "Unknown"
         data.statustext = self.statustext_buffer

@@ -105,12 +105,14 @@ class MonitorGUI(npyscreen.NPSAppManaged):
                                                   " " * int(4 * self.X_SCALING_FACTOR))
         row4 = "Distance To Target {1}{0}".format(data.dist_target,
                                                   " " * int(4 * self.X_SCALING_FACTOR))
-        row5 = "\n"
+        row5 = "Current Waypoint   {1}{0}".format(data.target_seq,
+                                                  " " * int(4 * self.X_SCALING_FACTOR))
+        row6 = "\n"
 
-        row6 = "Attitude {1}{0}".format(data.attitude,
+        row7 = "Attitude {1}{0}".format(data.attitude,
                                         " " * int(4 * self.X_SCALING_FACTOR))
 
-        self.drone_status.value = row1 + "\n" + row2 + "\n" + row3 + "\n" + row4 + "\n" + row5 + "\n" + row6
+        self.drone_status.value = row1 + "\n" + row2 + "\n" + row3 + "\n" + row4 + "\n" + row5 + "\n" + row6 + "\n" + row7
         self.drone_status.update(clear=True)
 
         #### GCS Status ####
