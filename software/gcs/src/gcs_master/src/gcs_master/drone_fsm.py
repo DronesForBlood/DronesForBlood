@@ -81,6 +81,7 @@ class DroneFSM():
             if self.new_mission:
                 self.__state = "arm"
                 self.new_mission = False
+                self.get_state()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = 0.0
 
@@ -89,6 +90,7 @@ class DroneFSM():
         elif self.__state == "arm":	
             if self.armed and self.taking_off:
                 self.__state = "taking_off"
+                self.get_state()
 
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
@@ -96,6 +98,7 @@ class DroneFSM():
             if self.relative_alt>self.TAKEOFF_ALTITUDE and self.new_path:
                 self.__state = "flying"
                 self.taking_off = False
+                self.get_state()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
 
@@ -103,14 +106,17 @@ class DroneFSM():
         elif self.__state == "flying":
             if self.new_path:
                 self.__state = "upload_mission"
+                self.get_state()
                 self.__state_timer = 0.0
             elif self.new_waypoint:
                 n_waypoints = len(self.route)
                 if n_waypoints == 1:
                     self.__state = "landing"
+                    self.get_state()
                     self.__state_timer = 0.0
                 elif n_waypoints > 1:
                     self.__state = "calculate_path"
+                    self.get_state()
                     self.__state_timer = 0.0
 
         # UPLOAD MISSION state
@@ -118,6 +124,7 @@ class DroneFSM():
             if self.mission_ready:
                 self.__state = "flying"
                 self.mission_ready = False
+                self.get_state()
                 self.__state_timer = 0.0
 
         # START MISSION state
@@ -125,12 +132,14 @@ class DroneFSM():
             if self.new_mission:
                 self.__state = "flying"
                 self.new_mission = False
+                self.get_state()
 
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
             if self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
+                self.get_state()
                 self.__state_timer = 0.0
 
         # RECOVER COMM state
@@ -146,6 +155,7 @@ class DroneFSM():
         elif self.__state == "landing":
             if self.landed:
                 self.__state = "start"
+                self.get_state()
 
         # Non-valid state
         else:
@@ -219,4 +229,5 @@ class DroneFSM():
         return
 
     def get_state(self):
+        rospy.loginfo("FSM state: {}".format(self.__state))
         return self.__state

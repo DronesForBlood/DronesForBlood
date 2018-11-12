@@ -31,6 +31,15 @@ class GcsMasterNode():
     HEARTBEAT_TIMEOUT = 1.5     # Seconds
 
     def __init__(self):
+
+        # Create an instance of the drone finite-state-machine class.
+        self.state_machine = drone_fsm.DroneFSM()
+
+        # Timestamps variables. Sending time set to zero for forcing the sending
+        # of a heartbeat in the first iteration.
+        self.heartbeat_send_time = 0.0
+        self.heartbeat_receive_time = rospy.get_time()
+
         # Subscribers configuration
         rospy.Subscriber("mavlink_heartbeat_rx",
                          mavlink_lora.msg.mavlink_lora_heartbeat,
@@ -78,14 +87,6 @@ class GcsMasterNode():
                 "mavlink_interface/command/land",
                 mavlink_lora.msg.mavlink_lora_command_land,
                 queue_size=1)
-
-        # Create an instance of the drone finite-state-machine class.
-        self.state_machine = drone_fsm.DroneFSM()
-
-        # Timestamps variables. Sending time set to zero for forcing the sending
-        # of a heartbeat in the first iteration.
-        self.heartbeat_send_time = 0.0
-        self.heartbeat_receive_time = rospy.get_time()
 
     def update_flags(self):
 
@@ -196,7 +197,8 @@ class GcsMasterNode():
         return
 
     def ui_start_callback(self, data):
-        self.state_machine.mission = True
+        rospy.logdebug("Start command received")
+        self.state_machine.new_mission = True
         return
 
     def ui_callback(self, data):
@@ -234,6 +236,9 @@ class GcsMasterNode():
         Main loop. Update the FSM and publish variables.
         """
         rate = rospy.Rate(100)
+        # Update time for checking initial heartbeat
+        self.heartbeat_send_time = rospy.get_time()
+
         while not rospy.is_shutdown():
             now = rospy.get_time()
             # Update the state of the FSM.
