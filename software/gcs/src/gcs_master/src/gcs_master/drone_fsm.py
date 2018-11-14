@@ -106,6 +106,7 @@ class DroneFSM():
         elif self.__state == "flying":
             if self.new_path:
                 self.__state = "upload_mission"
+                self.new_path = False
                 self.get_state()
                 self.__state_timer = 0.0
             elif self.new_waypoint:
@@ -114,7 +115,8 @@ class DroneFSM():
                     self.__state = "landing"
                     self.get_state()
                     self.__state_timer = 0.0
-                elif n_waypoints > 1:
+                #TODO: Find the correct condition for go to calculate path state
+                elif False:
                     self.__state = "calculate_path"
                     self.get_state()
                     self.__state_timer = 0.0

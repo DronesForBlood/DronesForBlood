@@ -57,6 +57,9 @@ class GcsMasterNode():
         rospy.Subscriber("mavlink_interface/mission/current",
                          std_msgs.msg.UInt16,
                          self.mavlink_currentmission_callback, queue_size=1)
+        rospy.Subscriber("mavlink_interface/mission/ack",
+                         std_msgs.msg.String,
+                         self.mavlink_missionack_callback, queue_size=1)
 
         # Publishers configuration
         self.heartbeat_pub = rospy.Publisher(
@@ -86,6 +89,10 @@ class GcsMasterNode():
         self.drone_land_pub = rospy.Publisher(
                 "mavlink_interface/command/land",
                 mavlink_lora.msg.mavlink_lora_command_land,
+                queue_size=1)
+        self.clear_mission_pub = rospy.Publisher(
+                "mavlink_interface/mission/mavlink_clear_all",
+                std_msgs.msg.Empty,
                 queue_size=1)
 
     def update_flags(self):
@@ -201,6 +208,14 @@ class GcsMasterNode():
             self.state_machine.new_waypoint = True
         return
 
+    def mavlink_missionack_callback(self, data):
+        if data.data == "MAV_MISSION_ACCEPTED":
+            self.state_machine.mission_ready = True
+            rospy.loginfo("Mission upload accepted")
+        else:
+            rospy.logwarn("Mission acknowledge failed!")
+        return
+
     def ui_start_callback(self, data):
         rospy.logdebug("Start command received")
         self.state_machine.new_mission = True
@@ -241,6 +256,7 @@ class GcsMasterNode():
         """ 
         Main loop. Update the FSM and publish variables.
         """
+        rospy.sleep(0.5)
         rate = rospy.Rate(100)
         # Update time for checking initial heartbeat
         self.heartbeat_send_time = rospy.get_time()
@@ -262,6 +278,7 @@ class GcsMasterNode():
                 self.heartbeat_receive_time = rospy.get_time()
             # Finish the loop cycle.
             rate.sleep()
+        self.clear_mission_pub.publish()
         return
 
 
