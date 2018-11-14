@@ -20,6 +20,11 @@ class PathplannerSimNode():
 
     def __init__(self):
 
+
+        self.lat = 0
+        self.lon = 0
+        self.alt = 0
+
         rospy.init_node("sim_pathplanner", anonymous=True)
         
         self.new_path_pub = rospy.Publisher(
@@ -31,6 +36,15 @@ class PathplannerSimNode():
                         std_msgs.msg.Bool,
                         self.new_path_callback,
                         queue_size=1)
+
+        rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
+                         self.mavlink_pos_callback, queue_size=1)
+
+    def mavlink_pos_callback(self, data):
+        self.lat = 10000000 * data.lat
+        self.lon = 10000000 * data.lon
+        self.alt = data.alt
+        return
 
     def new_path_callback(self, data):
         if data.data:
@@ -46,8 +60,8 @@ class PathplannerSimNode():
             way1.param1 = 0 # hold time
             way1.param2 = 5 # acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
             way1.param3 = 0 # pass though waypoint, no trajectory control
-            way1.x = int(55.4720010 * 10000000)
-            way1.y = int(10.4164463 * 10000000)
+            way1.x = int(self.lat + 20)
+            way1.y = int(self.lon)
             way1.z = 20
             way1.autocontinue = 1
 
@@ -61,8 +75,8 @@ class PathplannerSimNode():
             way2.param1 = 0 # hold time
             way2.param2 = 5 # acceptance radius in m
             way2.param3 = 0 # pass though waypoint, no trajectory control
-            way2.x = int(55.4720615 * 10000000)
-            way2.y = int(10.4161885 * 10000000)
+            way2.x = int(self.lat + 20)
+            way2.y = int(self.lon + 20)
             way2.z = 40
             way2.autocontinue = 1
 
@@ -76,8 +90,8 @@ class PathplannerSimNode():
             way3.param1 = 0 # hold time
             way3.param2 = 5 # acceptance radius in m
             way3.param3 = 0 # pass though waypoint, no trajectory control
-            way3.x = int(55.4721370 * 10000000)
-            way3.y = int(10.4164410 * 10000000)
+            way3.x = int(self.lat)
+            way3.y = int(self.lon + 20)
             way3.z = 30
             way3.autocontinue = 1
 
