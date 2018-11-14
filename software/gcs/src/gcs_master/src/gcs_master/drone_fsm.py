@@ -28,8 +28,8 @@ class DroneFSM():
         self.TAKE_OFF = False
         self.LAND = False
         self.CALCULATE_PATH = False
+        self.UPLOAD_MISSION = False
         self.START_MISSION = False
-        self.NEW_MISSION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -78,7 +78,7 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission:
+            if self.new_mission and self.comm_ok:
                 self.__state = "arm"
                 self.new_mission = False
                 self.get_state()
@@ -122,7 +122,7 @@ class DroneFSM():
         # UPLOAD MISSION state
         elif self.__state == "upload_mission":
             if self.mission_ready:
-                self.__state = "flying"
+                self.__state = "start_mission"
                 self.mission_ready = False
                 self.get_state()
                 self.__state_timer = 0.0
@@ -199,13 +199,14 @@ class DroneFSM():
         elif self.__state == "upload_mission":
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
-                self.START_MISSION = True
+                self.UPLOAD_MISSION = True
                 self.__state_timer = rospy.get_time()
 
+        # START_MISSION state
         elif self.__state == "start_mission":
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
-                self.NEW_MISSION = True
+                self.START_MISSION = True
                 self.__state_timer = rospy.get_time()
 
         # RECOVER COMM state

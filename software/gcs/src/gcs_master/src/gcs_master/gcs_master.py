@@ -110,16 +110,16 @@ class GcsMasterNode():
             self.calc_path_pub.publish(True)
             self.state_machine.CALCULATE_PATH = False
 
-        if self.state_machine.NEW_MISSION:
+        if self.state_machine.UPLOAD_MISSION:
             msg = mavlink_lora.msg.mavlink_lora_mission_list()
             msg.waypoints = self.state_machine.current_path
             self.new_mission_pub.publish(msg)
-            self.state_machine.NEW_MISSION = False
+            self.state_machine.UPLOAD_MISSION = False
 
         if self.state_machine.START_MISSION:
             msg = mavlink_lora.msg.mavlink_lora_command_start_mission()
             msg.first_item = 0
-            msg.last_item = 0
+            msg.last_item = 2
             self.start_mission_pub.publish(msg)
             self.state_machine.START_MISSION = False
 
@@ -151,18 +151,23 @@ class GcsMasterNode():
         # Temporarily rejected
         elif data.result == 1:
             rospy.logwarn("Command {} temp. rejected".format(data.command))
+            rospy.logwarn(data.result_text)
         # Result denied
         elif data.result == 2:
             rospy.logwarn("Command {} denied".format(data.command))
+            rospy.logwarn(data.result_text)
         # Result unsupported
         elif data.result == 3:
             rospy.logwarn("Command {}: result unsupported".format(data.command))
+            rospy.logwarn(data.result_text)
         # Result failed
         elif data.result == 4:
             rospy.logwarn("Command {}: result failed".format(data.command))
+            rospy.logwarn(data.result_text)
         # Result in progress
         elif data.result == 5:
             rospy.logwarn("Command {}: result in progress".format(data.command))
+            rospy.logwarn(data.result_text)
 
         ## Check command to be acknowledged
         if data.command == 22:
@@ -200,6 +205,7 @@ class GcsMasterNode():
         rospy.logdebug("Start command received")
         self.state_machine.new_mission = True
         return
+    #TODO: Acknowledge back to the dronelink that the mission is getting started
 
     def ui_callback(self, data):
         self.state_machine.destination = [data.x, data.y]
@@ -208,7 +214,7 @@ class GcsMasterNode():
     def pathplanner_newplan_callback(self, data):
         self.state_machine.route = data.waypoints
         self.state_machine.new_path = True
-        if len(data.waypoints <= self.state_machine.MISSION_LENGTH):
+        if len(data.waypoints) <= self.state_machine.MISSION_LENGTH:
             self.state_machine.current_path = data.waypoints
         else:
             self.state_machine.current_path = (
