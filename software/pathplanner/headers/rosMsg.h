@@ -37,9 +37,14 @@ class rosMsg
    ros::Subscriber subEndCoor;
    std_msgs::Int64 msg;
    std::vector<std::pair<double, double> > path;
-   std::pair<double, double> currentPosition = startCoord;
-   std::pair<double, double> currentPosition = endCoord;
+   std::pair<double, double> startCoord;
+   std::pair<double, double> endCoord;
    MapController map;
+   int nodeDist;
+   int mapWidth;
+   int padLenght;
+
+
 
 
 
