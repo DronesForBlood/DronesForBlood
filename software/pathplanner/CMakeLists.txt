@@ -61,6 +61,14 @@ set(SOURCES
 )
 
 
+generate_messages(
+	DEPENDENCIES
+	geometry_msgs
+)
+
+
+
+
 include_directories(
 ${catkin_INCLUDE_DIRS} 
 ) 
