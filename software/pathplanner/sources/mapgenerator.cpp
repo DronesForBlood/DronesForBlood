@@ -11,7 +11,7 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     map->clear();
     nodeCollections.clear();
 
-    double length = calcMeterDistanceBetweensCoords(startCoord, endCoord);
+    double length = GeoFunctions::calcMeterDistanceBetweensCoords(startCoord, endCoord);
 
     std::size_t mapSizeX = std::size_t(width/distanceBetweenNodes);
     std::size_t mapSizeY = std::size_t((length + 2*padLength)/distanceBetweenNodes);
@@ -121,23 +121,6 @@ void MapGenerator::getSlice(std::size_t row, std::size_t col, std::size_t rowCou
     for(std::size_t i = 0; i < rowCount; i++)
         for(std::size_t j = 0; j < colCount; j++)
             collection.addNode(map->at(i+row).at(j+col));
-}
-
-double MapGenerator::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
-{
-    double lat1 = startCoord.first;
-    double lon1 = startCoord.second;
-    double lat2 = endCoord.first;
-    double lon2 = endCoord.second;
-
-    lat1 = lat1 * PI / 180.;
-    lat2 = lat2 * PI / 180.;
-    lon1 = lon1 * PI / 180.;
-    lon2 = lon2 * PI / 180.;
-
-    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
-    double distanceMeters = distance_radians * RADIUS_EARTH_METERS;
-    return distanceMeters;
 }
 
 std::pair<double, double> MapGenerator::calcShiftedCoord(std::pair<double, double> coord, double dxMeters, double dyMeters)

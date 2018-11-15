@@ -15,12 +15,82 @@ Node::Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> 
 {
     selfNodeIndex = index;
     worldCoordinate = coordinate;
+
+    color[0] = 0;
+    color[1] = 0;
+    color[2] = 0;
+}
+
+void Node::addToColor(int r, int g, int b)
+{
+    color[0] += b;
+    color[1] += g;
+    color[2] += r;
+}
+
+bool Node::checkIfNodeIsInDangerZone(double distanceToNode)
+{
+    for(auto &it : dynamicPenalties)
+        if(willBeInDynamicZone(it, distanceToNode))
+            return true;
+    return false;
+}
+
+void Node::removeDynamicPenalty(std::string ID)
+{
+    for(int i = 0; i < dynamicPenalties.size(); i++)
+        if(dynamicPenalties[i].ID == ID) {
+            dynamicPenalties.erase(dynamicPenalties.begin(), dynamicPenalties.begin() + i);
+            break;
+        }
+}
+
+void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo)
+{
+    DynamicPenalty *dynamicPenalty;
+
+    bool exists = false;
+    for(auto &it : dynamicPenalties)
+        if(it.ID == ID) {
+            dynamicPenalty = &it;
+            dynamicPenalty->ID = ID;
+            dynamicPenalty->penalty = penalty;
+            dynamicPenalty->epochFrom = epochFrom;
+            dynamicPenalty->epochTo = epochTo;
+            exists = true;
+            break;
+        }
+
+
+
+    if(!exists) {
+        DynamicPenalty newDynamicPenalty(ID, penalty, epochFrom, epochTo);
+        dynamicPenalties.push_back(newDynamicPenalty);
+        dynamicPenalty = &newDynamicPenalty;
+    }
+
+    int difference = 0;
+    if(willBeInDynamicZone(*dynamicPenalty, cost))
+        difference = dynamicPenalty->penalty;
+
+    //updated = false;
+
+    if(difference > 0) {
+        penalty += difference;
+        totalPenalty += difference;
+
+        stable = false;
+
+        addToNextTotalPenalty(difference, false);
+    }
+
 }
 
 void Node::resetNode()
 {
     cost = -1.;
-    penalty = 0.;
+    //myPenalty = 0.;
+    totalPenalty = myPenalty;
 
     stable = true;
     updated = false;
@@ -31,13 +101,10 @@ void Node::resetNode()
 
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
-    //std::cout << "start" << std::endl;
     for(std::weak_ptr<Node> neighbor : nodes) {
-        //double distance = sqrt(pow(worldCoordinate.first - neighbor.lock()->getWorldCoordinate().first, 2) + pow(worldCoordinate.second - neighbor.lock()->getWorldCoordinate().second, 2));
-        int distance = calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
+        int distance = int(GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate()));
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
-        //std::cout << neighbor.lock()->getWorldCoordinate().first << " " << neighbor.lock()->getWorldCoordinate().second << std::endl;
     }
 }
 
@@ -46,9 +113,12 @@ void Node::checkAndUpdateNeighbors()
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
-        double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
-        if((costToMove < neighborNode->getCost() - MINIMUM_DISTANCE_CHANGE || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
+        int costToMove = neighbor.distance + cost;
+        int penaltyToMove = neighborNode->getPenalty() + totalPenalty + neighborNode->getPenaltyForDynamicZones(cost);
+        int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty() - MINIMUM_DISTANCE_CHANGE;
+        if((costToMove + penaltyToMove < neighborTotalCost || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
+            neighborNode->setTotalPentaly(penaltyToMove);
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
             neighborNode->setPointerToSource(pointerToSelf.lock());
@@ -95,11 +165,11 @@ void Node::setNextStable(bool val)
     }
 }
 
-void Node::setPenalty(double val)
+void Node::setPenalty(int val)
 {
-    double difference = val - penalty;
-    cost += difference;
-    penalty = val;
+    int difference = val - myPenalty;
+    totalPenalty += difference;
+    myPenalty = val;
 
     if(difference < 0.1 && difference > -0.1)
         return;
@@ -109,29 +179,58 @@ void Node::setPenalty(double val)
     if(!updated)
         return;
 
-    addToNextCost(difference, false);
-
-    setNextStable(stable);
+    addToNextTotalPenalty(difference, false);
 }
 
-void Node::setCostAndUpdate(double val)
+void Node::setCostAndUpdate(int val)
 {
     double difference = val - cost;
     addToNextCost(difference, true);
     cost = val;
 }
 
-void Node::addToNextCost(double val, bool mayUpdate)
+void Node::addToNextCost(int val, bool mayUpdate)
 {
     if(mayUpdate && wasUpdated)
         updated = true;
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->lockAccessNode();
             neighborNode->addToNextCost(val, mayUpdate);
             neighborNode->addToCost(val);
+            neighborNode->unlockAccessNode();
         }
     }
+}
+
+void Node::addToNextTotalPenalty(int val, bool mayUpdate)
+{
+    if(mayUpdate && wasUpdated)
+        updated = true;
+    for(NeighborNode &neighbor : neighbors) {
+        std::shared_ptr<Node> neighborNode = neighbor.node.lock();
+        if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+            neighborNode->lockAccessNode();
+            neighborNode->addToNextTotalPenalty(val, mayUpdate);
+            neighborNode->addToTotalPenalty(val);
+            neighborNode->unlockAccessNode();
+        }
+        else {
+            neighborNode->setStable(false);
+            neighborNode->unlockNodeReady();
+        }
+    }
+}
+
+int Node::getPenaltyForDynamicZones(int cost)
+{
+    int penalty = 0;
+    for(auto it = dynamicPenalties.begin(); it != dynamicPenalties.end(); it++)
+        if(willBeInDynamicZone(*it, cost))
+            penalty = it->penalty;
+
+    return penalty;
 }
 
 void Node::setNodeAsInit()
@@ -143,7 +242,9 @@ void Node::setNodeAsInit()
     sourceNodeIndex = selfNodeIndex;
 
     setCostAndUpdate(0);
+    //addToNextTotalPenalty(myPenalty - totalPenalty, true);
 
+    totalPenalty = myPenalty;
     unlockNodeReady();
 }
 
@@ -153,19 +254,22 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
     cost = newCost;
 }
 
-int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode)
 {
-    double lat1 = startCoord.first;
-    double lon1 = startCoord.second;
-    double lat2 = endCoord.first;
-    double lon2 = endCoord.second;
+    int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    int lateArrivalTime = currentTime + (distanceToNode - 1000) / DRONE_MAX_SPEED;
+    int earlyArrivalTime = currentTime + (distanceToNode + 1000) / DRONE_MAX_SPEED;
 
-    lat1 = lat1 * PI / 180.;
-    lat2 = lat2 * PI / 180.;
-    lon1 = lon1 * PI / 180.;
-    lon2 = lon2 * PI / 180.;
+    /*
+    std::cout << "earlyArrivalTime:  " << earlyArrivalTime << std::endl;
+    std::cout << "dynamic.epochFrom: " << dynamic.epochFrom << std::endl;
+    std::cout << "lateArrivalTime:   " << lateArrivalTime << std::endl;
+    std::cout << "dynamic.epochTo:   " << dynamic.epochTo << std::endl;
+    */
 
-    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
-    int distanceMeters = int(distance_radians * RADIUS_EARTH_METERS);
-    return distanceMeters;
+    if(currentTime < dynamic.epochTo)
+        if(earlyArrivalTime >= dynamic.epochFrom)
+            if(lateArrivalTime <= dynamic.epochTo)
+                return true;
+    return false;
 }

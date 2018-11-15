@@ -31,10 +31,14 @@ set(SOURCES
     sources/pathfinder.cpp
     sources/pathshortener.cpp
     sources/simulation.cpp
-    sources/rosMsg.cpp
 
-    headers/coordconverter.h
-    headers/defines.h
+    sources/rosMsg.cpp
+    sources/visualizer.cpp
+
+    sources/watch/watchdrone.cpp
+    sources/watch/watchzone.cpp
+
+
     headers/mapcontroller.h
     headers/mapgenerator.h
     headers/node.h
@@ -43,7 +47,17 @@ set(SOURCES
     headers/pathfinder.h
     headers/pathshortener.h
     headers/simulation.h
+
     headers/rosMsg.h
+    headers/visualizer.h
+
+    headers/watch/watchdrone.h
+    headers/watch/watchzone.h
+
+    headers/global/coordconverter.h
+    headers/global/defines.h
+    headers/global/geofunctions.h
+
 )
 
 

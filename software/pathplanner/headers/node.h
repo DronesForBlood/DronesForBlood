@@ -8,8 +8,10 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <opencv2/core/core.hpp>
 
-#include "headers/defines.h"
+#include "headers/global/defines.h"
+#include "headers/global/geofunctions.h"
 
 class Node;
 
@@ -18,10 +20,23 @@ struct NeighborNode {
     NeighborNode(std::weak_ptr<Node> node, int distance) {
         this->node = node;
         this->distance = distance;
-        //std::cout << distance << std::endl;
     }
     std::weak_ptr<Node> node;
     int distance;
+};
+
+struct DynamicPenalty {
+    DynamicPenalty() {}
+    DynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo) {
+        this->ID = ID;
+        this->penalty = penalty;
+        this->epochFrom = epochFrom;
+        this->epochTo = epochTo;
+    }
+    std::string ID;
+    int penalty;
+    int epochFrom;
+    int epochTo;
 };
 
 class Node
@@ -31,6 +46,11 @@ public:
     ~Node();
 
     Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> coordinate);
+    void addToColor(int r, int g, int b);
+    cv::Scalar getColor() {return color;}
+    bool checkIfNodeIsInDangerZone(double distanceToNode);
+    void removeDynamicPenalty(std::string ID);
+    void addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epochTo);
     void resetNode();
     void setPointerToSelf(std::weak_ptr<Node> pointer) {pointerToSelf = pointer;}
     void setNeighbors(std::vector<std::shared_ptr<Node>> nodes);
@@ -53,12 +73,18 @@ public:
     void setNextStable(bool val);
     bool getStable() {return stable;}
 
-    double getCost() {return cost;}
-    double getPenalty() {return penalty;}
-    void addToCost(double val) {cost += val;}
-    void setPenalty(double val);
-    void setCostAndUpdate(double val);
-    void addToNextCost(double val, bool mayUpdate);
+    int getCost() {return cost;}
+    int getPenalty() {return myPenalty;}
+    int getTotalPenalty() {return totalPenalty;}
+    void addToCost(int val) {cost += val;}
+    void addToTotalPenalty(int val) {totalPenalty += val;}
+    void setPenalty(int val);
+    void setTotalPentaly(int val) {totalPenalty = val;}
+    void setCostAndUpdate(int val);
+    void addToNextCost(int val, bool mayUpdate);
+    void addToNextTotalPenalty(int val, bool mayUpdate);
+
+    int getPenaltyForDynamicZones(int cost);
 
     std::pair<std::size_t, std::size_t> getNodeIndex() {return selfNodeIndex;}
     std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
@@ -70,7 +96,7 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    int calcMeterDistanceBetweensCoords(std::pair<double,double> startCoord, std::pair<double,double> endCoord);
+    bool willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode);
 
 private:
     std::weak_ptr<Node> pointerToSelf;
@@ -78,10 +104,13 @@ private:
     std::pair<std::size_t, std::size_t> selfNodeIndex;
     std::pair<std::size_t, std::size_t> sourceNodeIndex;
 
+    std::vector<DynamicPenalty> dynamicPenalties;
+
     std::pair<double, double> worldCoordinate;
 
-    double cost = -1.;
-    double penalty = 0.;
+    int cost = -1.;
+    int myPenalty = 0.;
+    int totalPenalty = 0.;
 
     bool stable = true;
     bool updated = false;
@@ -93,7 +122,9 @@ private:
     std::shared_ptr<std::mutex> nodeReadyMutex;
     bool *checkNodesAgain;
 
+    int epochETA = 0;
 
+    cv::Scalar color;
 };
 
 #endif // NODE_H
