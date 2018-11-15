@@ -3,41 +3,49 @@
 
 
 
-
+ // start/end coor --> double floats
+// dsit between  nodes   -->  int
+// search area --> two ints
 rosMsg::rosMsg()
 {
 
 };
 
-void rosMsg::startCoor(const std_msgs::Int64& msg)
+void rosMsg::coor(const std_msgs::vector& msg)
 {
     ROS_INFO("start coordinate set to", msg-> data);
 
 
-    map.startSolver();
+
+   startCoord = msg[1];
+   endCoord = (msg[0]);
 
     // ikke sikker paa hvordan jeg ros besked til coordinatet
 
 };
 
-void rosMsg::endCoor(const std_msgs::Int64& msg)
+void rosMsg::mapParam(const std_msgs::vector& msg)  //dist between search nodes and search area size
 {
     ROS_INFO("end coordinate set to", msg-> data);
 
+    nodeDist = msg[0];
+    mapWidth =  msg[1];
+    padLength = msg[2];
 
-    map.setGoalPosition()
+
+
 };
 
 
-void rosMsg::subEnd()
+void rosMsg::coordinates()
 {
-        subEndCoor = n.subscribe("end coor topic",std_msgs::Int64, 1000, endCoor );
+        Coor = n.subscribe("coordinates",std_msgs::vector, 1000, coor );
 };
 
 
 void rosMsg::subStart()
 {
-        subStartCoor = n.subscribe("start coor topic",std_msgs::Int64, 1000, startCoor );
+        mapParam = n.subscribe("mapParam",std_msgs::vector, 1000, mapParam );
 };
 
 
@@ -46,6 +54,7 @@ void rosMsg::subStart()
 void rosMsg::Publish()
 {
     pub  = n.advertise<std_msgs::Int64>("path to goal", 1);
+
 
     pub.publish(map.getPathToDestination(path));
 
