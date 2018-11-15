@@ -40,20 +40,24 @@ class GcsMasterNode():
         self.heartbeat_send_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
-        # Subscribers configuration
+        # Dronelink topic susbscribers
+        rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
+                         self.ui_start_callback, queue_size=1)
+        rospy.Subscriber("dronelink/destination", geometry_msgs.msg.Point,
+                         self.ui_destination_callback, queue_size=1)
+        # Pathplanner topic susbscribers
+        rospy.Subscriber("pathplanner/mission_list",
+                         mavlink_lora.msg.mavlink_lora_mission_list,
+                         self.pathplanner_newplan_callback)
+        # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_heartbeat_rx",
                          mavlink_lora.msg.mavlink_lora_heartbeat,
                          self.heartbeat_callback, queue_size=1)
-        rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
-                         self.ui_start_callback, queue_size=1)
         rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
                          self.mavlink_pos_callback, queue_size=1)
         rospy.Subscriber("mavlink_interface/command/ack",
                          mavlink_lora.msg.mavlink_lora_command_ack,
                          self.mavlink_ack_callback, queue_size=1)
-        rospy.Subscriber("pathplanner/mission_list",
-                         mavlink_lora.msg.mavlink_lora_mission_list,
-                         self.pathplanner_newplan_callback)
         rospy.Subscriber("mavlink_interface/mission/current",
                          std_msgs.msg.UInt16,
                          self.mavlink_currentmission_callback, queue_size=1)
@@ -61,7 +65,12 @@ class GcsMasterNode():
                          std_msgs.msg.String,
                          self.mavlink_missionack_callback, queue_size=1)
 
-        # Publishers configuration
+        # Pathplanner topic publishers
+        self.calc_path_pub = rospy.Publisher(
+                "gcs_master/calculate_path",
+                std_msgs.msg.Bool,
+                queue_size=1)
+        # Mavlink topic publishers
         self.heartbeat_pub = rospy.Publisher(
                 "mavlink_heartbeat_tx",
                 mavlink_lora.msg.mavlink_lora_heartbeat,
@@ -73,10 +82,6 @@ class GcsMasterNode():
         self.drone_takeoff_pub = rospy.Publisher(
                 "mavlink_interface/command/takeoff",
                 mavlink_lora.msg.mavlink_lora_command_takeoff,
-                queue_size=1)
-        self.calc_path_pub = rospy.Publisher(
-                "gcs_master/calculate_path",
-                std_msgs.msg.Bool,
                 queue_size=1)
         self.new_mission_pub = rospy.Publisher(
                 "mavlink_interface/mission/mavlink_upload_mission",
@@ -185,7 +190,7 @@ class GcsMasterNode():
                 self.state_machine.armed = True
         if data.command == 21:
             if ack:
-                self.state_machine.landed = True
+                self.state_machine.landing = True
         if data.command == 73:
             if ack:
                 self.state_machine.mission_ready = True
@@ -200,12 +205,18 @@ class GcsMasterNode():
         self.state_machine.altitude = data.alt
         self.state_machine.relative_alt = data.relative_alt
         self.state_machine.heading = data.heading
+
+        self.state_machine.position[0] = data.lat
+        self.state_machine.position[1] = data.lon
         return
 
     def mavlink_currentmission_callback(self, data):
         # If first waypoint is reached, set the FSM flag to true
-        if data.data > 0:
-            self.state_machine.new_waypoint = True
+        if data.data != self.state_machine.current_mission:
+            if data.data > self.state_machine.current_mission:
+                self.state_machine.new_waypoint = True
+                rospy.loginfo("Waypoint reached")
+            self.state_machine.current_mission = data.data
         return
 
     def mavlink_missionack_callback(self, data):
@@ -222,7 +233,7 @@ class GcsMasterNode():
         return
     #TODO: Acknowledge back to the dronelink that the mission is getting started
 
-    def ui_callback(self, data):
+    def ui_destination_callback(self, data):
         self.state_machine.destination = [data.x, data.y]
         return
 

@@ -21,8 +21,8 @@ class DroneFSM():
          can be covered by the drone after entering low battery mode.
         """
         # Threshold distances
-        self.new_waypoint_distance = 5      # Distance for getting a new waypoint
-        self.dest_reached_distance = 25     # Distance for starting landing
+        self.new_waypoint_distance = 5      # Distance for getting new waypoint
+        self.destination_threshold_dist = 0.000006   # Dist. for start landing
         # FSM flags. Outputs
         self.ARM = False
         self.TAKE_OFF = False
@@ -40,10 +40,11 @@ class DroneFSM():
         self.position = [None, None]        # Current position
         self.destination = [None, None]     # Destination location
         self.route = []                     # List of all waypoints
-        self.distance_to_station = 0        # Remaining distance?
+        self.current_path = []              # List of immediate waypoints
+        self.distance_to_dest = 0           # Distance to the final destination
         self.armed = False                  # Armed / Disarmed
         self.taking_off = False             # Drone on taking-off operation
-        self.landed = False                 # Drone landed
+        self.landing = False                # Drone is landing
         self.batt_ok = False                # Battery status
         self.comm_ok = False                # Comlink status
         # Path related variables
@@ -51,6 +52,7 @@ class DroneFSM():
         self.new_waypoint = False           # New waypoint is available
         self.mission_ready = False          # The drone received a mission
         self.new_mission = False            # The drone has started the mission
+        self.current_mission = 0
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
         self.__state = "start"
@@ -95,7 +97,7 @@ class DroneFSM():
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
         elif self.__state == "taking_off":
-            if self.relative_alt>self.TAKEOFF_ALTITUDE and self.new_path:
+            if self.relative_alt>self.TAKEOFF_ALTITUDE-1 and self.new_path:
                 self.__state = "flying"
                 self.taking_off = False
                 self.get_state()
@@ -109,16 +111,18 @@ class DroneFSM():
                 self.new_path = False
                 self.get_state()
                 self.__state_timer = 0.0
-            elif self.new_waypoint:
-                n_waypoints = len(self.route)
-                if n_waypoints == 1:
+            elif (self.current_mission == len(self.current_path)-1 and
+                        self.distance_to_dest < self.destination_threshold_dist
+                        ):
                     self.__state = "landing"
                     self.get_state()
                     self.__state_timer = 0.0
-                #TODO: Find the correct condition for go to calculate path state
-                elif False:
-                    self.__state = "calculate_path"
-                    self.get_state()
+            elif self.new_waypoint:
+                    # self.__state = "calculate_path"
+                    self.new_waypoint = False
+                    # self.get_state()
+                    rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
+                                  " not applied)")
                     self.__state_timer = 0.0
 
         # UPLOAD MISSION state
@@ -155,7 +159,7 @@ class DroneFSM():
 
         # LANDING state
         elif self.__state == "landing":
-            if self.landed:
+            if self.relative_alt<0.01:
                 self.__state = "start"
                 self.get_state()
 
@@ -188,6 +192,8 @@ class DroneFSM():
 
         # FLYING state
         elif self.__state == "flying":
+            self.distance_to_dest = np.linalg.norm(
+                    np.array(self.destination)-np.array(self.position))
             pass
 
         # CALCULATE_PATH state
@@ -222,7 +228,7 @@ class DroneFSM():
         # LANDING state
         elif self.__state == "landing":
             now = rospy.get_time()
-            if now > self.__state_timer + self.TIMEOUT:
+            if now > self.__state_timer+self.TIMEOUT and not self.landing:
                 self.LAND = True
                 self.__state_timer = rospy.get_time()
 
