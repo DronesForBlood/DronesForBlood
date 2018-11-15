@@ -1,4 +1,3 @@
 <launch>
     <node pkg="gcs_master" type="gcs_master" name="gcs_master" output= "screen" />
-    <test test-name="test_gcs_master" pkg="gcs_master" type="test_gcs_master.py" />
 </launch>

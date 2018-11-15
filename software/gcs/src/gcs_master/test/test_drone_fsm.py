@@ -22,6 +22,10 @@ class TestFSMTransitions(unittest.TestCase):
     def setUp(self):
         self.dronefsm = DroneFSM()
         self.dronefsm.TAKEOFF_ALTITUDE = 25
+        self.dronefsm.comm_ok = True
+        self.dronefsm.position = [10, 10]
+        self.dronefsm.destination = [10, 10]
+        self.dronefsm.current_path = ["wp1", "wp2", "wp3"]
 
     def tearDown(self):
         del self.dronefsm
@@ -33,11 +37,10 @@ class TestFSMTransitions(unittest.TestCase):
         self.assertFalse(self.dronefsm.ARM)
         self.assertFalse(self.dronefsm.TAKE_OFF)
         self.assertFalse(self.dronefsm.LAND)
-        self.assertFalse(self.dronefsm.FLY)
         self.assertFalse(self.dronefsm.CALCULATE_PATH)
-        self.assertFalse(self.dronefsm.NEW_MISSION)
+        self.assertFalse(self.dronefsm.UPLOAD_MISSION)
+        self.assertFalse(self.dronefsm.START_MISSION)
         self.assertFalse(self.dronefsm.EMERGENCY_LANDING)
-        self.assertFalse(self.dronefsm.WAYPOINT_REACHED)
         self.assertEqual(self.dronefsm.get_state(), "start")
     
     def test_start_to_arm_transition(self):
@@ -73,7 +76,7 @@ class TestFSMTransitions(unittest.TestCase):
         # Check the state and relevant outputs.
         self.assertEqual(self.dronefsm.get_state(), "taking_off")
 
-    def test_start_to_flying_transition(self):
+    def test_start_to_fly_transition(self):
         """
         Test the transition: start-->...-->taking_off-->flying.
         """
@@ -98,7 +101,7 @@ class TestFSMTransitions(unittest.TestCase):
         self.dronefsm.new_path = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "flying")
+        self.assertEqual(self.dronefsm.get_state(), "fly")
         self.assertTrue(self.dronefsm.new_path)
         self.assertFalse(self.dronefsm.taking_off)
 
@@ -201,7 +204,7 @@ class TestFSMTransitions(unittest.TestCase):
         self.assertTrue(self.dronefsm.NEW_MISSION)
         self.assertFalse(self.dronefsm.new_mission)
 
-    def test_start_to_flying_from_upload_mission(self):
+    def test_start_to_start_mission(self):
         """
         Test the transition: start-->...-->upload_mission-->flying.
         """
@@ -232,10 +235,10 @@ class TestFSMTransitions(unittest.TestCase):
         self.dronefsm.update_fsm()
         self.dronefsm.new_path = True
         self.dronefsm.update_fsm()
-        self.dronefsm.new_mission = True
+        self.dronefsm.mission_ready = True
         self.dronefsm.update_fsm()
         # Check the state and relevant outputs.
-        self.assertEqual(self.dronefsm.get_state(), "flying")
+        self.assertEqual(self.dronefsm.get_state(), "start_mission")
         self.assertFalse(self.dronefsm.new_mission)
         self.assertFalse(self.dronefsm.new_path)
 
