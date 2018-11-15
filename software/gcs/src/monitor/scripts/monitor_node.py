@@ -7,7 +7,8 @@ import struct
 from std_msgs.msg import Int8
 from monitor.srv import getstatus
 from threading import Lock
-from mavlink_lora.msg import mavlink_lora_set_position_target_local_ned, mavlink_lora_pos, mavlink_lora_heartbeat, mavlink_lora_statustext, mavlink_lora_attitude, mavlink_lora_status
+from mavlink_lora.msg import mavlink_lora_set_position_target_local_ned, mavlink_lora_pos, mavlink_lora_heartbeat, mavlink_lora_statustext, mavlink_lora_attitude, mavlink_lora_status, mavlink_lora_mission_list, mavlink_lora_mission_item_int, mavlink_lora_mission_current
+from std_msgs.msg import UInt16
 from math import pi, sqrt, sin, cos, atan2
 from gui import MonitorGUI
 import threading
@@ -57,7 +58,13 @@ class monitor:
         self.mav_mode = DotMap()
         # set defaults to handle if getting called before we get first msg
         self.mav_mode.base_mode = ""
-        self.mav_mode.arm_status = ""
+        self.mav_mode.sub_mode = ""
+        self.armed = ""
+
+        # Handle current target
+        self.mission_list = []
+        self.mission_current = None
+        self.mission_idx = 0
 
         # launch node
         rospy.init_node('monitor', disable_signals=True)
@@ -72,9 +79,11 @@ class monitor:
         rospy.Subscriber("mavlink_pos", mavlink_lora_pos, self.on_global_pos_msg)
         rospy.Subscriber("mavlink_attitude", mavlink_lora_attitude, self.on_mavlink_lora_attitude)
         rospy.Subscriber("mavlink_statustext", mavlink_lora_statustext, self.on_statustext_msg)
-        rospy.Subscriber("mavlink_heartbeat", mavlink_lora_heartbeat, self.on_heartbeat_msg)
+        rospy.Subscriber("mavlink_heartbeat_rx", mavlink_lora_heartbeat, self.on_heartbeat_msg)
         rospy.Subscriber("mavlink_status", mavlink_lora_status, self.on_mavlink_lora_status)
         rospy.Subscriber("mavlink_interface/command/set_target_position_local_ned", mavlink_lora_set_position_target_local_ned, self.on_set_position_target_local_ned_msg)
+        rospy.Subscriber("mavlink_interface/mission/mavlink_upload_mission", mavlink_lora_mission_list, self.new_mission)
+        rospy.Subscriber("mavlink_interface/mission/current", UInt16, self.update_current_mission)
 
         # Nodes to monitor
         #self.monitor_nodes.append(rospy.ServiceProxy("gcs/monitor/getstatus", getstatus))
@@ -89,6 +98,26 @@ class monitor:
 
         self.rate = rospy.Rate(self.update_interval)
         rospy.sleep(1)  # wait until everything is running
+
+    def new_mission(self, msg):
+        self.mutex.acquire()
+        self.mission_list = msg.waypoints
+        self.mutex.release()
+
+    def update_current_mission(self, msg):
+        self.mutex.acquire()
+        # set current mission item target
+        if len(self.mission_list) >= msg.data:
+            self.mission_current = self.mission_list[msg.data]
+
+            # set target lat, lon
+            self.target_lat = (float(self.mission_current.x) / 10**7)
+            self.target_lon = (float(self.mission_current.y) / 10**7)
+
+        # always update current waypoint, even if we don't have mission list
+        self.mission_idx = msg.data
+        
+        self.mutex.release()
 
     def fetchStatus(self, msg):
 
@@ -165,6 +194,60 @@ class monitor:
 
         return bm
 
+    def decode_arm(self, base_mode):
+        # arm status
+        armed = bool(base_mode & 0x80)
+
+        if armed:
+            return "ARMED"
+        else:
+            return "DISARMED"
+
+    def decode_custom_mode(self, custom_mode):
+        # submode first 8 bits, then base mode
+        sub_mode = custom_mode >> 24
+        base_mode = (custom_mode >> 16) & 0xFF
+
+        cm = DotMap()
+
+        if sub_mode == 1:
+            cm.sub_mode = "READY"
+        elif sub_mode == 2:
+            cm.sub_mode = "TAKEOFF"
+        elif sub_mode == 3:
+            cm.sub_mode = "LOITER"
+        elif sub_mode == 4:
+            cm.sub_mode = "MISSION"
+        elif sub_mode == 5:
+            cm.sub_mode = "RTL"
+        elif sub_mode == 6:
+            cm.sub_mode = "LAND"
+        elif sub_mode == 7:
+            cm.sub_mode = "RTGS"
+        elif sub_mode == 8:
+            cm.sub_mode = "FOLLOW_TARGET"
+        elif sub_mode == 9:
+            cm.sub_mode = "PRECLAND"
+
+        if base_mode == 1:
+            cm.base_mode = "MANUAL"
+        elif base_mode == 2:
+            cm.base_mode = "ALTITUDE CONTROL"
+        elif base_mode == 3:
+            cm.base_mode = "POSITION CONTROL"
+        elif base_mode == 4:
+            cm.base_mode = "AUTO"
+        elif base_mode == 5:
+            cm.base_mode = "ACRO"
+        elif base_mode == 6:
+            cm.base_mode = "OFFBOARD"
+        elif base_mode == 7:
+            cm.base_mode = "STABILIZED"
+        elif base_mode == 8:
+            cm.base_mode = "RATTITUDE"
+
+        return cm
+
     def on_global_pos_msg(self, msg):
         self.mutex.acquire()
         # Update current position
@@ -188,10 +271,12 @@ class monitor:
 
     def on_heartbeat_msg(self, msg):
         self.mutex.acquire()
-        # update base_mode and custom_mode, by decoding function
-        self.mav_mode = self.decode_base_mode(msg.base_mode)
 
-        # custom mode? maybe
+        # update base_mode and sub_mode,by decoding function.
+        self.mav_mode = self.decode_custom_mode(msg.custom_mode)
+        # update arm status from base_mode flags
+        self.armed = self.decode_arm(msg.base_mode)
+
         self.mutex.release()
 
     def on_set_position_target_local_ned_msg(self, msg):
@@ -218,7 +303,7 @@ class monitor:
         # make string output for local variables
         batt_text = '%.1fV' % self.batt_volt
         pos_text = '%02.5f %03.5f' % (self.lat, self.lon)
-        alt_text = '%.1fm ' % (self.alt)
+        alt_text = '%.1fm ' % self.alt
         atti_text = 'Yaw: %03.1f Pitch: %03.1f Roll: %03.1f' % (self.yaw * 180 / pi, self.pitch * 180 / pi, self.roll * 180 / pi)
 
         dist_target_text = '%.1fm' % self.gcd_haversine(self.lat, self.lon, self.target_lat, self.target_lon)
@@ -243,12 +328,14 @@ class monitor:
         data.last_heard = last_update_text
         data.last_sys_status = last_heard_status_text
         data.base_mode = self.mav_mode.base_mode
-        data.armed = self.mav_mode.arm_status
+        data.sub_mode = self.mav_mode.sub_mode
+        data.armed = self.armed
         data.battery = batt_text
         data.curr_pos = pos_text
         data.curr_alt = alt_text
         data.target_pos = target_pos_text
         data.dist_target = dist_target_text
+        data.target_seq = self.mission_idx
         data.attitude = atti_text
         data.statustext = self.statustext_buffer
 
@@ -268,12 +355,14 @@ class monitor:
 
         data.last_heard = "Never"
         data.last_sys_status = "Never"
-        data.base_mode = "Unknown"
+        data.mav_mode.sub_mode = "Unknown"
+        data.mav_mode.base_mode = "Unknown"
         data.armed = "Unknown"
         data.battery = "Unknown"
         data.curr_pos = "Unknown"
         data.curr_alt = "Unknown"
         data.target_pos = "Unknown"
+        data.target_seq = "0"
         data.dist_target = "Unknown"
         data.attitude = "Unknown"
         data.statustext = self.statustext_buffer

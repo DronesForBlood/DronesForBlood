@@ -6,8 +6,8 @@
 ##########################################
 
 # Drone start position, is currently middle of scene on ground
-export PX4_HOME_LAT=55.057883
-export PX4_HOME_LON=10.569678
+export PX4_HOME_LAT=55.4720422
+export PX4_HOME_LON=10.4147126
 
 # source ros/gazebo stuff
 source /opt/ros/melodic/setup.bash
