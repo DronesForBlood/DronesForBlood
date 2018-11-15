@@ -91,21 +91,21 @@ class DroneFSM():
         # the take-off command.
         elif self.__state == "arm":	
             if self.armed and self.taking_off:
-                self.__state = "taking_off"
+                self.__state = "take_off"
                 self.get_state()
 
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
-        elif self.__state == "taking_off":
+        elif self.__state == "take_off":
             if self.relative_alt>self.TAKEOFF_ALTITUDE-1 and self.new_path:
-                self.__state = "flying"
+                self.__state = "fly"
                 self.taking_off = False
                 self.get_state()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
 
         # FLYING state. If there are no more waypoints, landing has to start.
-        elif self.__state == "flying":
+        elif self.__state == "fly":
             if self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
@@ -114,7 +114,7 @@ class DroneFSM():
             elif (self.current_mission == len(self.current_path)-1 and
                         self.distance_to_dest < self.destination_threshold_dist
                         ):
-                    self.__state = "landing"
+                    self.__state = "land"
                     self.get_state()
                     self.__state_timer = 0.0
             elif self.new_waypoint:
@@ -136,7 +136,7 @@ class DroneFSM():
         # START MISSION state
         elif self.__state == "start_mission":
             if self.new_mission:
-                self.__state = "flying"
+                self.__state = "fly"
                 self.new_mission = False
                 self.get_state()
 
@@ -158,7 +158,7 @@ class DroneFSM():
             pass
 
         # LANDING state
-        elif self.__state == "landing":
+        elif self.__state == "land":
             if self.relative_alt<0.01:
                 self.__state = "start"
                 self.get_state()
@@ -187,11 +187,11 @@ class DroneFSM():
                 self.__state_timer = rospy.get_time()
 
         # TAKING OFF state
-        elif self.__state == "taking_off":
+        elif self.__state == "take_off":
             pass
 
         # FLYING state
-        elif self.__state == "flying":
+        elif self.__state == "fly":
             self.distance_to_dest = np.linalg.norm(
                     np.array(self.destination)-np.array(self.position))
             pass
@@ -226,7 +226,7 @@ class DroneFSM():
             self.EMERGENCY_LANDING = True
 
         # LANDING state
-        elif self.__state == "landing":
+        elif self.__state == "land":
             now = rospy.get_time()
             if now > self.__state_timer+self.TIMEOUT and not self.landing:
                 self.LAND = True
