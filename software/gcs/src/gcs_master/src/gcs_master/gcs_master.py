@@ -126,6 +126,7 @@ class GcsMasterNode():
             msg = mavlink_lora.msg.mavlink_lora_mission_list()
             msg.waypoints = self.state_machine.current_path
             self.new_mission_pub.publish(msg)
+            rospy.logdebug("Published a new mission to Mavlink")
             self.state_machine.UPLOAD_MISSION = False
 
         if self.state_machine.START_MISSION:
@@ -241,10 +242,14 @@ class GcsMasterNode():
         self.state_machine.route = data.waypoints
         self.state_machine.new_path = True
         if len(data.waypoints) <= self.state_machine.MISSION_LENGTH:
+            rospy.logdebug("Taking the {} waypoints in the mission (ALL)"
+                           "".format(len(data.waypoints)))
             self.state_machine.current_path = data.waypoints
         else:
             self.state_machine.current_path = (
                     data.waypoints[0:self.state_machine.MISSION_LENGTH])
+            rospy.logdebug("Taking the first {} waypoints in the mission"
+                           "".format(self.state_machine.MISSION_LENGTH))
         return
 
     def send_heartbeat(self):

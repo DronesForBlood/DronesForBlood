@@ -50,6 +50,7 @@ class PathplannerSimNode():
         if not self.received_pos:
             self.create_waypoints_list()
             self.received_pos = True
+            rospy.loginfo("Created waypoints list")
         return
 
     def new_path_callback(self, data):
@@ -59,13 +60,13 @@ class PathplannerSimNode():
                 return
             msg = mavlink_lora.msg.mavlink_lora_mission_list()
             msg.waypoints = self.waypoints
-            rospy.loginfo("Publishing {} reamining waypoints"
-                          "".format(len(self.waypoints)))
             self.new_path_pub.publish(msg)
 
             # Remove the first waypoint from the list, as it should have already
             # been reached.
             self.waypoints = self.waypoints[1:]
+            for index, _ in enumerate(self.waypoints):
+                self.waypoints[index].seq = index
         return
 
     def create_waypoints_list(self):
