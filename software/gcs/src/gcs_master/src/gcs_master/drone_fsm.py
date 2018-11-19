@@ -118,11 +118,11 @@ class DroneFSM():
                     self.get_state()
                     self.__state_timer = 0.0
             elif self.new_waypoint:
-                    # self.__state = "calculate_path"
+                    self.__state = "calculate_path"
                     self.new_waypoint = False
-                    # self.get_state()
-                    rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
-                                  " not applied)")
+                    self.get_state()
+                    # rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
+                    #               " not applied)")
                     self.__state_timer = 0.0
 
         # UPLOAD MISSION state
