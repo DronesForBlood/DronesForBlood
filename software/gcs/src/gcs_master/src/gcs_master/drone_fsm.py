@@ -116,7 +116,7 @@ class DroneFSM():
                         ):
                     self.__state = "land"
                     self.get_state()
-                    self.__state_timer = 0.0
+                    self.__state_timer = rospy.get_time()
             elif self.new_waypoint:
                     self.__state = "calculate_path"
                     self.new_waypoint = False
