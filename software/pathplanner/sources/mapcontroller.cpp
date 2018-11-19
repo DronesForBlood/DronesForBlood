@@ -11,19 +11,42 @@ MapController::~MapController()
 
 }
 
+void MapController::addPreMapPenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
+{
+    PreMapPenaltyCircle temp;
+    temp.position = position;
+    temp.radius = radius;
+    temp.penalty = penalty;
+    temp.epochValidFrom = epochValidFrom;
+    temp.epochValidTo = epochValidTo;
+    preMapPenaltyCircles.push_back(temp);
+}
+
+void MapController::addPreMapPenaltyOfAreaPolygon(std::vector<std::pair<double, double> > polygonCoordinates, double penalty, time_t epochValidFrom, time_t epochValidTo)
+{
+    PreMapPenaltyArea temp;
+    temp.polygonCoordinates = polygonCoordinates;
+    temp.penalty = penalty;
+    temp.epochValidFrom = epochValidFrom;
+    temp.epochValidTo = epochValidTo;
+    preMapPenaltyAreas.push_back(temp);
+}
+
 void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength)
 {
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
-    pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
-
-
     visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
-
 
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
+
+    for(auto &it : preMapPenaltyCircles)
+        updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
+
+    for(auto &it : preMapPenaltyAreas)
+        updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     mapReady = true;
@@ -122,9 +145,6 @@ bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position
     }
 
     watchZones.push_back(zone);
-
-
-
 
     bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 

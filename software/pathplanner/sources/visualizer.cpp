@@ -14,7 +14,7 @@ Visualizer::Visualizer(std::shared_ptr<std::vector<std::vector<std::shared_ptr<N
     previousPosition.first = -1;
     previousPosition.second = -1;
 
-    cv::imshow("DroneSimulator 2000", pathImage);
+    //cv::imshow("DroneSimulator 2000", pathImage);
     cv::waitKey(100);
 
     threadRunning = true;
@@ -56,6 +56,7 @@ void Visualizer::setCurrentHeading(std::pair<size_t, size_t> heading)
 void Visualizer::printImage()
 {
     while(threadRunning) {
+
         pathImage = cv::Scalar(0,0,0);
 
         for(auto &it : *map.get())
@@ -73,13 +74,12 @@ void Visualizer::printImage()
                 }
             }
 
-
         printCurrentPositionImage();
         printPathImage();
         printShortPathImage();
 
         cv::imshow("DroneSimulator 2000", pathImage);
-        cv::waitKey(1);
+        cv::waitKey(10);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

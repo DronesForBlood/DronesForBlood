@@ -18,13 +18,35 @@
 #include "headers/pathshortener.h"
 #include "headers/visualizer.h"
 
+struct PreMapPenaltyCircle {
+    std::pair<double,double> position;
+    double radius;
+    double penalty;
+    time_t epochValidFrom = -1;
+    time_t epochValidTo = -1;
+};
+
+struct PreMapPenaltyArea {
+    std::vector<std::pair<double,double>> polygonCoordinates;
+    double penalty;
+    time_t epochValidFrom = -1;
+    time_t epochValidTo = -1;
+};
+
 class MapController
 {
 public:
     MapController();
     ~MapController();
     bool getMapReady() { return mapReady;}
+
+    void addPreMapPenaltyOfAreaCircle(std::pair<double,double> position, double radius, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
+    void addPreMapPenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
+
     void generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength);
+
+
+
     std::pair<std::size_t, std::size_t> getMapSize();
     void setGoalPosition(std::pair<double,double> goalCoord) {goalPosition = getClosestNodeIndex(goalCoord);}
     void startSolver(std::pair<double, double> worldCoord);
@@ -45,6 +67,9 @@ private:
     bool checkIfIntersectionIsDangerous();
 
 private:
+    std::vector<PreMapPenaltyArea> preMapPenaltyAreas;
+    std::vector<PreMapPenaltyCircle> preMapPenaltyCircles;
+
     //cv::Mat pathImage;
     std::shared_ptr<Visualizer> visualizer;
     std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map;

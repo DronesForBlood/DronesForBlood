@@ -6,23 +6,15 @@
 #include "headers/mapcontroller.h"
 #include "headers/rosMsg.h"
 
+#include <PATHPLANNER/start_end_coord.h>
+
 
 int main(int argc, char **argv)
 {
 
+    ros::init(argc, argv, "pathplanner");
 
-
-
-
-    ros::init(argc, argv, "pathplaner");
     rosMsg rosMsgObject;
 
     ros::spin();
-
-
-
-    
-    
-    
-
 }
