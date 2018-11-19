@@ -12,7 +12,7 @@ import std_msgs.msg
 class DroneFSM():
 
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
-    TAKEOFF_ALTITUDE = 20   # Altitude set point, in meters, after taking off
+    TAKEOFF_ALTITUDE = 10   # Altitude set point, in meters, after taking off
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
     def __init__(self, max_lowbatt_distance=100):
@@ -24,6 +24,7 @@ class DroneFSM():
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
         self.destination_threshold_dist = 0.000006   # Dist. for start landing
         # FSM flags. Outputs
+        self.DISARM = False
         self.ARM = False
         self.TAKE_OFF = False
         self.LAND = False
@@ -83,7 +84,7 @@ class DroneFSM():
             if self.new_mission and self.comm_ok:
                 self.__state = "arm"
                 self.new_mission = False
-                self.get_state()
+                self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = 0.0
 
@@ -92,7 +93,7 @@ class DroneFSM():
         elif self.__state == "arm":	
             if self.armed and self.taking_off:
                 self.__state = "take_off"
-                self.get_state()
+                self.state_to_log()
 
         # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
@@ -100,7 +101,7 @@ class DroneFSM():
             if self.relative_alt>self.TAKEOFF_ALTITUDE-1 and self.new_path:
                 self.__state = "fly"
                 self.taking_off = False
-                self.get_state()
+                self.state_to_log()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
 
@@ -109,18 +110,18 @@ class DroneFSM():
             if self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
-                self.get_state()
+                self.state_to_log()
                 self.__state_timer = 0.0
             elif (self.current_mission == len(self.current_path)-1 and
                         self.distance_to_dest < self.destination_threshold_dist
                         ):
                     self.__state = "land"
-                    self.get_state()
+                    self.state_to_log()
                     self.__state_timer = rospy.get_time()
             elif self.new_waypoint:
                     self.__state = "calculate_path"
                     self.new_waypoint = False
-                    self.get_state()
+                    self.state_to_log()
                     # rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
                     #               " not applied)")
                     self.__state_timer = 0.0
@@ -130,7 +131,7 @@ class DroneFSM():
             if self.mission_ready:
                 self.__state = "start_mission"
                 self.mission_ready = False
-                self.get_state()
+                self.state_to_log()
                 self.__state_timer = 0.0
 
         # START MISSION state
@@ -138,14 +139,14 @@ class DroneFSM():
             if self.new_mission:
                 self.__state = "fly"
                 self.new_mission = False
-                self.get_state()
+                self.state_to_log()
 
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
             if self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
-                self.get_state()
+                self.state_to_log()
                 self.__state_timer = 0.0
 
         # RECOVER COMM state
@@ -161,7 +162,8 @@ class DroneFSM():
         elif self.__state == "land":
             if self.relative_alt<0.01:
                 self.__state = "start"
-                self.get_state()
+                self.state_to_log()
+                self.__state_timer = 0.0
 
         # Non-valid state
         else:
@@ -175,7 +177,10 @@ class DroneFSM():
         """
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
-            pass
+            now = rospy.get_time()
+            if self.armed and now > self.__state_timer + self.TIMEOUT:
+                self.DISARM = True
+                self.__state_timer = rospy.get_time()
 
         # ARM state
         elif self.__state == "arm":
@@ -192,8 +197,10 @@ class DroneFSM():
 
         # FLYING state
         elif self.__state == "fly":
-            self.distance_to_dest = np.linalg.norm(
-                    np.array(self.destination)-np.array(self.position))
+            # Check that there are no None values in the list
+            if all(self.position):
+                self.distance_to_dest = np.linalg.norm(
+                        np.array(self.destination)-np.array(self.position))
             pass
 
         # CALCULATE_PATH state
@@ -238,5 +245,14 @@ class DroneFSM():
         return
 
     def get_state(self):
+        """
+        Returns the state of the FSM.
+        """
+        return self.__state
+
+    def state_to_log(self):
+        """
+        Sends to log the state of the FSM. Returns the state as well.
+        """
         rospy.loginfo("FSM state: {}".format(self.__state))
         return self.__state

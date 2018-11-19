@@ -102,6 +102,10 @@ class GcsMasterNode():
 
     def update_flags(self):
 
+        if self.state_machine.DISARM:
+            self.drone_arm_pub.publish(False)
+            self.state_machine.DISARM = False
+
         if self.state_machine.ARM:
             self.drone_arm_pub.publish(True)
             self.state_machine.ARM = False
@@ -188,7 +192,11 @@ class GcsMasterNode():
                 self.state_machine.taking_off = True
         if data.command == 400:
             if ack:
-                self.state_machine.armed = True
+                if self.state_machine.get_state() == "start":
+                    self.state_machine.armed = False
+                    rospy.loginfo("Drone is disarmed")
+                else:
+                    self.state_machine.armed = True
         if data.command == 21:
             if ack:
                 self.state_machine.landing = True
