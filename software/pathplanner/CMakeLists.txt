@@ -22,8 +22,9 @@ add_message_files(
   start_end_coord.msg
   flight_mission.msg
   request_flight_mission.msg
-  add_no_flight_circle.msg
-  add_no_flight_area.msg
+  no_flight_circle.msg
+  no_flight_area.msg
+  utm_tracking_data.msg
 )
 
 generate_messages(
@@ -52,6 +53,9 @@ set(SOURCES
     sources/watch/watchzone.cpp
 
     sources/UTM/get_uav_technical_data.py
+    sources/UTM/add_uav_tracking_data.py
+    sources/UTM/utm_node.py
+    sources/UTM/kml_reader.py
 
 
     headers/mapcontroller.h
@@ -82,6 +86,9 @@ ${catkin_INCLUDE_DIRS}
 
 install(PROGRAMS
      sources/UTM/get_uav_technical_data.py
+     sources/UTM/add_uav_tracking_data.py
+     sources/UTM/utm_node.py
+     sources/UTM/kml_reader.py
      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
