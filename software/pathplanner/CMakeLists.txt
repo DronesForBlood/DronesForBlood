@@ -21,7 +21,7 @@ add_message_files(
   FILES
   start_end_coord.msg
   flight_mission.msg
-  request_flight_mission.msg
+  request.msg
   no_flight_circle.msg
   no_flight_area.msg
   utm_tracking_data.msg

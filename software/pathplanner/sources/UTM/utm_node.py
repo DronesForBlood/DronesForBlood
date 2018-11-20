@@ -18,6 +18,7 @@ import std_msgs.msg
 from PATHPLANNER.msg import no_flight_circle
 from PATHPLANNER.msg import no_flight_area
 from PATHPLANNER.msg import utm_tracking_data
+from PATHPLANNER.msg import request
 
 import sys
 import requests
@@ -26,7 +27,6 @@ from termcolor import colored
 import time
 
 import kml_reader
-from pykml import parser
 
 # Disable warning
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -44,6 +44,11 @@ class UTM_node:
         rospy.Subscriber("utm_add_tracking_data",
                          utm_tracking_data,
                          self.add_tracking_data_callback,
+                         queue_size=1)
+
+        rospy.Subscriber("utm_request_no_flight_zones",
+                         request,
+                         self.request_no_flight_zones_callback,
                          queue_size=1)
 
         # Publishers
@@ -68,11 +73,11 @@ class UTM_node:
 
     def run(self):
         rospy.sleep(0.5)
-        rate = rospy.Rate(100)
+        rate = rospy.Rate(1)
 
         while not rospy.is_shutdown():
+            self.fetch_tracking_data()
             rate.sleep()
-            print("Running")
 
         return
 
@@ -158,6 +163,10 @@ class UTM_node:
                 print(colored('Success!\n', 'green'))
                 print(colored('Status code: %i' % r.status_code, 'yellow'))
                 print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
+
+    def request_no_flight_zones_callback(self):
+        self.fetch_static_no_fly_zones()
+        self.fetch_dynamic_no_fly_zones()
 
     def fetch_tracking_data(self):
         payload = {
@@ -319,6 +328,6 @@ class UTM_node:
 if __name__ == '__main__':
     utm_node = UTM_node()
     #utm_node.fetch_tracking_data()
-    utm_node.fetch_static_no_fly_zones()
-    #utm_node.run()
+    #utm_node.fetch_static_no_fly_zones()
+    utm_node.run()
     print("DONE")
