@@ -43,7 +43,8 @@ class GcsMasterNode():
         # Dronelink topic susbscribers
         rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
-        rospy.Subscriber("dronelink/destination", geometry_msgs.msg.Point,
+        rospy.Subscriber("dronelink/destination",
+                         mavlink_lora.msg.mavlink_lora_pos,
                          self.ui_destination_callback, queue_size=1)
         # Pathplanner topic susbscribers
         rospy.Subscriber("pathplanner/mission_list",
@@ -243,7 +244,7 @@ class GcsMasterNode():
     #TODO: Acknowledge back to the dronelink that the mission is getting started
 
     def ui_destination_callback(self, data):
-        self.state_machine.destination = [data.x, data.y]
+        self.state_machine.destination = [data.lat, data.lon]
         return
 
     def pathplanner_newplan_callback(self, data):

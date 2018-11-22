@@ -30,9 +30,9 @@ class DronelinkSimNode():
         self.new_mission_pub = rospy.Publisher("dronelink/start",
                                                std_msgs.msg.Bool,
                                                queue_size=1)
-        self.destination_pub = rospy.Publisher("dronelink/destination",
-                                               geometry_msgs.msg.Point,
-                                               queue_size=1)
+        self.dest_pub = rospy.Publisher("dronelink/destination",
+                                        mavlink_lora.msg.mavlink_lora_pos,
+                                        queue_size=1)
 
         # Subscribers configuration
         rospy.Subscriber("mavlink_interface/command/arm_disarm",
@@ -55,11 +55,11 @@ class DronelinkSimNode():
         while self.run_loop and not rospy.is_shutdown():
             rospy.loginfo("Requesting new mission")
             # Publish destination coordinates
-            msg = geometry_msgs.msg.Point()
-            msg.x = self.lat
-            msg.y = self.lon
-            msg.z = self.alt
-            self.destination_pub.publish(msg)
+            msg = mavlink_lora.msg.mavlink_lora_pos()
+            msg.lat = self.lat
+            msg.lon = self.lon
+            msg.alt = self.alt
+            self.dest_pub.publish(msg)
             self.new_mission_pub.publish(True)
             rate.sleep()
         return
