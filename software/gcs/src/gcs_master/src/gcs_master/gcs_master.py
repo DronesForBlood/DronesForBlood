@@ -31,6 +31,8 @@ class GcsMasterNode():
     HEARTBEAT_TIMEOUT = 1.5     # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
 
+    MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
+
     def __init__(self):
 
         # Create an instance of the drone finite-state-machine class.
@@ -41,6 +43,9 @@ class GcsMasterNode():
         self.heartbeat_send_time = 0.0
         self.battery_check_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
+
+        # Counter for the amount of times in a row the communication is lost
+        self.comm_lost_counter = 0
 
         # Dronelink topic susbscribers
         rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
@@ -105,6 +110,10 @@ class GcsMasterNode():
                 "mavlink_interface/mission/mavlink_clear_all",
                 std_msgs.msg.Empty,
                 queue_size=1)
+        self.hold_position_pub = rospy.Publisher(
+                "Not_given_a_name_yet",
+                mavlink_lora.msg.mavlink_lora_command_hold,
+                queue_size=1)
 
     def update_flags(self):
 
@@ -128,24 +137,6 @@ class GcsMasterNode():
             self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
 
-        if self.state_machine.CALCULATE_PATH:
-            self.calc_path_pub.publish(True)
-            self.state_machine.CALCULATE_PATH = False
-
-        if self.state_machine.UPLOAD_MISSION:
-            msg = mavlink_lora.msg.mavlink_lora_mission_list()
-            msg.waypoints = self.state_machine.current_path
-            self.new_mission_pub.publish(msg)
-            rospy.logdebug("Published a new mission to Mavlink")
-            self.state_machine.UPLOAD_MISSION = False
-
-        if self.state_machine.START_MISSION:
-            msg = mavlink_lora.msg.mavlink_lora_command_start_mission()
-            msg.first_item = 0
-            msg.last_item = 2
-            self.start_mission_pub.publish(msg)
-            self.state_machine.START_MISSION = False
-
         if self.state_machine.LAND:
             msg = mavlink_lora.msg.mavlink_lora_command_land()
             msg.lat = self.state_machine.latitude
@@ -159,6 +150,35 @@ class GcsMasterNode():
             self.drone_land_pub.publish(msg)
             self.state_machine.LAND = False
 
+        if self.state_machine.CALCULATE_PATH:
+            self.calc_path_pub.publish(True)
+            self.state_machine.CALCULATE_PATH = False
+
+        if self.state_machine.UPLOAD_MISSION:
+            msg = mavlink_lora.msg.mavlink_lora_mission_list()
+            msg.waypoints = self.state_machine.current_path
+            self.new_mission_pub.publish(msg)
+            rospy.logdebug("Published a new mission to Mavlink")
+            self.state_machine.UPLOAD_MISSION = False
+
+        if self.state_machine.START_MISSION:
+            # Remove the hold position command, in case it was previously
+            # set to true
+            hold_msg = mavlink_lora.msg.mavlink_lora_command_hold()
+            hold_msg.data = False
+            self.hold_position_pub.publish(hold_msg)
+            msg = mavlink_lora.msg.mavlink_lora_command_start_mission()
+            msg.first_item = 0
+            msg.last_item = 2
+            self.start_mission_pub.publish(msg)
+            self.state_machine.START_MISSION = False
+
+        if self.state_machine.HOLD_POSITION:
+            msg = mavlink_lora.msg.mavlink_lora_command_hold()
+            msg.data = True
+            self.hold_position_pub.publish(msg)
+            self.state_machine.HOLD_POSITION = False
+
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
 
@@ -168,6 +188,7 @@ class GcsMasterNode():
 
     def heartbeat_callback(self, data):
         self.state_machine.comm_ok = True
+        self.comm_lost_counter = 0
         self.heartbeat_receive_time = rospy.get_time()
         return
 
@@ -217,6 +238,9 @@ class GcsMasterNode():
         if data.command == 300:
             if ack:
                 self.state_machine.new_mission = True
+        if data.command == 9999:
+            if ack:
+                self.state_machine.holding_position = True
         return
 
     def mavlink_pos_callback(self, data):
@@ -313,7 +337,9 @@ class GcsMasterNode():
             # Check if the drone heartbeat times out.
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
                 rospy.logwarn("Dronelink lost")
-                self.state_machine.comm_ok = False
+                self.comm_lost_counter += 1
+                if self.comm_lost_counter > self.MAX_COMM_LOSES:
+                    self.state_machine.comm_ok = False
                 self.heartbeat_receive_time = rospy.get_time()
             # Finish the loop cycle.
             rate.sleep()

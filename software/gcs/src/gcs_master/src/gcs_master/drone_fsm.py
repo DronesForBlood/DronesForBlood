@@ -33,6 +33,7 @@ class DroneFSM():
         self.CALCULATE_PATH = False
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
+        self.HOLD_POSITION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -48,10 +49,11 @@ class DroneFSM():
         self.armed = False                  # Armed / Disarmed
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
+        self.holding_position = False       # Drone is holding position on air
+        self.batt_level = 0                 # Reamining battery capacity
         self.takeoff_batt_ok = False        # Enough battery for taking off
         self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
-        self.batt_level = 0                 # Reamining battery capacity
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
@@ -111,7 +113,11 @@ class DroneFSM():
 
         # FLYING state. If there are no more waypoints, landing has to start.
         elif self.__state == "fly":
-            if self.new_path:
+            if not self.comm_ok:
+                self.__state = "recover_comm"
+                self.state_to_log()
+                self.__state_timer = 0.0
+            elif self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
                 self.state_to_log()
@@ -155,7 +161,11 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            pass
+            if self.holding_position:
+                self.__state = "calculate_path"
+                self.holding_position = False
+                self.state_to_log()
+                self.__state_timer = 0.0
 
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
@@ -230,7 +240,10 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            pass
+            now = rospy.get_time()
+            if now > self.__state_timer + self.TIMEOUT:
+                self.HOLD_POSITION = True
+                self.__state_timer = rospy.get_time()
 
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
