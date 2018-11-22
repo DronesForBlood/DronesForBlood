@@ -17,12 +17,14 @@
 void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
 {
     std::cout << "GOT PATH!" << std::endl;
-    /*
-    std::vector<double> path = msg.;
 
-    for(int i = 0; i < path.size(); i += 2)
-        std::cout << path[i] << "    " << path[i+1] << std::endl;
-        */
+    for(auto &it : msg.waypoints) {
+        std::cout << it.x << std::endl;
+        std::cout << it.y << std::endl;
+        std::cout << it.z << std::endl;
+    }
+
+    //for(auto &it : msg.)
 }
 
 

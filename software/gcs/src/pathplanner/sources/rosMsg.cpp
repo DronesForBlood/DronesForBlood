@@ -91,8 +91,14 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             item.param1 = 0;    // hold time
             item.param2 = 5;    // acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
             item.param3 = 0;    // pass though waypoint, no trajectory control
-            item.x = int(it->first * 10e7);
-            item.y = int(it->second * 10e7);
+
+            std::cout << "Sending x: " << it->first << std::endl;
+            std::cout << "Sending y: " << it->second << std::endl;
+            std::cout << "Sending X: " << int32_t(it->first * 1e7) << std::endl;
+            std::cout << "Sending Y: " << int32_t(it->second * 1e7) << std::endl;
+
+            item.x = int32_t(it->first * 1e7);
+            item.y = int32_t(it->second * 1e7);
             item.z = altitude;
             item.autocontinue = 1;
 
