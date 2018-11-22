@@ -6,19 +6,19 @@ rosMsg::rosMsg()
     subStart();
 }
 
-void rosMsg::addNoFlightCircle(const PATHPLANNER::add_no_flight_circle &msg)
+void rosMsg::addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg)
 {
     std::pair<double,double> coord;
     coord.first = msg.lat;
     coord.second = msg.lon;
 
     if(solvingStarted)
-        controller.updatePenaltyOfAreaCircle(coord, msg.radius, msg.penalty, msg.epochValidFrom, msg.epochValidTo);
+        controller.updatePenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
-        controller.addPreMapPenaltyOfAreaCircle(coord, msg.radius, msg.penalty, msg.epochValidFrom, msg.epochValidTo);
+        controller.addPreMapPenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
 }
 
-void rosMsg::addNoFlightArea(const PATHPLANNER::add_no_flight_area &msg)
+void rosMsg::addNoFlightArea(const PATHPLANNER::no_flight_area &msg)
 {
     std::vector<std::pair<double,double>> coords;
 
@@ -28,9 +28,9 @@ void rosMsg::addNoFlightArea(const PATHPLANNER::add_no_flight_area &msg)
     }
 
     if(solvingStarted)
-        controller.updatePenaltyOfAreaPolygon(coords, msg.penalty, msg.epochValidFrom, msg.epochValidTo);
+        controller.updatePenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
-        controller.addPreMapPenaltyOfAreaPolygon(coords, msg.penalty, msg.epochValidFrom, msg.epochValidTo);
+        controller.addPreMapPenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
 };
 
 void rosMsg::setupMap(const PATHPLANNER::start_end_coord& msg)
@@ -62,7 +62,7 @@ void rosMsg::setupMap(const PATHPLANNER::start_end_coord& msg)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
-void rosMsg::requestPath(const PATHPLANNER::request_flight_mission &msg)
+void rosMsg::requestPath(const PATHPLANNER::request &msg)
 {
     pub  = n.advertise<PATHPLANNER::flight_mission>("flightMission", 1);
 

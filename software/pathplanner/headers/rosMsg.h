@@ -14,9 +14,9 @@
 //#include <std_msgs/String.h>
 #include <PATHPLANNER/start_end_coord.h>
 #include <PATHPLANNER/flight_mission.h>
-#include <PATHPLANNER/request_flight_mission.h>
-#include <PATHPLANNER/add_no_flight_circle.h>
-#include <PATHPLANNER/add_no_flight_area.h>
+#include <PATHPLANNER/request.h>
+#include <PATHPLANNER/no_flight_circle.h>
+#include <PATHPLANNER/no_flight_area.h>
 
 #include "headers/mapcontroller.h"
 
@@ -28,10 +28,10 @@ class rosMsg
     rosMsg();
     ~rosMsg();
 
-   void addNoFlightCircle(const PATHPLANNER::add_no_flight_circle &msg);
-   void addNoFlightArea(const PATHPLANNER::add_no_flight_area &msg);
-   void setupMap(const PATHPLANNER::start_end_coord & msg); //callackb
-   void requestPath(const PATHPLANNER::request_flight_mission &msg);
+   void addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg);
+   void addNoFlightArea(const PATHPLANNER::no_flight_area &msg);
+   void setupMap(const PATHPLANNER::start_end_coord &msg); //callackb
+   void requestPath(const PATHPLANNER::request &msg);
    void subStart();
    void subEnd();
 
