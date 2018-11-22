@@ -97,18 +97,6 @@ void rosMsg::subStart()
     subNoFlightAreas = n.subscribe("noFlightAreas", 1000, &rosMsg::addNoFlightArea, this);
 };
 
-
-
-void rosMsg::Publish()
-{
-    pub  = n.advertise<std_msgs::Int64>("path to goal", 1);
-
-
-    //pub.publish(map.getPathToDestination(path));
-
-
-};
-
 rosMsg::~rosMsg()
 {
 

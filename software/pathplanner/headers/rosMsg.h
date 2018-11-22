@@ -35,9 +35,6 @@ class rosMsg
    void subStart();
    void subEnd();
 
-
-   void Publish();
-
 private:
 
 
