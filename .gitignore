@@ -3,6 +3,9 @@
 # Prerequisites
 *.d
 
+# Mavlink messages
+msg/mavlink_lora*
+
 # Compiled Object files
 *.slo
 *.lo
