@@ -200,3 +200,9 @@ CATKIN_IGNORE
 
 # Clion IDE
 .idea
+
+# Mavlink private package
+mavlink_lora/
+
+# Log files
+log/

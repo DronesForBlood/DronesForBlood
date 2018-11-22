@@ -15,6 +15,7 @@ Node::Node(std::pair<std::size_t, std::size_t> index, std::pair<double, double> 
 {
     selfNodeIndex = index;
     worldCoordinate = coordinate;
+<<<<<<< HEAD
 
     color[0] = 0;
     color[1] = 0;
@@ -84,13 +85,19 @@ void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epo
         addToNextTotalPenalty(difference, false);
     }
 
+=======
+>>>>>>> develop
 }
 
 void Node::resetNode()
 {
     cost = -1.;
+<<<<<<< HEAD
     //myPenalty = 0.;
     totalPenalty = myPenalty;
+=======
+    penalty = 0.;
+>>>>>>> develop
 
     stable = true;
     updated = false;
@@ -101,10 +108,20 @@ void Node::resetNode()
 
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
+<<<<<<< HEAD
     for(std::weak_ptr<Node> neighbor : nodes) {
         int distance = int(GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate()));
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
+=======
+    //std::cout << "start" << std::endl;
+    for(std::weak_ptr<Node> neighbor : nodes) {
+        //double distance = sqrt(pow(worldCoordinate.first - neighbor.lock()->getWorldCoordinate().first, 2) + pow(worldCoordinate.second - neighbor.lock()->getWorldCoordinate().second, 2));
+        int distance = calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
+        NeighborNode newNeighbor(neighbor, distance);
+        neighbors.push_back(newNeighbor);
+        //std::cout << neighbor.lock()->getWorldCoordinate().first << " " << neighbor.lock()->getWorldCoordinate().second << std::endl;
+>>>>>>> develop
     }
 }
 
@@ -113,12 +130,18 @@ void Node::checkAndUpdateNeighbors()
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
+<<<<<<< HEAD
         int costToMove = neighbor.distance + cost;
         int penaltyToMove = neighborNode->getPenalty() + totalPenalty + neighborNode->getPenaltyForDynamicZones(cost);
         int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty() - MINIMUM_DISTANCE_CHANGE;
         if((costToMove + penaltyToMove < neighborTotalCost || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
             neighborNode->setTotalPentaly(penaltyToMove);
+=======
+        double costToMove = neighbor.distance + neighborNode->getPenalty() + cost;
+        if((costToMove < neighborNode->getCost() - MINIMUM_DISTANCE_CHANGE || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
+            neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
+>>>>>>> develop
             neighborNode->setUpdated(true);
             neighborNode->setStable(false);
             neighborNode->setPointerToSource(pointerToSelf.lock());
@@ -165,6 +188,7 @@ void Node::setNextStable(bool val)
     }
 }
 
+<<<<<<< HEAD
 void Node::setPenalty(int val)
 {
     int difference = val - myPenalty;
@@ -174,28 +198,49 @@ void Node::setPenalty(int val)
     if(difference < 0.1 && difference > -0.1)
         return;
 
+=======
+void Node::setPenalty(double val)
+{
+    double difference = val - penalty;
+    cost += difference;
+    penalty = val;
+>>>>>>> develop
     stable = false;
 
     if(!updated)
         return;
 
+<<<<<<< HEAD
     addToNextTotalPenalty(difference, false);
 }
 
 void Node::setCostAndUpdate(int val)
+=======
+    addToNextCost(difference, false);
+
+    setNextStable(stable);
+}
+
+void Node::setCostAndUpdate(double val)
+>>>>>>> develop
 {
     double difference = val - cost;
     addToNextCost(difference, true);
     cost = val;
 }
 
+<<<<<<< HEAD
 void Node::addToNextCost(int val, bool mayUpdate)
+=======
+void Node::addToNextCost(double val, bool mayUpdate)
+>>>>>>> develop
 {
     if(mayUpdate && wasUpdated)
         updated = true;
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         if(pointerToSelf.lock() == neighborNode->getPointerToSource()) {
+<<<<<<< HEAD
             neighborNode->lockAccessNode();
             neighborNode->addToNextCost(val, mayUpdate);
             neighborNode->addToCost(val);
@@ -219,10 +264,15 @@ void Node::addToNextTotalPenalty(int val, bool mayUpdate)
         else {
             neighborNode->setStable(false);
             neighborNode->unlockNodeReady();
+=======
+            neighborNode->addToNextCost(val, mayUpdate);
+            neighborNode->addToCost(val);
+>>>>>>> develop
         }
     }
 }
 
+<<<<<<< HEAD
 int Node::getPenaltyForDynamicZones(int cost)
 {
     int penalty = 0;
@@ -233,6 +283,8 @@ int Node::getPenaltyForDynamicZones(int cost)
     return penalty;
 }
 
+=======
+>>>>>>> develop
 void Node::setNodeAsInit()
 {
     stable = false;
@@ -242,9 +294,13 @@ void Node::setNodeAsInit()
     sourceNodeIndex = selfNodeIndex;
 
     setCostAndUpdate(0);
+<<<<<<< HEAD
     //addToNextTotalPenalty(myPenalty - totalPenalty, true);
 
     totalPenalty = myPenalty;
+=======
+
+>>>>>>> develop
     unlockNodeReady();
 }
 
@@ -254,6 +310,7 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
     cost = newCost;
 }
 
+<<<<<<< HEAD
 bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode)
 {
     int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -272,4 +329,21 @@ bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode)
             if(lateArrivalTime <= dynamic.epochTo)
                 return true;
     return false;
+=======
+int Node::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    double lat1 = startCoord.first;
+    double lon1 = startCoord.second;
+    double lat2 = endCoord.first;
+    double lon2 = endCoord.second;
+
+    lat1 = lat1 * PI / 180.;
+    lat2 = lat2 * PI / 180.;
+    lon1 = lon1 * PI / 180.;
+    lon2 = lon2 * PI / 180.;
+
+    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
+    int distanceMeters = int(distance_radians * RADIUS_EARTH_METERS);
+    return distanceMeters;
+>>>>>>> develop
 }

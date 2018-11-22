@@ -54,6 +54,15 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
         for(auto &it2 : it)
             it2->setUpdated(false);
 
+<<<<<<< HEAD
+=======
+    /*
+    for(std::size_t i = 0; i < map->size(); i++)
+        for(std::size_t j = 0; j < map->at(i).size(); j++)
+            map->at(i).at(j)->setUpdated(false);
+            */
+
+>>>>>>> develop
     currentHeading = heading;
 
     map->at(currentHeading->first).at(currentHeading->second)->setNodeAsInit();
@@ -61,6 +70,7 @@ void Pathfinder::setCurrentHeading(std::shared_ptr<std::pair<std::size_t, std::s
     resumeSolver();
 }
 
+<<<<<<< HEAD
 void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &nodes, double penalty)
 {
     pauseSolver();
@@ -110,15 +120,33 @@ void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &no
 
     //for(auto &node : nodes)
     //    node->setPenalty(penalty);
+=======
+void Pathfinder::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
+{
+    pauseSolver();
+
+    map->at(row).at(col)->setPenalty(penalty);
+>>>>>>> develop
 
     resumeSolver();
 }
 
+<<<<<<< HEAD
 void Pathfinder::threadTest(std::vector<std::shared_ptr<Node> > nodes, double penalty, bool *done)
 {
     for(auto &node : nodes)
         node->setPenalty(penalty);
     *done = true;
+=======
+void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > positions, double penalty)
+{
+    pauseSolver();
+
+    for(std::pair<std::size_t, std::size_t> &pos : positions)
+        map->at(pos.first).at(pos.second)->setPenalty(penalty);
+
+    resumeSolver();
+>>>>>>> develop
 }
 
 void Pathfinder::pauseSolver()

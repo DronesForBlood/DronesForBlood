@@ -11,7 +11,11 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     map->clear();
     nodeCollections.clear();
 
+<<<<<<< HEAD
     double length = GeoFunctions::calcMeterDistanceBetweensCoords(startCoord, endCoord);
+=======
+    double length = calcMeterDistanceBetweensCoords(startCoord, endCoord);
+>>>>>>> develop
 
     std::size_t mapSizeX = std::size_t(width/distanceBetweenNodes);
     std::size_t mapSizeY = std::size_t((length + 2*padLength)/distanceBetweenNodes);
@@ -29,7 +33,11 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
 
         for(std::size_t j = 0; j < mapSizeY + 1; j++) {
             std::pair<double,double> coord = calcShiftedCoord(shiftedCoord, normalToUse.second * distanceBetweenNodes*j, normalToUse.first * distanceBetweenNodes*j);
+<<<<<<< HEAD
             //std::cout << std::setprecision(20) <<  coord.first << ", " << coord.second << std::endl;
+=======
+            //std::cout << coord.first << ", " << coord.second << std::endl;
+>>>>>>> develop
 
             std::pair<std::size_t, std::size_t> index(i,j);
             std::shared_ptr<Node> newNode = std::make_shared<Node>(index, coord);
@@ -123,6 +131,26 @@ void MapGenerator::getSlice(std::size_t row, std::size_t col, std::size_t rowCou
             collection.addNode(map->at(i+row).at(j+col));
 }
 
+<<<<<<< HEAD
+=======
+double MapGenerator::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    double lat1 = startCoord.first;
+    double lon1 = startCoord.second;
+    double lat2 = endCoord.first;
+    double lon2 = endCoord.second;
+
+    lat1 = lat1 * PI / 180.;
+    lat2 = lat2 * PI / 180.;
+    lon1 = lon1 * PI / 180.;
+    lon2 = lon2 * PI / 180.;
+
+    double distance_radians = acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2));
+    double distanceMeters = distance_radians * RADIUS_EARTH_METERS;
+    return distanceMeters;
+}
+
+>>>>>>> develop
 std::pair<double, double> MapGenerator::calcShiftedCoord(std::pair<double, double> coord, double dxMeters, double dyMeters)
 {
     double newLat = coord.first  + (dyMeters / RADIUS_EARTH_METERS) * (180. / PI);

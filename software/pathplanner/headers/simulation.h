@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿#ifndef SIMULATION_H
+=======
+#ifndef SIMULATION_H
+>>>>>>> develop
 #define SIMULATION_H
 
 #include <utility>
@@ -11,6 +15,7 @@
 
 #include "headers/mapcontroller.h"
 
+<<<<<<< HEAD
 struct Drone {
     Drone() {}
     Drone(std::string aDroneID, std::string aName, int operationStatus, int trackingEntry, int aGPSTimestamp) {
@@ -31,6 +36,8 @@ struct Drone {
 
 };
 
+=======
+>>>>>>> develop
 class Simulation
 {
 public:
@@ -38,6 +45,7 @@ public:
     ~Simulation();
 
 private:
+<<<<<<< HEAD
     void realSim();
     void droneSim();
     void mapSim(bool *stop, bool *stopped);
@@ -66,6 +74,12 @@ private:
 
    bool newPositionSet = false;
    std::pair<double, double> currentPosition;
+=======
+    void runSingle();
+
+private:
+   Pathfinder pathfinder;
+>>>>>>> develop
 
 };
 

@@ -11,6 +11,7 @@ MapController::~MapController()
 
 }
 
+<<<<<<< HEAD
 void MapController::addPreMapPenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
     PreMapPenaltyCircle temp;
@@ -50,6 +51,15 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     mapReady = true;
+=======
+void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    MapGenerator generator;
+    generator.generateMap(map, nodeCollections, startCoord, endCoord, 100, 10000, 5000);
+    pathImage = cv::Mat(int(map->size()), int(map->at(0).size()), CV_8UC3, cv::Scalar(0, 0, 0));
+    solver.setMap(map);
+    solver.setNodeCollections(nodeCollections);
+>>>>>>> develop
 }
 
 std::pair<std::size_t, std::size_t> MapController::getMapSize()
@@ -60,7 +70,11 @@ std::pair<std::size_t, std::size_t> MapController::getMapSize()
 /* Start the solver
  * It waits to ensure that the solver is in fact ready
  */
+<<<<<<< HEAD
 void MapController::startSolver(std::pair<double, double> worldCoord) // takes start coordinate 
+=======
+void MapController::startSolver(std::pair<double, double> worldCoord)
+>>>>>>> develop
 {
     //std::cout << "Scalar: " << std::is_scalar<std::pair<std::size_t, std::size_t>>::value << std::endl;
 
@@ -75,9 +89,25 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
 {
     currentHeading = std::make_shared<std::pair<std::size_t, std::size_t>>(getClosestNodeIndex(headingCoord));
 
+<<<<<<< HEAD
     for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
         if(*currentHeading.get() == *it) {
             solver.setCurrentHeading(currentHeading);
+=======
+    /*
+    std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
+    iterationCounter++;
+    std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
+    timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
+    std::cout << "Time2: " << timeCounter/iterationCounter << "  " << iterationCounter << std::endl;
+    */
+
+    for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
+        if(*currentHeading.get() == *it) {
+            solver.setCurrentHeading(currentHeading);
+
+
+>>>>>>> develop
             return;
         }
     }
@@ -86,6 +116,7 @@ void MapController::setCurrentHeading(std::pair<double, double> headingCoord)
     solver.setInitialPosition(currentHeading);
 }
 
+<<<<<<< HEAD
 void MapController::setCurrentPosition(std::pair<double, double> currentCoord)
 {
     //visualizer->printCurrentPositionImage(getClosestNodeIndex(currentCoord));
@@ -172,6 +203,23 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
     bool intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
     return intersectsWithFlightPath;
+=======
+void MapController::updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty)
+{
+    cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(col), int(row)));
+    color->val[2] = 255;
+    solver.updatePenaltyOfNode(row, col, penalty);
+}
+
+void MapController::updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > &positions, double penalty)
+{
+    for(std::pair<std::size_t, std::size_t> &pos : positions) {
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(pos.second), int(pos.first)));
+        color->val[2] = 255;
+    }
+
+    solver.updatePenaltyOfNodeGroup(positions, penalty);
+>>>>>>> develop
 }
 
 bool MapController::getPathToDestination(std::vector<std::pair<double, double> > &path)
@@ -181,6 +229,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
 
     bool succes = makePathToDestination(goalPosition, nodePath);
 
+<<<<<<< HEAD
     if(succes) {
         for(const auto &nodeIndex : nodePath)
             path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
@@ -207,10 +256,53 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     }
 
     return succes;
+=======
+    if(succes)
+        printPathImage(nodePath);
+
+    for(const auto &nodeIndex : nodePath)
+        path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
+
+    return succes;
+}
+
+void MapController::printPathImage(std::vector<std::pair<std::size_t, std::size_t>> &path)
+{
+    std::size_t currentPositionIndex = 0;
+    for(std::size_t i = 0; i < currentPath.size(); i++) {
+        if(currentPath[i] == *currentHeading.get()) {
+            currentPositionIndex = i;
+            break;
+        }
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
+        color->val[0] = 0;
+        color->val[1] = 100;
+    }
+
+    if(currentPositionIndex != 0)
+        for(std::size_t i = currentPositionIndex; i < currentPath.size(); i++) {
+            cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(currentPath[i].second), int(currentPath[i].first)));
+
+            color->val[0] = 255;
+            color->val[1] = 0;
+        }
+
+    for(std::size_t i = 0; i < path.size(); i++) {
+        cv::Vec3b *color = &pathImage.at<cv::Vec3b>(cv::Point(int(path[i].second), int(path[i].first)));
+        color->val[0] = 0;
+        color->val[1] = 255;
+    }
+
+    currentPath = path;
+
+    cv::imshow("image", pathImage);
+    cv::waitKey(1);
+>>>>>>> develop
 }
 
 std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair<double, double> worldCoord)
 {
+<<<<<<< HEAD
     int currentI = int(map->size()/2);
     int currentJ = int(map->at(0).size()/2);
 
@@ -218,6 +310,13 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
 
     double smallestDistance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
 
+=======
+    std::pair<double, double> nodeCoord = map->at(0).at(0)->getWorldCoordinate();
+    double smallestDistance =  calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
+
+    int currentI = 0;
+    int currentJ = 0;
+>>>>>>> develop
     int newI = 0;
     int newJ = 0;
     bool repeat = true;
@@ -228,9 +327,15 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
                 if(i == 0 && j == 0)
                     continue;
 
+<<<<<<< HEAD
                 if(isInsideMap(currentI + i, currentJ + j)) {
                     nodeCoord = map->at(std::size_t(currentI + i)).at(std::size_t(currentJ + j))->getWorldCoordinate();
                     double distance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
+=======
+                if(currentI + i >= 0 && currentI + i < int(map->size()) && currentJ + j >= 0 && currentJ + j < int(map->at(0).size())) {
+                    nodeCoord = map->at(std::size_t(currentI + i)).at(std::size_t(currentJ + j))->getWorldCoordinate();
+                    double distance = calcMeterDistanceBetweensCoords(worldCoord, nodeCoord);
+>>>>>>> develop
 
                     if(distance < smallestDistance) {
                         smallestDistance = distance;
@@ -280,6 +385,7 @@ bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos
     return makePathToDestination(sourcePos, path);
 }
 
+<<<<<<< HEAD
 bool MapController::isInsideMap(int row, int col)
 {
     if(row < 0 || col < 0)
@@ -314,4 +420,19 @@ bool MapController::checkIfIntersectionIsDangerous()
             return false;
     }
     return false;
+=======
+double MapController::calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord)
+{
+    startCoord.first = startCoord.first * PI / 180.;
+    endCoord.first = endCoord.first * PI / 180.;
+    startCoord.second = startCoord.second * PI / 180.;
+    endCoord.second = endCoord.second * PI / 180.;
+
+    if(startCoord.first - endCoord.first < 0.000000001 && startCoord.second - endCoord.second < 0.000000001)
+        return 0;
+
+    double distance_radians = acos(sin(startCoord.first) * sin(endCoord.first) + cos(startCoord.first) * cos(endCoord.first) * cos(startCoord.second - endCoord.second));
+    double distanceMeters = distance_radians * RADIUS_EARTH_METERS;
+    return distanceMeters;
+>>>>>>> develop
 }

@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 
 #include <iostream>
 #include <sstream>
@@ -17,4 +18,12 @@ int main(int argc, char **argv)
     rosMsg rosMsgObject;
 
     ros::spin();
+=======
+#include <iostream>
+
+#include "headers/simulation.h"
+
+int main() {
+    Simulation simulation;
+>>>>>>> develop
 }

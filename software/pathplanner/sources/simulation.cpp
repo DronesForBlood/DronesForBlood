@@ -1,12 +1,16 @@
 
 #include "headers/simulation.h"
+<<<<<<< HEAD
 #include "headers/pathshortener.h"
 #include "headers/pathexporter.h"
 #include "headers/global/geofunctions.h"
+=======
+>>>>>>> develop
 
 
 Simulation::Simulation()
 {
+<<<<<<< HEAD
     for(int i = 0; i < 5; i++) {
         std::string name = "Drone";
         name.append(std::to_string(i));
@@ -371,10 +375,26 @@ bool Simulation::updatePenaltyAreaPolygonDynamic()
     std::time_t to = from + 15;
 
     return controller->updatePenaltyOfAreaPolygon(polygonCoordinates, 10000, from, to);
+=======
+    int i = 1;
+    while(true) {
+        srand(i++);
+        runSingle();
+    }
+
+    while(true)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+}
+
+Simulation::~Simulation()
+{
+
+>>>>>>> develop
 }
 
 void Simulation::runSingle()
 {
+<<<<<<< HEAD
     std::cout << "NO" << std::endl;
     MapController test;
 
@@ -385,6 +405,14 @@ void Simulation::runSingle()
     //std::pair<double, double> endCoord(55.472070, 10.417255);
 
     test.generateMap(startCoord, endCoord, 50, 10000, 5000);
+=======
+    MapController test;
+
+    std::pair<double, double> startCoord(55.056010, 10.606016);
+    std::pair<double, double> endCoord(55.385354, 10.368279);
+
+    test.generateMap(startCoord, endCoord);
+>>>>>>> develop
 
     std::size_t mapSizeRow = test.getMapSize().first;
     std::size_t mapSizeCol = test.getMapSize().second;
@@ -394,6 +422,7 @@ void Simulation::runSingle()
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     std::vector<std::pair<double, double> > path;
+<<<<<<< HEAD
     std::vector<std::pair<double, double> > actualPath;
 
     std::pair<double, double> currentPosition = startCoord;
@@ -404,6 +433,18 @@ void Simulation::runSingle()
     std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
     while(true) {
 
+=======
+
+    std::pair<double, double> currentPosition = startCoord;
+
+    int i = 0;
+    int timeCounter = 0;
+
+    while(true) {
+
+        std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
+
+>>>>>>> develop
         bool succes = test.getPathToDestination(path);
         if(!succes || path.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -418,6 +459,7 @@ void Simulation::runSingle()
         currentPosition.first = path[path.size() - 1].first;
         currentPosition.second = path[path.size() - 1].second;
 
+<<<<<<< HEAD
         actualPath.push_back(currentPosition);
 
         test.setCurrentHeading(currentPosition);
@@ -460,3 +502,35 @@ std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::no
 timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
 std::cout << "Time2: " << timeCounter/iterationCounter << "  " << iterationCounter << std::endl;
 */
+=======
+        test.setCurrentHeading(currentPosition);
+
+        std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
+        timeCounter += std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count();
+        std::cout << "Time: " << timeCounter/i << "  " << i << std::endl;
+
+        if(rand() % 1 == 0) {
+            int randRow = rand() % mapSizeRow;
+            int randCol = rand() % mapSizeCol;
+            int minusRow = rand() % 20 + 5;
+            int minusCol = rand() % 20 + 5;
+
+            std::vector<std::pair<std::size_t, std::size_t> > positions;
+            for(int i = randRow - minusRow; i < randRow; i++)
+                for(int j = randCol - minusCol; j < randCol; j++)
+                    if(i > 0 && j > 0)
+                        positions.push_back(std::pair<std::size_t, std::size_t>(i,j));
+
+            test.updatePenaltyOfNodeGroup(positions, 1000);
+        }
+
+
+
+        //std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    std::cout << "Iterations: " << i << std::endl;
+    //std::chrono::steady_clock::time_point finishTime = std::chrono::steady_clock::now();
+    //std::cout << "Time to complete: " << std::chrono::duration_cast<std::chrono::milliseconds>(finishTime - beginTime).count() << std::endl;
+}
+>>>>>>> develop

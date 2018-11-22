@@ -7,6 +7,7 @@
 #include <math.h>
 #include <memory>
 #include <unistd.h>
+<<<<<<< HEAD
 
 
 #include "headers/global/defines.h"
@@ -32,12 +33,21 @@ struct PreMapPenaltyArea {
     time_t epochValidFrom = -1;
     time_t epochValidTo = -1;
 };
+=======
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+
+#include "headers/defines.h"
+#include "headers/pathfinder.h"
+#include "headers/mapgenerator.h"
+>>>>>>> develop
 
 class MapController
 {
 public:
     MapController();
     ~MapController();
+<<<<<<< HEAD
     bool getMapReady() { return mapReady;}
 
     void addPreMapPenaltyOfAreaCircle(std::pair<double,double> position, double radius, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
@@ -47,10 +57,14 @@ public:
 
 
 
+=======
+    void generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord);
+>>>>>>> develop
     std::pair<std::size_t, std::size_t> getMapSize();
     void setGoalPosition(std::pair<double,double> goalCoord) {goalPosition = getClosestNodeIndex(goalCoord);}
     void startSolver(std::pair<double, double> worldCoord);
     void setCurrentHeading(std::pair<double, double> headingCoord);
+<<<<<<< HEAD
     void setCurrentPosition(std::pair<double, double> currentCoord);
     bool updateDrone(std::string aDroneID, std::string aName, int operationStatus, int trackingEntry, int aGPSTimestamp, std::pair<double,double> position, std::pair<double,double> nextPosition);
     bool updatePenaltyOfAreaCircle(std::pair<double,double> position, double radius, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
@@ -58,11 +72,19 @@ public:
     bool getPathToDestination(std::vector<std::pair<double, double> > &path);
 
     std::pair<double,double> getWorldCoordAtIndex(std::size_t row, std::size_t col) {return map->at(row).at(col)->getWorldCoordinate();}
+=======
+    void updatePenaltyOfNode(std::size_t row, std::size_t col, double penalty);
+    void updatePenaltyOfNodeGroup(std::vector<std::pair<std::size_t, std::size_t> > &positions, double penalty);
+    bool getPathToDestination(std::vector<std::pair<double, double> > &path);
+
+    void printPathImage(std::vector<std::pair<std::size_t, std::size_t> > &path);
+>>>>>>> develop
 
 
 private:
     std::pair<std::size_t, std::size_t> getClosestNodeIndex(std::pair<double, double> worldCoord);
     bool makePathToDestination(std::pair<std::size_t,std::size_t> pos, std::vector<std::pair<std::size_t, std::size_t> > &path);
+<<<<<<< HEAD
     bool isInsideMap(int row, int col);
     bool checkIfIntersectionIsDangerous();
 
@@ -84,6 +106,19 @@ private:
     std::vector<std::pair<std::size_t, std::size_t>> currentShortPath;
     Pathfinder solver;
     bool mapReady = false;
+=======
+    double calcMeterDistanceBetweensCoords(std::pair<double, double> startCoord, std::pair<double, double> endCoord);
+
+private:
+    cv::Mat pathImage;
+    std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map;
+    std::vector<NodeCollection> nodeCollections;
+    std::pair<std::size_t,std::size_t> goalPosition;
+    std::pair<std::size_t,std::size_t> initPosition;
+    std::shared_ptr<std::pair<std::size_t,std::size_t>> currentHeading;
+    std::vector<std::pair<std::size_t, std::size_t>> currentPath;
+    Pathfinder solver;
+>>>>>>> develop
 
     int timeCounter = 0;
     int iterationCounter = 0;
