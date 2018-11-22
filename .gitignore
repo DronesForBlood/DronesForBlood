@@ -4,7 +4,7 @@
 *.d
 
 # Mavlink messages
-software/pathplanner/msg/mavlink_lora*
+**/mavlink_lora*
 
 # Compiled Object files
 *.slo
