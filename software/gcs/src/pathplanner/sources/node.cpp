@@ -102,8 +102,7 @@ void Node::resetNode()
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
     for(std::weak_ptr<Node> neighbor : nodes) {
-        //double distance = sqrt(pow(worldCoordinate.first - neighbor.lock()->getWorldCoordinate().first, 2) + pow(worldCoordinate.second - neighbor.lock()->getWorldCoordinate().second, 2));
-        int distance = calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
+        int distance = int(GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate()));
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
     }

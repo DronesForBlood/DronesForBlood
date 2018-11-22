@@ -371,26 +371,10 @@ bool Simulation::updatePenaltyAreaPolygonDynamic()
     std::time_t to = from + 15;
 
     return controller->updatePenaltyOfAreaPolygon(polygonCoordinates, 10000, from, to);
-=======
-    int i = 1;
-    while(true) {
-        srand(i++);
-        runSingle();
-    }
-
-    while(true)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-}
-
-Simulation::~Simulation()
-{
-
->>>>>>> develop
 }
 
 void Simulation::runSingle()
 {
-<<<<<<< HEAD
     std::cout << "NO" << std::endl;
     MapController test;
 
@@ -413,10 +397,11 @@ void Simulation::runSingle()
     std::vector<std::pair<double, double> > actualPath;
 
     std::pair<double, double> currentPosition = startCoord;
+    actualPath.push_back(currentPosition);
 
     int i = 0;
-    int timeCounter = 0;
 
+    std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now();
     while(true) {
 
         bool succes = test.getPathToDestination(path);
