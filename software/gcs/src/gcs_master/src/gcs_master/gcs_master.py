@@ -29,6 +29,7 @@ class GcsMasterNode():
     # Node variables
     HEARBEAT_PERIOD = 0.5       # Seconds
     HEARTBEAT_TIMEOUT = 1.5     # Seconds
+    BATTERY_CHECK_TIMEOUT = 5   # Seconds
 
     def __init__(self):
 
@@ -38,6 +39,7 @@ class GcsMasterNode():
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
         self.heartbeat_send_time = 0.0
+        self.battery_check_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
         # Dronelink topic susbscribers
@@ -51,6 +53,9 @@ class GcsMasterNode():
                          mavlink_lora.msg.mavlink_lora_mission_list,
                          self.pathplanner_newplan_callback)
         # Mavlink topic susbscribers
+        rospy.Subscriber("mavlink_status",
+                         mavlink_lora.msg.mavlink_lora_status,
+                         self.mavlink_status_callback, queue_size=1)
         rospy.Subscriber("mavlink_heartbeat_rx",
                          mavlink_lora.msg.mavlink_lora_heartbeat,
                          self.heartbeat_callback, queue_size=1)
@@ -157,9 +162,14 @@ class GcsMasterNode():
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
 
+    def mavlink_status_callback(self, data):
+        self.state_machine.batt_level = data.batt_remaining
+        return
+
     def heartbeat_callback(self, data):
         self.state_machine.comm_ok = True
         self.heartbeat_receive_time = rospy.get_time()
+        return
 
     def mavlink_ack_callback(self, data):
         ## Check if command is acknowledged
@@ -288,6 +298,10 @@ class GcsMasterNode():
 
         while not rospy.is_shutdown():
             now = rospy.get_time()
+            # Check the ramaining battery level is over threshold
+            if now > self.battery_check_time + self.BATTERY_CHECK_TIMEOUT:
+                self.state_machine.check_battery()
+                self.battery_check_time = rospy.get_time()
             # Update the state of the FSM.
             self.state_machine.update_state()
             self.state_machine.update_outputs()

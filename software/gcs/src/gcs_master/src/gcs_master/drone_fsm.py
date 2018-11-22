@@ -14,6 +14,8 @@ class DroneFSM():
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     TAKEOFF_ALTITUDE = 10   # Altitude set point, in meters, after taking off
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
+    MIN_TAKEOFF_BAT = 80    # Minimum battery level for taking off
+    MIN_FLY_BAT = 30        # Battery warning raised below this level
 
     def __init__(self, max_lowbatt_distance=100):
         """
@@ -46,8 +48,10 @@ class DroneFSM():
         self.armed = False                  # Armed / Disarmed
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
-        self.batt_ok = False                # Battery status
+        self.takeoff_batt_ok = False        # Enough battery for taking off
+        self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
+        self.batt_level = 0                 # Reamining battery capacity
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
@@ -81,7 +85,7 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission and self.comm_ok:
+            if self.new_mission and self.comm_ok and self.takeoff_batt_ok:
                 self.__state = "arm"
                 self.new_mission = False
                 self.state_to_log()
@@ -243,6 +247,22 @@ class DroneFSM():
         else:
             raise ValueError("Unrecognized state '{}'".format(self.__state))
         return
+
+    def check_battery(self):
+        if self.batt_level > self.MIN_TAKEOFF_BAT:
+            self.takeoff_batt_ok = True
+        else:
+            self.takeoff_batt_ok = False
+            if self.__state == "start":
+                rospy.logwarn("Low battery level: {}%. Take off not allowed"
+                              "".format(self.batt_level))
+        if self.batt_level > self.MIN_FLY_BAT:
+            self.batt_ok = True
+        else:
+            self.batt_ok = False
+            rospy.logwarn("WARNING: Very low battery level: {}%"
+                          "".format(self.batt_level))
+        return self.takeoff_batt_ok
 
     def get_state(self):
         """
