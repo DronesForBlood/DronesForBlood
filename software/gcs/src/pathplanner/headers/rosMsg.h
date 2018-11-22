@@ -19,10 +19,9 @@
 #include <PATHPLANNER/no_flight_circle.h>
 #include <PATHPLANNER/no_flight_area.h>
 
-
-//#include <mavlink_lora/mavlink_lora_mission_item_int.h>
-//#include <mavlink_lora/mavlink_lora_mission_list.h>
-//#include <mavlink_lora/mavlink_lora_pos.h>
+#include <mavlink_lora/mavlink_lora_mission_item_int.h>
+#include <mavlink_lora/mavlink_lora_mission_list.h>
+#include <mavlink_lora/mavlink_lora_pos.h>
 
 #include "headers/mapcontroller.h"
 
@@ -34,37 +33,50 @@ class rosMsg
     rosMsg();
     ~rosMsg();
 
-   void addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg);
-   void addNoFlightArea(const PATHPLANNER::no_flight_area &msg);
-   void setupMap(const PATHPLANNER::start_end_coord &msg); //callackb
-   void requestPath(const std_msgs::Bool &msg);
-   void subStart();
-   void subEnd();
+    // UTM
+    void addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg);
+    void addNoFlightArea(const PATHPLANNER::no_flight_area &msg);
+
+    // Dronelink
+    void setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg);
+
+    // User interface
+    void setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg);
+
+    // Mavlink_lora
+    void calculatePath(const std_msgs::Bool &msg);
+
+    void generateNewMap();
+
+    void subStart();
 
 private:
 
+    ros::NodeHandle n;
 
- private:
+    ros::Publisher pubPath;
 
-   ros::NodeHandle n;
+    ros::Subscriber subCurrentPosition;
+    ros::Subscriber subGoalPosition;
+    ros::Subscriber subCalculatePath;
 
-   ros::Publisher pub;
+    ros::Subscriber subNoFlightCircles;
+    ros::Subscriber subNoFlightAreas;
 
-   ros::Subscriber subMap;
-   ros::Subscriber subRequestPath;
-   ros::Subscriber subNoFlightCircles;
-   ros::Subscriber subNoFlightAreas;
+    std::vector<std::pair<double, double> > path;
+    std::pair<double, double> currentCoord;
+    std::pair<double, double> goalCoord;
+    int nodeDist;
+    int mapWidth;
+    int padLength;
 
-   std::vector<std::pair<double, double> > path;
-   std::pair<double, double> startCoord;
-   std::pair<double, double> endCoord;
-   int nodeDist;
-   int mapWidth;
-   int padLength;
+    int altitude = 20;
 
-   MapController controller;
+    MapController controller;
 
-   bool solvingStarted = false;
+    bool solvingStarted = false;
+    bool currentCoordSet = false;
+    bool goalCoordSet = false;
 
 };
 

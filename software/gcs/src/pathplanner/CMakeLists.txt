@@ -8,7 +8,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
 find_package(OpenCV REQUIRED) 
-find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation)
+find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation mavlink_lora)
 
 catkin_python_setup()
 
@@ -26,7 +26,6 @@ add_message_files(
   no_flight_area.msg
   utm_tracking_data.msg
 
-
   #mavlink_lora_pos.msg
   #mavlink_lora_mission_list.msg
 )
@@ -34,7 +33,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
-  #mavlink_lora.msg
+  mavlink_lora
 )
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -106,6 +105,7 @@ add_executable(${PROJECT_NAME}
 
 add_dependencies(PATHPLANNER PATHPLANNER_generate_messages_cpp)
 
+add_dependencies(PATHPLANNER ${catkin_EXPORTED_TARGETS})
 #add_dependencies(mavlink_lora_node mavlink_lora_generate_messages_cpp)
 
 target_link_libraries(${PROJECT_NAME}
@@ -121,11 +121,6 @@ target_link_libraries(${PROJECT_NAME}
 add_executable(SIM sources/sim.cpp)
 target_link_libraries(SIM ${catkin_LIBRARIES})
 add_dependencies(SIM PATHPLANNER_generate_messages_cpp)
-
-
-#add_executable(UTM sources/UTM/get_uav_technical_data.py)
-#target_link_libraries(UTM ${catkin_LIBRARIES})
-#add_dependencies(UTM PATHPLANNER_generate_messages_cpp)
 
 
 

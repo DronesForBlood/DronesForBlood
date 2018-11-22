@@ -4,18 +4,25 @@
 #include <sstream>
 
 #include <ros/ros.h>
-#include <PATHPLANNER/start_end_coord.h>
-#include <PATHPLANNER/flight_mission.h>
-#include <PATHPLANNER/request_flight_mission.h>
-#include <PATHPLANNER/add_no_flight_circle.h>
-#include <PATHPLANNER/add_no_flight_area.h>
+#include <std_msgs/Bool.h>
 
-void gotPath(const PATHPLANNER::flight_mission &msg)
+#include <PATHPLANNER/no_flight_circle.h>
+#include <PATHPLANNER/no_flight_area.h>
+
+#include <mavlink_lora/mavlink_lora_mission_item_int.h>
+#include <mavlink_lora/mavlink_lora_mission_list.h>
+#include <mavlink_lora/mavlink_lora_pos.h>
+
+
+void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
 {
-    std::vector<double> path = msg.mission_list;
+    std::cout << "GOT PATH!" << std::endl;
+    /*
+    std::vector<double> path = msg.;
 
     for(int i = 0; i < path.size(); i += 2)
         std::cout << path[i] << "    " << path[i+1] << std::endl;
+        */
 }
 
 
@@ -26,38 +33,42 @@ int main(int argc, char **argv)
 
     ros::NodeHandle n;
 
-    ros::Publisher chatter_pub = n.advertise<PATHPLANNER::start_end_coord>("mapParam", 1000);
-    ros::Publisher pubRequestPath = n.advertise<PATHPLANNER::request_flight_mission>("requestPath", 1000);
+    ros::Publisher currentPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("mavlink_pos", 1);
+    ros::Publisher goalPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("dronelink/destination", 1);
+    ros::Publisher calculatePathPub = n.advertise<std_msgs::Bool>("gcs_master/calculate_path", 1);
 
-    ros::Subscriber subPath = n.subscribe("flightMission", 1, &gotPath);
+    ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
 
-    PATHPLANNER::start_end_coord temp;
+    mavlink_lora::mavlink_lora_pos currentPositionMsg;
+    currentPositionMsg.lat = 55.056010;
+    currentPositionMsg.lon = 10.606016;
 
-    std::vector<double> flyCoords {55.056010, 10.606016, 55.185354, 10.468279};
-    temp.coords = flyCoords;
+    mavlink_lora::mavlink_lora_pos goalPositionMsg;
+    goalPositionMsg.lat = 55.185354;
+    goalPositionMsg.lon = 10.468279;
 
-    std::vector<long> params {20, 2000, 1000 };
-    temp.mapParams = params;
-
-	ros::Rate loopRate(1);
+    ros::Rate loopRate(0.5);
 
     ros::spinOnce();
     loopRate.sleep();
 
     bool first = true;
-
 	
 	while(ros::ok()) {
 	
         std::cout << "Running.." << std::endl;
 
         if(first) {
-            chatter_pub.publish(temp);
+            currentPositionPub.publish(currentPositionMsg);
+            goalPositionPub.publish(goalPositionMsg);
             first = false;
         }
 
-        PATHPLANNER::request_flight_mission requestMsg;
-        pubRequestPath.publish(requestMsg);
+        std_msgs::Bool msg;
+        calculatePathPub.publish(msg);
+
+        //PATHPLANNER::request_flight_mission requestMsg;
+        //pubRequestPath.publish(requestMsg);
 
     	ros::spinOnce();
     	loopRate.sleep();
@@ -66,4 +77,5 @@ int main(int argc, char **argv)
 
     ros::spin();
 }
+
 
