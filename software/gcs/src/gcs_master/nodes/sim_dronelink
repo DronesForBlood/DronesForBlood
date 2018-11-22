@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""
+Node that simulates the user link, requesting a new mission.
+"""
+# Standard libraries
+# Third-party libraries
+import rospy
+import geometry_msgs.msg
+import std_msgs.msg
+# Local libraries
+from gcs_master import drone_fsm
+try:
+    import mavlink_lora.msg
+except ModuleNotFoundError:
+    print("Mavlink module not found")
+
+
+class DronelinkSimNode():
+
+    def __init__(self):
+        self.lat = 0
+        self.lon = 0
+        self.alt = 0
+
+        self.run_loop = True
+        # ROS node initialization
+        rospy.init_node("sim_dronelink", anonymous=True)
+
+        # Publishers configuration
+        self.new_mission_pub = rospy.Publisher("dronelink/start",
+                                               std_msgs.msg.Bool,
+                                               queue_size=1)
+        self.dest_pub = rospy.Publisher("dronelink/destination",
+                                        mavlink_lora.msg.mavlink_lora_pos,
+                                        queue_size=1)
+
+        # Subscribers configuration
+        rospy.Subscriber("mavlink_interface/command/arm_disarm",
+                         std_msgs.msg.Bool, self.ack_callback, queue_size=1)
+        rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
+                         self.mavlink_pos_callback, queue_size=1)
+
+    def ack_callback(self, data):
+        self.run_loop = False
+        return
+
+    def mavlink_pos_callback(self, data):
+        self.lat = data.lat
+        self.lon = data.lon
+        self.alt = data.alt
+        return
+
+    def main(self):
+        rate = rospy.Rate(1)
+        while self.run_loop and not rospy.is_shutdown():
+            rospy.loginfo("Requesting new mission")
+            # Publish destination coordinates
+            msg = mavlink_lora.msg.mavlink_lora_pos()
+            msg.lat = self.lat
+            msg.lon = self.lon
+            msg.alt = self.alt
+            self.dest_pub.publish(msg)
+            self.new_mission_pub.publish(True)
+            rate.sleep()
+        return
+
+
+if __name__ == "__main__":
+    dronelink_node = DronelinkSimNode()
+    dronelink_node.main()

@@ -1,0 +1,9 @@
+
+<launch>
+
+    <node pkg="gcs_master" type="gcs_master" name="gcs_master" output= "screen"/>
+    <node pkg="gcs_master" type="sim_pathplanner" name="sim_pathplanner" output= "screen"/>
+    <node pkg="gcs_master" type="sim_dronelink" name="sim_dronelink" output= "screen"/>
+    <test test-name="drone_fsm_test" pkg="gcs_master" type="test_drone_fsm.py"/>
+
+</launch>
