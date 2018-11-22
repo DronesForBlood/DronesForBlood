@@ -26,5 +26,5 @@ socat -d -d pty,raw,echo=0,link=/tmp/ttyV5 pty,raw,echo=0,link=/tmp/ttyV6 &
 socat -d udp4-listen:14540 open:/tmp/ttyV5,raw,nonblock,waitlock=/tmp/s0.locak,echo=0,b115200,crnl &
 
 # Launch SITL with gazebo, without mavros
-roslaunch px4 posix_sitl.launch
+roslaunch px4 posix_sitl_irlock.launch
 
