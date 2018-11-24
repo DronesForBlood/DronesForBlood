@@ -11,8 +11,26 @@ rosMsg::~rosMsg()
 
 }
 
-void rosMsg::addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg)
+void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 {
+    std::cout << "addNoFlightCircle at " << msg.lat << ", " << msg.lon << std::endl;
+
+    /*
+    NoFlightCircle zone;
+    zone.id = int(msg.id);
+    zone.name = msg.name;
+    zone.coord.first = msg.lat;
+    zone.coord.second = msg.lon;
+    zone.epochValidFrom = int(msg.epochValidFrom);
+    zone.epochValidTo = int(msg.epochValidTo);
+
+    circleZones.push_back(zone);
+
+
+
+    return;
+    */
+
     std::pair<double,double> coord;
     coord.first = msg.lat;
     coord.second = msg.lon;
@@ -21,10 +39,30 @@ void rosMsg::addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg)
         controller.updatePenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
         controller.addPreMapPenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
+
 }
 
-void rosMsg::addNoFlightArea(const PATHPLANNER::no_flight_area &msg)
+void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 {
+    /*
+    std::cout << "addNoFlightArea" << std::endl;
+
+    NoFlightArea zone;
+    zone.id = int(msg.id);
+    zone.name = msg.name;
+    zone.epochValidFrom = int(msg.epochValidFrom);
+    zone.epochValidTo = int(msg.epochValidTo);
+
+    for(size_t i = 0; i < msg.polygonCoordinates.size(); i += 2) {
+        std::pair<double,double> coord(msg.polygonCoordinates[i], msg.polygonCoordinates[i+1]);
+        zone.coordinates.push_back(coord);
+    }
+
+    areaZones.push_back(zone);
+
+    return;
+    */
+
     std::vector<std::pair<double,double>> coords;
 
     for(size_t i = 0; i < msg.polygonCoordinates.size(); i += 2) {
@@ -36,10 +74,13 @@ void rosMsg::addNoFlightArea(const PATHPLANNER::no_flight_area &msg)
         controller.updatePenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
         controller.addPreMapPenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
+
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
+    std::cout << "setCurrentPosition" << std::endl;
+
     currentCoord.first = msg.lat;
     currentCoord.second = msg.lon;
 
@@ -54,6 +95,8 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 
 void rosMsg::setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
+    std::cout << "setGoalPosition" << std::endl;
+
     goalCoord.first = msg.lat;
     goalCoord.second = msg.lon;
 
@@ -65,6 +108,8 @@ void rosMsg::setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg)
 
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
 {
+    std::cout << "calculatePath" << std::endl;
+
     mavlink_lora::mavlink_lora_mission_list newMsg;
 
     bool succes = controller.getPathToDestination(path);
@@ -112,11 +157,11 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
 void rosMsg::generateNewMap()
 {
-    solvingStarted = true;
+    std::cout << "generateNewMap" << std::endl;
 
-    nodeDist = 10;
-    mapWidth =  500;
-    padLength = 250;
+    nodeDist = 2;
+    mapWidth =  100;
+    padLength = 50;
 
     std::cout << "startCoord: " << currentCoord.first << " " << currentCoord.second << std::endl;
     std::cout << "endCoord: " << goalCoord.first << " " << goalCoord.second << std::endl;
@@ -126,23 +171,41 @@ void rosMsg::generateNewMap()
 
     controller.generateMap(currentCoord, goalCoord, nodeDist, mapWidth, padLength);
     controller.setGoalPosition(goalCoord);
+
+    //for(auto &it : circleZones)
+    //    controller.addPreMapPenaltyOfAreaCircle(it.coord, it.radius, 10000, it.epochValidFrom, it.epochValidTo);
+
+    //for(auto &it : areaZones)
+    //    controller.addPreMapPenaltyOfAreaPolygon(it.coordinates, 10000, it.epochValidFrom, it.epochValidTo);
+
+    solvingStarted = true;
+
+    std::cout << "generateNewMap start" << std::endl;
     controller.startSolver(currentCoord);
+    std::cout << "generateNewMap start done" << std::endl;
 
     while(!controller.getMapReady())
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::cout << "generateNewMap ready" << std::endl;
 };
 
 void rosMsg::subStart()
 {
-    std::cout << "subStart" << std::endl;
+    std::cout << "Subscribe and publish begin" << std::endl;
 
     subCurrentPosition = n.subscribe("mavlink_pos", 1, &rosMsg::setCurrentPosition, this );
     subGoalPosition = n.subscribe("dronelink/destination", 1, &rosMsg::setGoalPosition, this );
     subCalculatePath = n.subscribe("gcs_master/calculate_path", 1, &rosMsg::calculatePath, this );
 
-    subNoFlightCircles = n.subscribe("noFlightCircles", 1000, &rosMsg::addNoFlightCircle, this);
-
-    subNoFlightAreas = n.subscribe("noFlightAreas", 1000, &rosMsg::addNoFlightArea, this);
+    subNoFlightCircles = n.subscribe("utm/fetch_no_flight_circles", 1000, &rosMsg::addNoFlightCircle, this);
+    subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
 
     pubPath  = n.advertise<mavlink_lora::mavlink_lora_mission_list>("pathplanner/mission_list", 1);
+    pubFetchNoFlightZones = n.advertise<std_msgs::Bool>("utm/request_no_flight_zones", 1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std_msgs::Bool msg;
+    pubFetchNoFlightZones.publish(msg);
+
+    std::cout << "Subscribe and publish completed" << std::endl;
 };

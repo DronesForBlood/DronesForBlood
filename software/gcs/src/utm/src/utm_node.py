@@ -15,10 +15,12 @@ import rospy
 import geometry_msgs.msg
 import std_msgs.msg
 
-from PATHPLANNER.msg import no_flight_circle
-from PATHPLANNER.msg import no_flight_area
-from PATHPLANNER.msg import utm_tracking_data
-from PATHPLANNER.msg import request
+from std_msgs.msg import Bool
+
+from utm.msg import utm_tracking_data
+from utm.msg import utm_no_flight_circle
+from utm.msg import utm_no_flight_area
+
 
 import sys
 import requests
@@ -41,39 +43,38 @@ class UTM_node:
         rospy.init_node('UTM_node', anonymous=True)
 
         # Subscribers
-        rospy.Subscriber("utm_add_tracking_data",
+        rospy.Subscriber("utm/add_tracking_data",
                          utm_tracking_data,
                          self.add_tracking_data_callback,
                          queue_size=1)
 
-        rospy.Subscriber("utm_request_no_flight_zones",
-                         request,
+        rospy.Subscriber("utm/request_no_flight_zones",
+                         Bool,
                          self.request_no_flight_zones_callback,
                          queue_size=1)
 
         # Publishers
-
         self.tracking_data_pub = rospy.Publisher(
-            "fetch_tracking_data",
+            "utm/fetch_tracking_data",
             utm_tracking_data,
             queue_size=1)
 
         self.no_flight_areas_pub = rospy.Publisher(
-            "fetch_no_flight_areas",
-            no_flight_area,
+            "utm/fetch_no_flight_areas",
+            utm_no_flight_area,
             queue_size=1000)
 
         self.no_flight_circles_pub = rospy.Publisher(
-            "fetch_no_flight_circles",
-            no_flight_circle,
+            "utm/fetch_no_flight_circles",
+            utm_no_flight_circle,
             queue_size=1000)
 
 
 
 
     def run(self):
-        rospy.sleep(0.5)
-        rate = rospy.Rate(1)
+        rospy.sleep(1)
+        rate = rospy.Rate(0.1)
 
         while not rospy.is_shutdown():
             self.fetch_tracking_data()
@@ -164,7 +165,7 @@ class UTM_node:
                 print(colored('Status code: %i' % r.status_code, 'yellow'))
                 print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
-    def request_no_flight_zones_callback(self):
+    def request_no_flight_zones_callback(self, msg):
         self.fetch_static_no_fly_zones()
         self.fetch_dynamic_no_fly_zones()
 
@@ -192,7 +193,7 @@ class UTM_node:
                 for entry in data_dict:
 
                     if(entry['uav_id'] in already_tracked_uavs):
-                        print(entry['uav_id'], " already exists!")
+                        #print(entry['uav_id'], " already exists!")
                         continue
 
                     already_tracked_uavs.append(entry['uav_id'])
@@ -215,6 +216,7 @@ class UTM_node:
                     msg.wp_next_eta_epoch = entry['wp_next_eta_epoch']
                     msg.uav_bat_soc = entry['uav_bat_soc']
 
+                    print("Publish UAV")
                     self.tracking_data_pub.publish(msg)
 
     def fetch_static_no_fly_zones(self):
@@ -245,9 +247,10 @@ class UTM_node:
                 number_of_zones = reader.get_number_of_zones()
 
                 for i in range(number_of_zones):
-                    msg = no_flight_area
+                    print("SENDING STATIC ZONE")
+                    msg = utm_no_flight_area()
 
-                    msg.id = reader.get_zone_id(i)
+                    msg.id = i #reader.get_zone_id(i)
                     msg.name = reader.get_zone_name(i)
                     coordinates = reader.get_zone_coordinates(i)
 
@@ -260,7 +263,15 @@ class UTM_node:
                     msg.epochValidFrom = -1
                     msg.epochValidTo = -1
 
+                    #print(msg.id)
+                    #print(msg.name)
+                    #print(msg.polygonCoordinates)
+                    #print(msg.epochValidFrom)
+                    #print(msg.epochValidTo)
+
+                    #print("SEND")
                     self.no_flight_areas_pub.publish(msg)
+
 
     def fetch_dynamic_no_fly_zones(self):
         payload = {
@@ -282,12 +293,14 @@ class UTM_node:
                 print(colored('Error in parsing of data to JSON', 'red'))
             else:
                 for entry in data_dict:
+                    print("SENDING DYNAMIC ZONE")
+
                     zone_type = entry['geometry']
 
                     if zone_type == "circle":
-                        msg = no_flight_circle
+                        msg = utm_no_flight_circle()
 
-                        msg.id = entry['int_id']
+                        msg.id = int(entry['int_id'])
                         msg.name = entry['name']
 
                         coordinate = entry['coordinates']
@@ -297,19 +310,19 @@ class UTM_node:
                         msg.lon = float(coordinate[0])
                         msg.radius = float(coordinate[2])
 
-                        msg.epochValidFrom = entry['valid_from_epoch']
-                        msg.epochValidTo = entry['valid_to_epoch']
+                        msg.epochValidFrom = int(entry['valid_from_epoch'])
+                        msg.epochValidTo = int(entry['valid_to_epoch'])
 
                         self.no_flight_circles_pub.publish(msg)
 
                     elif zone_type == "polygon":
-                        msg = no_flight_area
+                        msg = utm_no_flight_area()
 
-                        msg.id = entry['int_id']
+                        msg.id = int(entry['int_id'])
                         msg.name = entry['name']
 
-                        msg.epochValidFrom = entry['valid_from_epoch']
-                        msg.epochValidTo = entry['valid_to_epoch']
+                        msg.epochValidFrom = int(entry['valid_from_epoch'])
+                        msg.epochValidTo = int(entry['valid_to_epoch'])
 
                         coordinates = entry['coordinates']
                         coordinates = coordinates.split(' ')

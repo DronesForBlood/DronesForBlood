@@ -42,12 +42,12 @@ int main(int argc, char **argv)
     ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
 
     mavlink_lora::mavlink_lora_pos currentPositionMsg;
-    currentPositionMsg.lat = 55.056010;
-    currentPositionMsg.lon = 10.606016;
+    currentPositionMsg.lat = 55.472015;
+    currentPositionMsg.lon = 10.414711;
 
     mavlink_lora::mavlink_lora_pos goalPositionMsg;
-    goalPositionMsg.lat = 55.185354;
-    goalPositionMsg.lon = 10.468279;
+    goalPositionMsg.lat = 55.472127;
+    goalPositionMsg.lon = 10.417346;
 
     ros::Rate loopRate(0.5);
 
@@ -64,16 +64,21 @@ int main(int argc, char **argv)
             currentPositionPub.publish(currentPositionMsg);
             goalPositionPub.publish(goalPositionMsg);
             first = false;
+            ros::spinOnce();
+            loopRate.sleep();
+            ros::Duration(10).sleep();
+        }
+        else {
+            std_msgs::Bool msg;
+            calculatePathPub.publish(msg);
+
+            //PATHPLANNER::request_flight_mission requestMsg;
+            //pubRequestPath.publish(requestMsg);
+
+            ros::spinOnce();
+            loopRate.sleep();
         }
 
-        std_msgs::Bool msg;
-        calculatePathPub.publish(msg);
-
-        //PATHPLANNER::request_flight_mission requestMsg;
-        //pubRequestPath.publish(requestMsg);
-
-    	ros::spinOnce();
-    	loopRate.sleep();
 	}
 
 

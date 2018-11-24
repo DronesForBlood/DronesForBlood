@@ -115,7 +115,7 @@ void Node::checkAndUpdateNeighbors()
         neighborNode->lockAccessNode();
         int costToMove = neighbor.distance + cost;
         int penaltyToMove = neighborNode->getPenalty() + totalPenalty + neighborNode->getPenaltyForDynamicZones(cost);
-        int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty() - MINIMUM_DISTANCE_CHANGE;
+        int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty(); // MINIMUM_DISTANCE_CHANGE;
         if((costToMove + penaltyToMove < neighborTotalCost || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
             neighborNode->setTotalPentaly(penaltyToMove);

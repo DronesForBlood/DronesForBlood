@@ -13,19 +13,34 @@
 #include <std_msgs/builtin_int64.h>
 #include <std_msgs/Bool.h>
 //#include <std_msgs/String.h>
-#include <PATHPLANNER/start_end_coord.h>
-#include <PATHPLANNER/flight_mission.h>
-#include <PATHPLANNER/request.h>
-#include <PATHPLANNER/no_flight_circle.h>
-#include <PATHPLANNER/no_flight_area.h>
+#include <pathplanner/start_end_coord.h>
+#include <pathplanner/flight_mission.h>
 
 #include <mavlink_lora/mavlink_lora_mission_item_int.h>
 #include <mavlink_lora/mavlink_lora_mission_list.h>
 #include <mavlink_lora/mavlink_lora_pos.h>
 
+#include <utm/utm_no_flight_area.h>
+#include <utm/utm_no_flight_circle.h>
+
 #include "headers/mapcontroller.h"
 
+struct NoFlightArea {
+    int id;
+    std::string name;
+    std::vector<std::pair<double,double>> coordinates;
+    int epochValidFrom;
+    int epochValidTo;
+};
 
+struct NoFlightCircle {
+    int id;
+    std::string name;
+    std::pair<double,double> coord;
+    double radius;
+    int epochValidFrom;
+    int epochValidTo;
+};
 
 class rosMsg
 {
@@ -34,8 +49,8 @@ class rosMsg
     ~rosMsg();
 
     // UTM
-    void addNoFlightCircle(const PATHPLANNER::no_flight_circle &msg);
-    void addNoFlightArea(const PATHPLANNER::no_flight_area &msg);
+    void addNoFlightCircle(const utm::utm_no_flight_circle &msg);
+    void addNoFlightArea(const utm::utm_no_flight_area &msg);
 
     // Dronelink
     void setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg);
@@ -55,6 +70,7 @@ private:
     ros::NodeHandle n;
 
     ros::Publisher pubPath;
+    ros::Publisher pubFetchNoFlightZones;
 
     ros::Subscriber subCurrentPosition;
     ros::Subscriber subGoalPosition;
@@ -77,6 +93,9 @@ private:
     bool solvingStarted = false;
     bool currentCoordSet = false;
     bool goalCoordSet = false;
+
+    std::vector<NoFlightCircle> circleZones;
+    std::vector<NoFlightArea> areaZones;
 
 };
 
