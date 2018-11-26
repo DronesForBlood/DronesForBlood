@@ -198,6 +198,7 @@ class DroneFSM():
 
         # TAKING OFF state
         elif self.__state == "take_off":
+            now = rospy.get_time()
             if  now > self.__state_timer + self.TIMEOUT:
                 self.CALCULATE_PATH = True
             pass
