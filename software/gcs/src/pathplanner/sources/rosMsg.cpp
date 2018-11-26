@@ -188,7 +188,8 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
 void rosMsg::generateNewMap()
 {
-    while(numberOfZonesReceived < numberOfExpectedZones)
+    std::cout << "Try generateNewMap" << std::endl;
+    if(!initialZonesLoaded)
         return;
 
     std::cout << "generateNewMap" << std::endl;
