@@ -22,6 +22,7 @@
 
 #include <utm/utm_no_flight_area.h>
 #include <utm/utm_no_flight_circle.h>
+#include <utm/utm_tracking_data.h>
 
 #include "headers/mapcontroller.h"
 
@@ -38,6 +39,7 @@ class rosMsg
     void setNumberOfExpectedZones(const std_msgs::Int64 &msg);
     void addNoFlightCircle(const utm::utm_no_flight_circle &msg);
     void addNoFlightArea(const utm::utm_no_flight_area &msg);
+    void checkDrones(const utm::utm_tracking_data &msg);
 
     // Dronelink
     void setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg);
@@ -53,6 +55,7 @@ class rosMsg
     void subStart();
 
     void checkForNewNoFlightZones();
+    void checkForDrones();
 
 private:
     bool checkIfIDExists(int id);
@@ -63,6 +66,7 @@ private:
 
     ros::Publisher pubPath;
     ros::Publisher pubFetchNoFlightZones;
+    ros::Publisher pubFetchDrones;
 
     ros::Subscriber subCurrentPosition;
     ros::Subscriber subGoalPosition;
@@ -71,6 +75,7 @@ private:
     ros::Subscriber subNumberOfZones;
     ros::Subscriber subNoFlightCircles;
     ros::Subscriber subNoFlightAreas;
+    ros::Subscriber subDrones;
 
     ros::Publisher pubIsReady;
     ros::Subscriber subIsReady;
@@ -93,7 +98,7 @@ private:
 
     std::vector<int> dynamicIDs;
 
-    std::mutex incrementZonesMutex;
+    std::mutex zoneMutex;
     int numberOfExpectedZones = INT_MAX;
     int numberOfZonesReceived = 0;
 

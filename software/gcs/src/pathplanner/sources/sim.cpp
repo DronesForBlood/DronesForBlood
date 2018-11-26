@@ -13,6 +13,8 @@
 #include <mavlink_lora/mavlink_lora_mission_list.h>
 #include <mavlink_lora/mavlink_lora_pos.h>
 
+#include <utm/utm_tracking_data.h>
+
 static bool isReady = false;
 
 void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
@@ -48,6 +50,8 @@ int main(int argc, char **argv)
     //ros::Publisher goalPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("dronelink/destination", 1);
     ros::Publisher calculatePathPub = n.advertise<std_msgs::Bool>("gcs_master/calculate_path", 1);
     ros::Publisher readyPub = n.advertise<mavlink_lora::mavlink_lora_pos>("pathplanner/get_is_ready", 1);
+    ros::Publisher dronePub = n.advertise<utm::utm_tracking_data>("utm/add_tracking_data", 1);
+
 
     ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
     ros::Subscriber readySub = n.subscribe("pathplanner/is_ready", 1, &pathplannerReady);
@@ -60,10 +64,29 @@ int main(int argc, char **argv)
     goalPositionMsg.lat = 55.472127;
     goalPositionMsg.lon = 10.417346;
 
+    utm::utm_tracking_data droneMsg;
+
     ros::Rate loopRate(0.33);
 
     ros::spinOnce();
     loopRate.sleep();
+
+    droneMsg.uav_op_status = 3;
+    droneMsg.pos_cur_lat_dd = 55.472022;
+    droneMsg.pos_cur_lng_dd = 10.416062;
+    droneMsg.pos_cur_alt_m = 20;
+    droneMsg.pos_cur_hdg_deg = 100;
+    droneMsg.pos_cur_vel_mps = 10;
+    droneMsg.pos_cur_gps_timestamp = 1234;
+    droneMsg.wp_next_lat_dd = 55.472160;
+    droneMsg.wp_next_lng_dd = 10.416674;
+    droneMsg.wp_next_alt_m = 20;
+    droneMsg.wp_next_hdg_deg = 100;
+    droneMsg.wp_next_vel_mps = 10;
+    droneMsg.wp_next_eta_epoch = 1234;
+    droneMsg.uav_bat_soc = 100;
+
+    //dronePub.publish(droneMsg);
 
     //goalPositionPub.publish(goalPositionMsg);
 	
