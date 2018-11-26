@@ -66,6 +66,7 @@ int main(int argc, char **argv)
     loopRate.sleep();
 
     bool first = true;
+
 	
 	while(ros::ok()) {
 
@@ -84,7 +85,6 @@ int main(int argc, char **argv)
 
             ros::spinOnce();
             loopRate.sleep();
-            ros::Duration(1).sleep();
         }
         else {
             std_msgs::Bool msg;
@@ -95,6 +95,8 @@ int main(int argc, char **argv)
         }
 
 	}
+
+    std::cout << "Stopped sim?" << std::endl;
 
 
     ros::spin();

@@ -181,8 +181,6 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
     if(!closerThanMinDistance)
         return false;
 
-
-    std::cout << "Area Test 1" << std::endl;
     solver.pauseSolver();
     std::shared_ptr<WatchZone> zone;
 
@@ -192,26 +190,19 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
         zone = std::make_shared<WatchZone>(map, polygonCoordinates, visualizer, epochValidFrom, epochValidTo);
 
     watchZones.push_back(zone);
-    std::cout << "Area Test 2" << std::endl;
 
     std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
 
-    std::cout << "nodes: " << nodes.size() << std::endl;
-    std::cout << "Area Test 2.1" << std::endl;
     solver.resumeSolver();
     if(epochValidFrom < 0 || epochValidTo < 0) {
-        std::cout << "Area Test 2.2" << std::endl;
         if(nodes.size() > 0)
             solver.updatePenaltyOfNodeGroup(nodes, penalty);
-        std::cout << "Area Test 2.3" << std::endl;
     }
 
-    std::cout << "Area Test 3" << std::endl;
     bool intersectsWithFlightPath = false;
     if(currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
-    std::cout << "Area Test 4" << std::endl;
     return intersectsWithFlightPath;
 }
 
@@ -228,7 +219,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
 
         PathShortener pathShortener;
         std::vector<std::pair<double, double> > shortPathCoords;
-        pathShortener.shortenPath(path, shortPathCoords, 10);
+        pathShortener.shortenPath(path, shortPathCoords, 5);
 
         std::vector<std::pair<std::size_t, std::size_t> > shortPath;
 

@@ -59,11 +59,15 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
             dynamicIDs.push_back(id);
     }
 
+    bool intersectsWithFlightPath = false;
+
     if(solvingStarted)
-        controller.updatePenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
+        intersectsWithFlightPath = controller.updatePenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
         controller.addPreMapPenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
 
+    if(intersectsWithFlightPath)
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 }
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
@@ -93,11 +97,15 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
         coords.push_back(coord);
     }
 
+    bool intersectsWithFlightPath = false;
+
     if(solvingStarted)
-        controller.updatePenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
+        intersectsWithFlightPath = controller.updatePenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
     else
         controller.addPreMapPenaltyOfAreaPolygon(coords, 10000, msg.epochValidFrom, msg.epochValidTo);
 
+    if(intersectsWithFlightPath)
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
@@ -110,8 +118,10 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
     if(solvingStarted)
         controller.setCurrentPosition(currentCoord);
 
-    if(!mapHasBeenGenerated && goalCoordSet)
+    if(!mapHasBeenGenerated && goalCoordSet) {
         generateNewMap();
+        controller.setCurrentPosition(currentCoord);
+    }
 
     currentCoordSet = true;
 }
@@ -131,11 +141,18 @@ void rosMsg::setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg)
 
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
 {
+    if(!goalCoordSet || !currentCoordSet) {
+        std::cout << "No goal or current position set! Cannot calculate path" << std::endl;
+        return;
+    }
+
     std::cout << "calculatePath" << std::endl;
 
     mavlink_lora::mavlink_lora_mission_list newMsg;
 
     bool succes = controller.getPathToDestination(path);
+
+    std::cout << "calculatePath mid" << succes << std::endl;
 
     if(!succes) {
         for(int i = 0; i < 3; i++) {
@@ -178,6 +195,8 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
     }
 
     pubPath.publish(newMsg);
+
+    std::cout << "calculatePath done" << std::endl;
 }
 
 void rosMsg::generateNewMap()
