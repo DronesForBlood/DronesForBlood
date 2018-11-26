@@ -25,30 +25,17 @@
 
 #include "headers/mapcontroller.h"
 
-struct NoFlightArea {
-    int id;
-    std::string name;
-    std::vector<std::pair<double,double>> coordinates;
-    int epochValidFrom;
-    int epochValidTo;
-};
-
-struct NoFlightCircle {
-    int id;
-    std::string name;
-    std::pair<double,double> coord;
-    double radius;
-    int epochValidFrom;
-    int epochValidTo;
-};
-
 class rosMsg
 {
  public:
     rosMsg();
     ~rosMsg();
 
+    void isReady(const std_msgs::Bool &msg);
+    bool getIsReady();
+
     // UTM
+    void setNumberOfExpectedZones(const std_msgs::Int64 &msg);
     void addNoFlightCircle(const utm::utm_no_flight_circle &msg);
     void addNoFlightArea(const utm::utm_no_flight_area &msg);
 
@@ -65,6 +52,11 @@ class rosMsg
 
     void subStart();
 
+    void checkForNewNoFlightZones();
+
+private:
+    bool checkIfIDExists(int id);
+
 private:
 
     ros::NodeHandle n;
@@ -76,8 +68,12 @@ private:
     ros::Subscriber subGoalPosition;
     ros::Subscriber subCalculatePath;
 
+    ros::Subscriber subNumberOfZones;
     ros::Subscriber subNoFlightCircles;
     ros::Subscriber subNoFlightAreas;
+
+    ros::Publisher pubIsReady;
+    ros::Subscriber subIsReady;
 
     std::vector<std::pair<double, double> > path;
     std::pair<double, double> currentCoord;
@@ -94,9 +90,13 @@ private:
     bool currentCoordSet = false;
     bool goalCoordSet = false;
 
-    std::vector<NoFlightCircle> circleZones;
-    std::vector<NoFlightArea> areaZones;
+    std::vector<int> dynamicIDs;
 
+    std::mutex incrementZonesMutex;
+    int numberOfExpectedZones = INT_MAX;
+    int numberOfZonesReceived = 0;
+
+    bool initialZonesLoaded = false;
 };
 
 

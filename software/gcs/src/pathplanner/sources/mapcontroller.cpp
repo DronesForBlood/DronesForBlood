@@ -232,7 +232,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
 
         PathShortener pathShortener;
         std::vector<std::pair<double, double> > shortPathCoords;
-        pathShortener.shortenPath(path, shortPathCoords, 1);
+        pathShortener.shortenPath(path, shortPathCoords, 10);
 
         std::vector<std::pair<std::size_t, std::size_t> > shortPath;
 

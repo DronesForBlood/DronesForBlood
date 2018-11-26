@@ -17,12 +17,12 @@ class Node;
 
 struct NeighborNode {
     NeighborNode() {}
-    NeighborNode(std::weak_ptr<Node> node, int distance) {
+    NeighborNode(std::weak_ptr<Node> node, double distance) {
         this->node = node;
         this->distance = distance;
     }
     std::weak_ptr<Node> node;
-    int distance;
+    double distance;
 };
 
 struct DynamicPenalty {
@@ -73,18 +73,18 @@ public:
     void setNextStable(bool val);
     bool getStable() {return stable;}
 
-    int getCost() {return cost;}
+    double getCost() {return cost;}
     int getPenalty() {return myPenalty;}
     int getTotalPenalty() {return totalPenalty;}
-    void addToCost(int val) {cost += val;}
+    void addToCost(double val) {cost += val;}
     void addToTotalPenalty(int val) {totalPenalty += val;}
     void setPenalty(int val);
     void setTotalPentaly(int val) {totalPenalty = val;}
-    void setCostAndUpdate(int val);
-    void addToNextCost(int val, bool mayUpdate);
+    void setCostAndUpdate(double val);
+    void addToNextCost(double val, bool mayUpdate);
     void addToNextTotalPenalty(int val, bool mayUpdate);
 
-    int getPenaltyForDynamicZones(int cost);
+    int getPenaltyForDynamicZones(double cost);
 
     std::pair<std::size_t, std::size_t> getNodeIndex() {return selfNodeIndex;}
     std::pair<double, double> getWorldCoordinate() {return worldCoordinate;}
@@ -96,7 +96,7 @@ public:
     void setPointerToSource(std::shared_ptr<Node> pointer) {pointerToSource = pointer;}
 
 private:
-    bool willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode);
+    bool willBeInDynamicZone(DynamicPenalty &dynamic, double distanceToNode);
 
 private:
     std::weak_ptr<Node> pointerToSelf;
@@ -108,7 +108,7 @@ private:
 
     std::pair<double, double> worldCoordinate;
 
-    int cost = -1.;
+    double cost = -1.;
     int myPenalty = 0.;
     int totalPenalty = 0.;
 

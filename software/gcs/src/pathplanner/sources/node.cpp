@@ -102,7 +102,7 @@ void Node::resetNode()
 void Node::setNeighbors(std::vector<std::shared_ptr<Node> > nodes)
 {
     for(std::weak_ptr<Node> neighbor : nodes) {
-        int distance = int(GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate()));
+        double distance = GeoFunctions::calcMeterDistanceBetweensCoords(worldCoordinate, neighbor.lock()->getWorldCoordinate());
         NeighborNode newNeighbor(neighbor, distance);
         neighbors.push_back(newNeighbor);
     }
@@ -113,9 +113,9 @@ void Node::checkAndUpdateNeighbors()
     for(NeighborNode &neighbor : neighbors) {
         std::shared_ptr<Node> neighborNode = neighbor.node.lock();
         neighborNode->lockAccessNode();
-        int costToMove = neighbor.distance + cost;
+        double costToMove = neighbor.distance + cost;
         int penaltyToMove = neighborNode->getPenalty() + totalPenalty + neighborNode->getPenaltyForDynamicZones(cost);
-        int neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty(); // MINIMUM_DISTANCE_CHANGE;
+        double neighborTotalCost = neighborNode->getCost() + neighborNode->getTotalPenalty(); // MINIMUM_DISTANCE_CHANGE;
         if((costToMove + penaltyToMove < neighborTotalCost || !neighborNode->getUpdated()) /*&& !(pointerToSelf.lock() == neighborNode->getPointerToSource())*/) {
             neighborNode->updateSourceAndCost(selfNodeIndex, costToMove);
             neighborNode->setTotalPentaly(penaltyToMove);
@@ -182,14 +182,14 @@ void Node::setPenalty(int val)
     addToNextTotalPenalty(difference, false);
 }
 
-void Node::setCostAndUpdate(int val)
+void Node::setCostAndUpdate(double val)
 {
     double difference = val - cost;
     addToNextCost(difference, true);
     cost = val;
 }
 
-void Node::addToNextCost(int val, bool mayUpdate)
+void Node::addToNextCost(double val, bool mayUpdate)
 {
     if(mayUpdate && wasUpdated)
         updated = true;
@@ -223,7 +223,7 @@ void Node::addToNextTotalPenalty(int val, bool mayUpdate)
     }
 }
 
-int Node::getPenaltyForDynamicZones(int cost)
+int Node::getPenaltyForDynamicZones(double cost)
 {
     int penalty = 0;
     for(auto it = dynamicPenalties.begin(); it != dynamicPenalties.end(); it++)
@@ -254,7 +254,7 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
     cost = newCost;
 }
 
-bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, int distanceToNode)
+bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, double distanceToNode)
 {
     int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     int lateArrivalTime = currentTime + (distanceToNode - 1000) / DRONE_MAX_SPEED;

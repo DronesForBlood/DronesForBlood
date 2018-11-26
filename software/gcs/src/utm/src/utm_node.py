@@ -16,6 +16,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 from std_msgs.msg import Bool
+from std_msgs.msg import Int64
 
 from utm.msg import utm_tracking_data
 from utm.msg import utm_no_flight_circle
@@ -59,6 +60,11 @@ class UTM_node:
             utm_tracking_data,
             queue_size=1)
 
+        self.number_of_zones_pub = rospy.Publisher(
+            "utm/number_of_zones",
+            Int64,
+            queue_size=1)
+
         self.no_flight_areas_pub = rospy.Publisher(
             "utm/fetch_no_flight_areas",
             utm_no_flight_area,
@@ -69,6 +75,7 @@ class UTM_node:
             utm_no_flight_circle,
             queue_size=1000)
 
+        self.total_number_of_zones = 0
 
 
 
@@ -166,8 +173,17 @@ class UTM_node:
                 print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
     def request_no_flight_zones_callback(self, msg):
-        self.fetch_static_no_fly_zones()
+        include_static_zones = msg.data
+
+        self.number_of_zones = 0
+
+        if include_static_zones:
+            self.fetch_static_no_fly_zones()
+
         self.fetch_dynamic_no_fly_zones()
+
+        self.number_of_zones_pub.publish(self.number_of_zones)
+        print("Number of zones: ", self.number_of_zones)
 
     def fetch_tracking_data(self):
         payload = {
@@ -247,6 +263,8 @@ class UTM_node:
                 number_of_zones = reader.get_number_of_zones()
 
                 for i in range(number_of_zones):
+                    self.number_of_zones = self.number_of_zones + 1
+
                     print("SENDING STATIC ZONE")
                     msg = utm_no_flight_area()
 
@@ -293,6 +311,8 @@ class UTM_node:
                 print(colored('Error in parsing of data to JSON', 'red'))
             else:
                 for entry in data_dict:
+                    self.number_of_zones = self.number_of_zones + 1
+
                     print("SENDING DYNAMIC ZONE")
 
                     zone_type = entry['geometry']

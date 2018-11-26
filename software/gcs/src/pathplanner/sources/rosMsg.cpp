@@ -11,29 +11,53 @@ rosMsg::~rosMsg()
 
 }
 
+void rosMsg::isReady(const std_msgs::Bool &msg)
+{
+    bool ready = numberOfZonesReceived >= numberOfExpectedZones;
+    initialZonesLoaded = ready;
+
+    std::cout << "Ready: " << ready << std::endl;
+    std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
+    std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
+
+    std_msgs::Bool newMsg;
+    newMsg.data = ready;
+    pubIsReady.publish(newMsg);
+}
+
+bool rosMsg::getIsReady()
+{
+    return initialZonesLoaded;
+}
+
+void rosMsg::setNumberOfExpectedZones(const std_msgs::Int64 &msg)
+{
+    if(!initialZonesLoaded)
+        numberOfExpectedZones = int(msg.data);
+}
+
 void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 {
-    std::cout << "addNoFlightCircle at " << msg.lat << ", " << msg.lon << std::endl;
-
-    /*
-    NoFlightCircle zone;
-    zone.id = int(msg.id);
-    zone.name = msg.name;
-    zone.coord.first = msg.lat;
-    zone.coord.second = msg.lon;
-    zone.epochValidFrom = int(msg.epochValidFrom);
-    zone.epochValidTo = int(msg.epochValidTo);
-
-    circleZones.push_back(zone);
-
-
-
-    return;
-    */
+    std::cout << "Got no flight circle" << std::endl;
+    if(!initialZonesLoaded) {
+        incrementZonesMutex.lock();
+        numberOfZonesReceived++;
+        incrementZonesMutex.unlock();
+    }
 
     std::pair<double,double> coord;
     coord.first = msg.lat;
     coord.second = msg.lon;
+
+    bool dynamicZone = msg.epochValidFrom >= 0;
+    if(dynamicZone) {
+        int id = int(msg.id);
+        bool idExists = checkIfIDExists(id);
+        if(idExists)
+            return;
+        else
+            dynamicIDs.push_back(id);
+    }
 
     if(solvingStarted)
         controller.updatePenaltyOfAreaCircle(coord, msg.radius, 10000, msg.epochValidFrom, msg.epochValidTo);
@@ -44,24 +68,23 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 {
-    /*
-    std::cout << "addNoFlightArea" << std::endl;
+    std::cout << "Got no flight area" << std::endl;
 
-    NoFlightArea zone;
-    zone.id = int(msg.id);
-    zone.name = msg.name;
-    zone.epochValidFrom = int(msg.epochValidFrom);
-    zone.epochValidTo = int(msg.epochValidTo);
-
-    for(size_t i = 0; i < msg.polygonCoordinates.size(); i += 2) {
-        std::pair<double,double> coord(msg.polygonCoordinates[i], msg.polygonCoordinates[i+1]);
-        zone.coordinates.push_back(coord);
+    if(!initialZonesLoaded) {
+        incrementZonesMutex.lock();
+        numberOfZonesReceived++;
+        incrementZonesMutex.unlock();
     }
 
-    areaZones.push_back(zone);
-
-    return;
-    */
+    bool dynamicZone = msg.epochValidFrom >= 0;
+    if(dynamicZone) {
+        int id = int(msg.id);
+        bool idExists = checkIfIDExists(id);
+        if(idExists)
+            return;
+        else
+            dynamicIDs.push_back(id);
+    }
 
     std::vector<std::pair<double,double>> coords;
 
@@ -157,11 +180,14 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
 void rosMsg::generateNewMap()
 {
+    while(numberOfZonesReceived < numberOfExpectedZones)
+        return;
+
     std::cout << "generateNewMap" << std::endl;
 
-    nodeDist = 2;
-    mapWidth =  100;
-    padLength = 50;
+    nodeDist = 1;
+    mapWidth =  200;
+    padLength = 100;
 
     std::cout << "startCoord: " << currentCoord.first << " " << currentCoord.second << std::endl;
     std::cout << "endCoord: " << goalCoord.first << " " << goalCoord.second << std::endl;
@@ -183,29 +209,51 @@ void rosMsg::generateNewMap()
     std::cout << "generateNewMap start" << std::endl;
     controller.startSolver(currentCoord);
     std::cout << "generateNewMap start done" << std::endl;
-
-    while(!controller.getMapReady())
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    std::cout << "generateNewMap ready" << std::endl;
 };
 
 void rosMsg::subStart()
 {
     std::cout << "Subscribe and publish begin" << std::endl;
 
+    numberOfExpectedZones = INT_MAX;
+    numberOfZonesReceived = 0;
+
     subCurrentPosition = n.subscribe("mavlink_pos", 1, &rosMsg::setCurrentPosition, this );
     subGoalPosition = n.subscribe("dronelink/destination", 1, &rosMsg::setGoalPosition, this );
     subCalculatePath = n.subscribe("gcs_master/calculate_path", 1, &rosMsg::calculatePath, this );
 
+    subNumberOfZones = n.subscribe("utm/number_of_zones", 1, &rosMsg::setNumberOfExpectedZones, this);
     subNoFlightCircles = n.subscribe("utm/fetch_no_flight_circles", 1000, &rosMsg::addNoFlightCircle, this);
     subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
 
+    subIsReady = n.subscribe("pathplanner/get_is_ready", 1, &rosMsg::isReady, this );
+
     pubPath  = n.advertise<mavlink_lora::mavlink_lora_mission_list>("pathplanner/mission_list", 1);
     pubFetchNoFlightZones = n.advertise<std_msgs::Bool>("utm/request_no_flight_zones", 1);
+    pubIsReady = n.advertise<std_msgs::Bool>("pathplanner/is_ready", 1);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std_msgs::Bool msg;
+    msg.data = true;
     pubFetchNoFlightZones.publish(msg);
 
     std::cout << "Subscribe and publish completed" << std::endl;
+}
+
+void rosMsg::checkForNewNoFlightZones()
+{
+    if(initialZonesLoaded) {
+        std::cout << "Checking for new dynamic zones" << std::endl;
+        std_msgs::Bool msg;
+        msg.data = false;
+        pubFetchNoFlightZones.publish(msg);
+    }
+}
+
+bool rosMsg::checkIfIDExists(int id)
+{
+    for(auto &it : dynamicIDs)
+        if(id == it)
+            return true;
+    return false;
 };
