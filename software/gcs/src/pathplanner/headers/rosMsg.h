@@ -31,7 +31,7 @@ class rosMsg
     rosMsg();
     ~rosMsg();
 
-    void isReady(const std_msgs::Bool &msg);
+    void isReady(const mavlink_lora::mavlink_lora_pos &msg);
     bool getIsReady();
 
     // UTM
@@ -43,7 +43,7 @@ class rosMsg
     void setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg);
 
     // User interface
-    void setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg);
+    void setGoalPosition(std::pair<double, double> coord);
 
     // Mavlink_lora
     void calculatePath(const std_msgs::Bool &msg);

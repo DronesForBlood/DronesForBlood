@@ -45,9 +45,9 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     ros::Publisher currentPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("mavlink_pos", 1);
-    ros::Publisher goalPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("dronelink/destination", 1);
+    //ros::Publisher goalPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("dronelink/destination", 1);
     ros::Publisher calculatePathPub = n.advertise<std_msgs::Bool>("gcs_master/calculate_path", 1);
-    ros::Publisher readyPub = n.advertise<std_msgs::Bool>("pathplanner/get_is_ready", 1);
+    ros::Publisher readyPub = n.advertise<mavlink_lora::mavlink_lora_pos>("pathplanner/get_is_ready", 1);
 
     ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
     ros::Subscriber readySub = n.subscribe("pathplanner/is_ready", 1, &pathplannerReady);
@@ -60,39 +60,30 @@ int main(int argc, char **argv)
     goalPositionMsg.lat = 55.472127;
     goalPositionMsg.lon = 10.417346;
 
-    ros::Rate loopRate(0.5);
+    ros::Rate loopRate(0.33);
 
     ros::spinOnce();
     loopRate.sleep();
 
-    bool first = true;
-
+    //goalPositionPub.publish(goalPositionMsg);
 	
 	while(ros::ok()) {
 
         std::cout << "Running.." << std::endl;
 
-        if(first) {
-            if(isReady) {
-                currentPositionPub.publish(currentPositionMsg);
-                goalPositionPub.publish(goalPositionMsg);
-                first = false;
-            }
-            else {
-                std_msgs::Bool msg;
-                readyPub.publish(msg);
-            }
+        currentPositionPub.publish(currentPositionMsg);
 
-            ros::spinOnce();
-            loopRate.sleep();
+        if(!isReady) {
+            readyPub.publish(goalPositionMsg);
         }
         else {
+            std::cout << "Send calculatePath" << std::endl;
             std_msgs::Bool msg;
             calculatePathPub.publish(msg);
-
-            ros::spinOnce();
-            loopRate.sleep();
         }
+
+        ros::spinOnce();
+        loopRate.sleep();
 
 	}
 

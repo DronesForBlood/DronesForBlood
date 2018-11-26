@@ -11,14 +11,20 @@ rosMsg::~rosMsg()
 
 }
 
-void rosMsg::isReady(const std_msgs::Bool &msg)
+void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
 {
-    bool ready = numberOfZonesReceived >= numberOfExpectedZones;
-    initialZonesLoaded = ready;
+    initialZonesLoaded = numberOfZonesReceived >= numberOfExpectedZones;
+
+    bool ready = initialZonesLoaded && currentCoordSet;
 
     std::cout << "Ready: " << ready << std::endl;
     //std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
     //std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
+
+    if(ready) {
+        std::pair<double, double> coord(msg.lat, msg.lon);
+        setGoalPosition(coord);
+    }
 
     std_msgs::Bool newMsg;
     newMsg.data = ready;
@@ -38,7 +44,7 @@ void rosMsg::setNumberOfExpectedZones(const std_msgs::Int64 &msg)
 
 void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 {
-    //std::cout << "Got no flight circle" << std::endl;
+    std::cout << "Got no flight circle" << std::endl;
     if(!initialZonesLoaded) {
         incrementZonesMutex.lock();
         numberOfZonesReceived++;
@@ -72,7 +78,7 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 {
-    //std::cout << "Got no flight area" << std::endl;
+    std::cout << "Got no flight area" << std::endl;
 
     if(!initialZonesLoaded) {
         incrementZonesMutex.lock();
@@ -111,6 +117,7 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
     std::cout << "setCurrentPosition" << std::endl;
+    currentCoordSet = true;
 
     currentCoord.first = msg.lat;
     currentCoord.second = msg.lon;
@@ -123,26 +130,25 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
         controller.setCurrentPosition(currentCoord);
     }
 
-    currentCoordSet = true;
 }
 
-void rosMsg::setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg)
+void rosMsg::setGoalPosition(std::pair<double, double> coord)
 {
     std::cout << "setGoalPosition" << std::endl;
+    goalCoordSet = true;
 
-    goalCoord.first = msg.lat;
-    goalCoord.second = msg.lon;
+    goalCoord.first = coord.first;
+    goalCoord.second = coord.second;
 
     if(currentCoordSet)
         generateNewMap();
-
-    goalCoordSet = true;
 }
 
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
 {
-    if(!goalCoordSet || !currentCoordSet) {
-        std::cout << "No goal or current position set! Cannot calculate path" << std::endl;
+    std::cout << "Try calculatePath" << std::endl;
+    if(!goalCoordSet || !currentCoordSet || !mapHasBeenGenerated) {
+        std::cout << "No goal position, no current position or no map generated! Cannot calculate path" << std::endl;
         return;
     }
 
@@ -202,8 +208,11 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 void rosMsg::generateNewMap()
 {
     std::cout << "Try generateNewMap" << std::endl;
-    if(!initialZonesLoaded)
+    if(!goalCoordSet || !currentCoordSet || !initialZonesLoaded) {
+        std::cout << goalCoordSet << " " << currentCoordSet << " " << initialZonesLoaded << std::endl;
+        std::cout << "Unable to generate new map. Missing information" << std::endl;
         return;
+    }
 
     std::cout << "generateNewMap" << std::endl;
     mapHasBeenGenerated = true;
@@ -242,7 +251,7 @@ void rosMsg::subStart()
     numberOfZonesReceived = 0;
 
     subCurrentPosition = n.subscribe("mavlink_pos", 1, &rosMsg::setCurrentPosition, this );
-    subGoalPosition = n.subscribe("dronelink/destination", 1, &rosMsg::setGoalPosition, this );
+    //subGoalPosition = n.subscribe("dronelink/destination", 1, &rosMsg::setGoalPosition, this );
     subCalculatePath = n.subscribe("gcs_master/calculate_path", 1, &rosMsg::calculatePath, this );
 
     subNumberOfZones = n.subscribe("utm/number_of_zones", 1, &rosMsg::setNumberOfExpectedZones, this);
@@ -275,6 +284,7 @@ void rosMsg::checkForNewNoFlightZones()
 
 bool rosMsg::checkIfIDExists(int id)
 {
+    std::cout << "Checking if id " << id << " exists" << std::endl;
     for(auto &it : dynamicIDs)
         if(id == it)
             return true;
