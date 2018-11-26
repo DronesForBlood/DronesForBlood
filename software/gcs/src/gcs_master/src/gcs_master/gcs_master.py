@@ -44,9 +44,6 @@ class GcsMasterNode():
         self.battery_check_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
-        # Counter for the amount of times in a row the communication is lost
-        self.comm_lost_counter = 0
-
         # Dronelink topic susbscribers
         rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
@@ -165,8 +162,8 @@ class GcsMasterNode():
             # Remove the hold position command, in case it was previously
             # set to true
             mode_msg = mavlink_lora.msg.mavlink_lora_command_set_mode()
-            mode_msg.mode = 4
-            mode_msg.custom_sub_mode = 4
+            # base mode = 4 (AUTO). sub mode = 4 (MISSION)
+            mode_msg.custom_mode = 4 << 16 | 4 << 24
             self.set_mode_pub.publish(mode_msg)
             msg = mavlink_lora.msg.mavlink_lora_command_start_mission()
             msg.first_item = 0
@@ -176,8 +173,8 @@ class GcsMasterNode():
 
         if self.state_machine.HOLD_POSITION:
             msg = mavlink_lora.msg.mavlink_lora_command_set_mode()
-            msg.mode = 4
-            msg.custom_sub_mode = 3
+            # base mode = 4 (AUTO). sub mode = 3 (LOITER)
+            msg.custom_mode = 4 << 16 | 3 << 24
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
 
@@ -189,10 +186,21 @@ class GcsMasterNode():
         return
 
     def heartbeat_callback(self, data):
+        sub_mode = data.custom_mode >> 24
+        base_mode = (data.custom_mode >> 16) & 0xFF
+        rospy.logdebug("Sub mode: {}. Base mode: {}".format(sub_mode, base_mode))
+        if sub_mode == 2:
+            # Mission mode
+            pass
+        elif sub_mode == 3:
+            # Loiter mode
+            self.state_machine.holding_position = True
+        elif sub_mode == 5:
+            # RTL mode
+            pass
         if not self.state_machine.comm_ok:
             rospy.loginfo("Communication recovered")
         self.state_machine.comm_ok = True
-        self.comm_lost_counter = 0
         self.heartbeat_receive_time = rospy.get_time()
         return
 
@@ -239,12 +247,12 @@ class GcsMasterNode():
         if data.command == 73:
             if ack:
                 self.state_machine.mission_ready = True
+        if data.command == 176:
+            if ack:
+                self.state_machine.mode_updated = True
         if data.command == 300:
             if ack:
                 self.state_machine.new_mission = True
-        if data.command == 9999:
-            if ack:
-                self.state_machine.holding_position = True
         return
 
     def mavlink_pos_callback(self, data):
@@ -341,10 +349,7 @@ class GcsMasterNode():
             # Check if the drone heartbeat times out.
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
                 if self.state_machine.comm_ok:
-                    rospy.logwarn("Dronelink lost")
-                    self.comm_lost_counter += 1
-                    if self.comm_lost_counter > self.MAX_COMM_LOSES:
-                        self.state_machine.comm_ok = False
+                    self.state_machine.comm_ok = False
             # Finish the loop cycle.
             rate.sleep()
         self.clear_mission_pub.publish()

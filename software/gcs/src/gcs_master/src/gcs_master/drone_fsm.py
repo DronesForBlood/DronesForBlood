@@ -50,6 +50,7 @@ class DroneFSM():
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
         self.holding_position = False       # Drone is holding position on air
+        self.mode_updated = False           # The drone has updated the mode
         self.batt_level = 0                 # Reamining battery capacity
         self.takeoff_batt_ok = False        # Enough battery for taking off
         self.batt_ok = False                # Enough battery for flying
@@ -115,6 +116,7 @@ class DroneFSM():
         elif self.__state == "fly":
             if not self.comm_ok:
                 self.__state = "recover_comm"
+                rospy.logwarn("Dronelink lost")
                 self.state_to_log()
                 self.__state_timer = 0.0
             elif self.new_path:
@@ -161,9 +163,12 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
+            if self.mode_updated:
+                pass
             if self.holding_position:
                 self.__state = "calculate_path"
                 self.holding_position = False
+                rospy.loginfo("Communication recovered")
                 self.state_to_log()
                 self.__state_timer = 0.0
 
