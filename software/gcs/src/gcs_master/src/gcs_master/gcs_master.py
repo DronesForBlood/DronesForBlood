@@ -73,6 +73,10 @@ class GcsMasterNode():
                 "gcs_master/calculate_path",
                 std_msgs.msg.Bool,
                 queue_size=1)
+        self.activate_planner_pub = rospy.Publisher(
+                "pathplanner/get_is_ready",
+                std_msgs.msg.Bool,
+                queue_size=1)
         # Mavlink topic publishers
         self.heartbeat_pub = rospy.Publisher(
                 "mavlink_heartbeat_tx",
@@ -124,6 +128,10 @@ class GcsMasterNode():
             msg.pitch = 0
             self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
+
+        if self.state_machine.ACTIVATE_PLANNER:
+            self.activate_planner_pub.publish(True)
+            self.state_machine.ACTIVATE_PLANNER = False
 
         if self.state_machine.CALCULATE_PATH:
             self.calc_path_pub.publish(True)

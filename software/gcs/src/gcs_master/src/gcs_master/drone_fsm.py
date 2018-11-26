@@ -28,6 +28,7 @@ class DroneFSM():
         self.ARM = False
         self.TAKE_OFF = False
         self.LAND = False
+        self.ACTIVATE_PLANNER = False
         self.CALCULATE_PATH = False
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
@@ -181,6 +182,10 @@ class DroneFSM():
             now = rospy.get_time()
             if self.armed and now > self.__state_timer + self.TIMEOUT:
                 self.DISARM = True
+                self.__state_timer = rospy.get_time()
+            if  (not self.planner_ready and
+                    now > self.__state_timer + self.TIMEOUT):
+                self.ACTIVATE_PLANNER = True
                 self.__state_timer = rospy.get_time()
 
         # ARM state
