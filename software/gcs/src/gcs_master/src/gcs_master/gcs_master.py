@@ -50,6 +50,8 @@ class GcsMasterNode():
         rospy.Subscriber("pathplanner/mission_list",
                          mavlink_lora.msg.mavlink_lora_mission_list,
                          self.pathplanner_newplan_callback)
+        rospy.Subscriber("pathplanner/is_ready", std_msgs.msg.Bool,
+                         self.pathplanner_isready_callback)
         # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_heartbeat_rx",
                          mavlink_lora.msg.mavlink_lora_heartbeat,
@@ -259,6 +261,16 @@ class GcsMasterNode():
                     data.waypoints[0:self.state_machine.MISSION_LENGTH])
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
+        return
+
+    def pathplanner_isready_callback(self, data):
+        """
+        The incomming boolean data specifies if the pathplanner is ready
+        """
+        if data.data:
+            self.state_machine.planner_ready = True
+        elif not data.data:
+            self.state_machine.planner_ready = False
         return
 
     def send_heartbeat(self):

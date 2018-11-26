@@ -48,6 +48,7 @@ class DroneFSM():
         self.landing = False                # Drone is landing
         self.batt_ok = False                # Battery status
         self.comm_ok = False                # Comlink status
+        self.planner_ready = False          # Pathplanner status
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
@@ -81,7 +82,7 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission and self.comm_ok:
+            if self.new_mission and self.comm_ok and self.planner_ready:
                 self.__state = "arm"
                 self.new_mission = False
                 self.state_to_log()
