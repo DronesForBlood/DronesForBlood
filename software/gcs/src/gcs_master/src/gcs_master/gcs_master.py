@@ -75,7 +75,7 @@ class GcsMasterNode():
                 queue_size=1)
         self.activate_planner_pub = rospy.Publisher(
                 "pathplanner/get_is_ready",
-                std_msgs.msg.Bool,
+                mavlink_lora.msg.mavlink_lora_pos,
                 queue_size=1)
         # Mavlink topic publishers
         self.heartbeat_pub = rospy.Publisher(
@@ -130,7 +130,10 @@ class GcsMasterNode():
             self.state_machine.TAKE_OFF = False
 
         if self.state_machine.ACTIVATE_PLANNER:
-            self.activate_planner_pub.publish(True)
+            msg = mavlink_lora.msg.mavlink_lora_pos()
+            msg.lat = self.state_machine.destination[0]
+            msg.lon = self.state_machine.destination[1]
+            self.activate_planner_pub.publish(msg)
             self.state_machine.ACTIVATE_PLANNER = False
 
         if self.state_machine.CALCULATE_PATH:

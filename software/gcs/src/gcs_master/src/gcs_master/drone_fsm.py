@@ -83,7 +83,7 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission and self.comm_ok and self.planner_ready:
+            if self.new_mission and self.comm_ok:
                 self.__state = "arm"
                 self.new_mission = False
                 self.state_to_log()
@@ -91,9 +91,9 @@ class DroneFSM():
                 self.__state_timer = 0.0
 
         # ARM state. Wait until mavlink acknowledges the drone implemented
-        # the take-off command.
+        # the take-off command and the path planner is ready to calculate path.
         elif self.__state == "arm":	
-            if self.armed and self.taking_off:
+            if self.armed and self.taking_off and self.planner_ready:
                 self.__state = "take_off"
                 self.state_to_log()
 
@@ -183,22 +183,23 @@ class DroneFSM():
             if self.armed and now > self.__state_timer + self.TIMEOUT:
                 self.DISARM = True
                 self.__state_timer = rospy.get_time()
-            if  (not self.planner_ready and
-                    now > self.__state_timer + self.TIMEOUT):
-                self.ACTIVATE_PLANNER = True
-                self.__state_timer = rospy.get_time()
 
         # ARM state
         elif self.__state == "arm":
             now = rospy.get_time()
-            if  now > self.__state_timer + self.TIMEOUT:
-                self.CALCULATE_PATH = True
-                self.TAKE_OFF = True
-                self.ARM = True
+            if now > self.__state_timer + self.TIMEOUT:
+                if not self.planner_ready:
+                    self.ACTIVATE_PLANNER = True
+                if not self.taking_off:
+                    self.TAKE_OFF = True
+                if not self.armed:
+                    self.ARM = True
                 self.__state_timer = rospy.get_time()
 
         # TAKING OFF state
         elif self.__state == "take_off":
+            if  now > self.__state_timer + self.TIMEOUT:
+                self.CALCULATE_PATH = True
             pass
 
         # FLYING state
