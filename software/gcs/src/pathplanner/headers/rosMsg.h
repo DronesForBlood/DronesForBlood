@@ -89,6 +89,7 @@ private:
     bool solvingStarted = false;
     bool currentCoordSet = false;
     bool goalCoordSet = false;
+    bool mapHasBeenGenerated = false;
 
     std::vector<int> dynamicIDs;
 
