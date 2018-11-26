@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
     utm::utm_tracking_data droneMsg;
 
-    ros::Rate loopRate(0.33);
+    ros::Rate loopRate(0.1);
 
     ros::spinOnce();
     loopRate.sleep();

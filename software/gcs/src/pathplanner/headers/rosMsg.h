@@ -36,6 +36,7 @@ class rosMsg
     bool getIsReady();
 
     // UTM
+    void getZonesFromUTM();
     void setNumberOfExpectedZones(const std_msgs::Int64 &msg);
     void addNoFlightCircle(const utm::utm_no_flight_circle &msg);
     void addNoFlightArea(const utm::utm_no_flight_area &msg);

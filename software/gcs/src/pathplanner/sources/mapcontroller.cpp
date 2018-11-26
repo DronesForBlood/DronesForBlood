@@ -45,15 +45,12 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
 
-    std::cout << "generateNewMap circles" << std::endl;
     for(auto &it : preMapPenaltyCircles)
         updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
 
-    std::cout << "generateNewMap areas" << std::endl;
     for(auto &it : preMapPenaltyAreas)
         updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
-    std::cout << "generateNewMap done?" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     mapReady = true;
 }
@@ -323,7 +320,7 @@ bool MapController::isInsideMap(int row, int col)
 
 bool MapController::checkIfIntersectionIsDangerous()
 {
-    std::cout << "Checking for danger" << std::endl;
+    //std::cout << "Checking for danger" << std::endl;
     bool onCurrentPath = false;
     for(auto it = currentPath.rbegin(); it != currentPath.rend(); ++it) {
         if(!onCurrentPath && *it == getClosestNodeIndex(currentPosition))
@@ -332,7 +329,7 @@ bool MapController::checkIfIntersectionIsDangerous()
         if(onCurrentPath) {
             double distanceToNode = GeoFunctions::calcMeterDistanceBetweensCoords(currentPosition, (*map)[it->first][it->second]->getWorldCoordinate());
             if((*map)[it->first][it->second]->checkIfNodeIsInDangerZone(distanceToNode)) {
-                std::cout << "DANGER" << std::endl;
+                //std::cout << "DANGER" << std::endl;
                 return true;
             }
         }
