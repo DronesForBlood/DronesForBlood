@@ -150,13 +150,9 @@ bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position
         solver.updatePenaltyOfNodeGroup(nodes, penalty);
     }
     else {
-        std::cout << "Test 1" << std::endl;
         solver.pauseSolver();
-        std::cout << "Test 2" << std::endl;
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
-        std::cout << "Test 3" << std::endl;
         solver.resumeSolver();
-        std::cout << "Test 4" << std::endl;
     }
 
     watchZones.push_back(zone);
