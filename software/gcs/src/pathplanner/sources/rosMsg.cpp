@@ -18,8 +18,8 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
     bool ready = initialZonesLoaded && currentCoordSet;
 
     std::cout << "Ready: " << ready << std::endl;
-    //std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
-    //std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
+    std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
+    std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
 
     if(ready) {
         std::pair<double, double> coord(msg.lat, msg.lon);
@@ -44,11 +44,11 @@ void rosMsg::setNumberOfExpectedZones(const std_msgs::Int64 &msg)
 
 void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 {
-    std::cout << "Got no flight circle" << std::endl;
+    //std::cout << "Got no flight circle" << std::endl;
     if(!initialZonesLoaded) {
-        incrementZonesMutex.lock();
+        zoneMutex.lock();
         numberOfZonesReceived++;
-        incrementZonesMutex.unlock();
+        zoneMutex.unlock();
     }
 
     std::pair<double,double> coord;
@@ -78,12 +78,12 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 {
-    std::cout << "Got no flight area" << std::endl;
+    //std::cout << "Got no flight area" << std::endl;
 
     if(!initialZonesLoaded) {
-        incrementZonesMutex.lock();
+        zoneMutex.lock();
         numberOfZonesReceived++;
-        incrementZonesMutex.unlock();
+        zoneMutex.unlock();
     }
 
     bool dynamicZone = msg.epochValidFrom >= 0;
@@ -112,6 +112,11 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 
     if(intersectsWithFlightPath)
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+}
+
+void rosMsg::checkDrones(const utm::utm_tracking_data &msg)
+{
+    std::cout << "Checking for drones" << std::endl;
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
@@ -148,7 +153,7 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 {
     std::cout << "Try calculatePath" << std::endl;
     if(!goalCoordSet || !currentCoordSet || !mapHasBeenGenerated) {
-        std::cout << "No goal position, no current position or no map generated! Cannot calculate path" << std::endl;
+        std::cout << "Unable to calculate a path. Missing information" << std::endl;
         return;
     }
 
@@ -169,7 +174,6 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
         }
     }
 
-
     if(succes) {
         unsigned short i = 0;
         path.pop_back();
@@ -186,6 +190,10 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             item.param1 = 0;    // hold time
             item.param2 = 5;    // acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
             item.param3 = 0;    // pass though waypoint, no trajectory control
+            item.x = int32_t(it->first * 1e7);
+            item.y = int32_t(it->second * 1e7);
+            item.z = altitude;
+            item.autocontinue = 1;
 
             /*
             std::cout << "Sending x: " << it->first << std::endl;
@@ -193,11 +201,6 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             std::cout << "Sending X: " << int32_t(it->first * 1e7) << std::endl;
             std::cout << "Sending Y: " << int32_t(it->second * 1e7) << std::endl;
             */
-
-            item.x = int32_t(it->first * 1e7);
-            item.y = int32_t(it->second * 1e7);
-            item.z = altitude;
-            item.autocontinue = 1;
 
             newMsg.waypoints.push_back(item);
             i++;
@@ -255,6 +258,7 @@ void rosMsg::subStart()
     subNumberOfZones = n.subscribe("utm/number_of_zones", 1, &rosMsg::setNumberOfExpectedZones, this);
     subNoFlightCircles = n.subscribe("utm/fetch_no_flight_circles", 1000, &rosMsg::addNoFlightCircle, this);
     subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
+    subDrones = n.subscribe("utm/fetch_tracking_data", 1, &rosMsg::checkDrones, this);
 
     subIsReady = n.subscribe("pathplanner/get_is_ready", 1, &rosMsg::isReady, this );
 
@@ -280,9 +284,18 @@ void rosMsg::checkForNewNoFlightZones()
     }
 }
 
+void rosMsg::checkForDrones()
+{
+    if(solvingStarted) {
+        std::cout << "Checking for drones" << std::endl;
+        std_msgs::Bool msg;
+        pubFetchDrones.publish(msg);
+    }
+}
+
 bool rosMsg::checkIfIDExists(int id)
 {
-    std::cout << "Checking if id " << id << " exists" << std::endl;
+    //std::cout << "Checking if id " << id << " exists" << std::endl;
     for(auto &it : dynamicIDs)
         if(id == it)
             return true;
