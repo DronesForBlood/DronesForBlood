@@ -102,31 +102,37 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
-    std::cout << "setCurrentPosition" << std::endl;
+    if(initialZonesLoaded) {
+        std::cout << "setCurrentPosition" << std::endl;
 
-    currentCoord.first = msg.lat;
-    currentCoord.second = msg.lon;
+        currentCoord.first = msg.lat;
+        currentCoord.second = msg.lon;
 
-    if(solvingStarted)
-        controller.setCurrentPosition(currentCoord);
+        if(solvingStarted)
+            controller.setCurrentPosition(currentCoord);
 
-    if(!solvingStarted && goalCoordSet)
-        generateNewMap();
+        if(!solvingStarted && goalCoordSet)
+            generateNewMap();
 
-    currentCoordSet = true;
+        currentCoordSet = true;
+    }
+
 }
 
 void rosMsg::setGoalPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
-    std::cout << "setGoalPosition" << std::endl;
+    if(initialZonesLoaded) {
+        std::cout << "setGoalPosition" << std::endl;
 
-    goalCoord.first = msg.lat;
-    goalCoord.second = msg.lon;
+        goalCoord.first = msg.lat;
+        goalCoord.second = msg.lon;
 
-    if(currentCoordSet)
-        generateNewMap();
+        if(currentCoordSet)
+            generateNewMap();
 
-    goalCoordSet = true;
+        goalCoordSet = true;
+    }
+
 }
 
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
