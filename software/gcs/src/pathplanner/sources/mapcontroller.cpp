@@ -37,22 +37,17 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
-    visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
+    if(!visualizer)
+        visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
+    else
+        visualizer->setNewMap(map, int(map->size()), int(map->at(0).size()));
 
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
 
     std::cout << "generateNewMap circles" << std::endl;
-    for(auto &it : preMapPenaltyCircles) {
-        std::cout << "generateNewMap begin" << std::endl;
-        std::cout << "it.position: " << it.position.first << " " << it.position.second << std::endl;
-        std::cout << "it.radius: " << it.radius << std::endl;
-        std::cout << "it.penalty: " << it.penalty << std::endl;
-        std::cout << "it.epochValidFrom: " << it.epochValidFrom << std::endl;
-        std::cout << "it.epochValidTo: " << it.epochValidTo << std::endl;
+    for(auto &it : preMapPenaltyCircles)
         updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
-        std::cout << "generateNewMap done" << std::endl;
-    }
 
     std::cout << "generateNewMap areas" << std::endl;
     for(auto &it : preMapPenaltyAreas)

@@ -21,6 +21,7 @@ public:
     Visualizer(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap, int mapRows, int mapCols);
     ~Visualizer();
 
+    void setNewMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> aMap, int mapRows, int mapCols);
     void setCurrentPosition(std::pair<int, int> newPosition);
     void setCurrentPath(std::vector<std::pair<size_t, size_t> > path);
     void setCurrentShortPath(std::vector<std::pair<size_t, size_t>> shortPath);
@@ -43,7 +44,7 @@ private:
    bool threadClosed = true;
 
    int squareSize = 5;
-    std::mutex mutex;
+   std::mutex editMutex;
    std::pair<int,int> previousPosition;
    std::pair<int,int> currentPosition;
    std::vector<std::pair<size_t, size_t>> previousPath;
@@ -51,6 +52,8 @@ private:
    std::vector<std::pair<size_t, size_t>> previousShortPath;
    std::vector<std::pair<size_t, size_t>> currentShortPath;
    std::pair<size_t, size_t> currentHeading;
+
+
 
 };
 

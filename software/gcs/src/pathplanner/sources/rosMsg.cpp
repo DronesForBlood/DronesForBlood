@@ -172,6 +172,10 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
     if(succes) {
         unsigned short i = 0;
+        path.pop_back();
+
+        std::cout << "Sending path of size: " << path.size() << std::endl;
+
         for(auto it = path.rbegin(); it != path.rend(); it++) {
             mavlink_lora::mavlink_lora_mission_item_int item;
             item.target_system = 0;
@@ -229,12 +233,6 @@ void rosMsg::generateNewMap()
 
     controller.generateMap(currentCoord, goalCoord, nodeDist, mapWidth, padLength);
     controller.setGoalPosition(goalCoord);
-
-    //for(auto &it : circleZones)
-    //    controller.addPreMapPenaltyOfAreaCircle(it.coord, it.radius, 10000, it.epochValidFrom, it.epochValidTo);
-
-    //for(auto &it : areaZones)
-    //    controller.addPreMapPenaltyOfAreaPolygon(it.coordinates, 10000, it.epochValidFrom, it.epochValidTo);
 
     solvingStarted = true;
 

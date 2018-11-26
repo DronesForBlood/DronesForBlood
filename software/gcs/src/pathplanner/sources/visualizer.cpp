@@ -25,9 +25,22 @@ Visualizer::Visualizer(std::shared_ptr<std::vector<std::vector<std::shared_ptr<N
 
 Visualizer::~Visualizer()
 {
+    std::cout << "Closing visualizer" << std::endl;
     threadRunning = false;
     while(!threadClosed)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::cout << "Closing visualizer complete" << std::endl;
+}
+
+void Visualizer::setNewMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node> > > > aMap, int mapRows, int mapCols)
+{
+    editMutex.lock();
+    map = aMap;
+    pathImage = cv::Mat(mapRows, mapCols, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    previousPosition.first = -1;
+    previousPosition.second = -1;
+    editMutex.unlock();
 }
 
 void Visualizer::setCurrentPosition(std::pair<int, int> newPosition)
@@ -56,6 +69,7 @@ void Visualizer::setCurrentHeading(std::pair<size_t, size_t> heading)
 void Visualizer::printImage()
 {
     while(threadRunning) {
+        editMutex.lock();
 
         pathImage = cv::Scalar(0,0,0);
 
@@ -81,8 +95,12 @@ void Visualizer::printImage()
         cv::imshow("DroneSimulator 2000", pathImage);
         cv::waitKey(10);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        editMutex.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
     }
+
+    cv::destroyAllWindows();
 
     threadClosed = true;
 }
