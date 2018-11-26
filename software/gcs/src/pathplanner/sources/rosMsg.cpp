@@ -17,8 +17,8 @@ void rosMsg::isReady(const std_msgs::Bool &msg)
     initialZonesLoaded = ready;
 
     std::cout << "Ready: " << ready << std::endl;
-    std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
-    std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
+    //std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
+    //std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
 
     std_msgs::Bool newMsg;
     newMsg.data = ready;
@@ -38,7 +38,7 @@ void rosMsg::setNumberOfExpectedZones(const std_msgs::Int64 &msg)
 
 void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 {
-    std::cout << "Got no flight circle" << std::endl;
+    //std::cout << "Got no flight circle" << std::endl;
     if(!initialZonesLoaded) {
         incrementZonesMutex.lock();
         numberOfZonesReceived++;
@@ -68,7 +68,7 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 {
-    std::cout << "Got no flight area" << std::endl;
+    //std::cout << "Got no flight area" << std::endl;
 
     if(!initialZonesLoaded) {
         incrementZonesMutex.lock();
@@ -166,10 +166,12 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             item.param2 = 5;    // acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
             item.param3 = 0;    // pass though waypoint, no trajectory control
 
+            /*
             std::cout << "Sending x: " << it->first << std::endl;
             std::cout << "Sending y: " << it->second << std::endl;
             std::cout << "Sending X: " << int32_t(it->first * 1e7) << std::endl;
             std::cout << "Sending Y: " << int32_t(it->second * 1e7) << std::endl;
+            */
 
             item.x = int32_t(it->first * 1e7);
             item.y = int32_t(it->second * 1e7);
