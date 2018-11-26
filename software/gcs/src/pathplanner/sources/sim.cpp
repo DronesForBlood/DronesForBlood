@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     droneMsg.wp_next_eta_epoch = 1234;
     droneMsg.uav_bat_soc = 100;
 
-    //dronePub.publish(droneMsg);
+    dronePub.publish(droneMsg);
 
     //goalPositionPub.publish(goalPositionMsg);
 	

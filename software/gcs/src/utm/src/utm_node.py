@@ -205,7 +205,8 @@ class UTM_node:
                 print(colored('Error in parsing of data to JSON', 'red'))
             else:
                 # print r.text # Print the raw body data
-                already_tracked_uavs = [uav_id]
+                # already_tracked_uavs = [uav_id]
+                already_tracked_uavs = [] # Change this back later! Now tracks ourselves
                 for entry in data_dict:
 
                     if(entry['uav_id'] in already_tracked_uavs):
@@ -214,7 +215,7 @@ class UTM_node:
 
                     already_tracked_uavs.append(entry['uav_id'])
 
-                    msg = utm_tracking_data
+                    msg = utm_tracking_data()
 
                     msg.uav_id = entry['uav_id']
                     msg.uav_op_status = entry['uav_op_status']

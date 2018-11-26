@@ -1,3 +1,4 @@
+int64 uav_id
 int64 uav_op_status
 float64 pos_cur_lat_dd
 float64 pos_cur_lng_dd
