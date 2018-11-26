@@ -31,6 +31,9 @@ void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
 void pathplannerReady(const std_msgs::Bool &msg)
 {
     isReady = msg.data;
+
+    if(isReady)
+        std::cout << "PATHPLANNER IS NOW READY" << std::endl;
 }
 
 
@@ -65,7 +68,7 @@ int main(int argc, char **argv)
     bool first = true;
 	
 	while(ros::ok()) {
-	
+
         std::cout << "Running.." << std::endl;
 
         if(first) {
