@@ -33,10 +33,12 @@ class GcsMasterNode():
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
-    def __init__(self):
-
+    def __init__(self, altitude=50):
+        
+        self.altitude = altitude
+        rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
-        self.state_machine = drone_fsm.DroneFSM()
+        self.state_machine = drone_fsm.DroneFSM(takeoff_altitude=altitude)
 
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
@@ -54,6 +56,8 @@ class GcsMasterNode():
         rospy.Subscriber("pathplanner/mission_list",
                          mavlink_lora.msg.mavlink_lora_mission_list,
                          self.pathplanner_newplan_callback)
+        rospy.Subscriber("pathplanner/is_ready", std_msgs.msg.Bool,
+                         self.pathplanner_isready_callback)
         # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_status",
                          mavlink_lora.msg.mavlink_lora_status,
@@ -77,6 +81,10 @@ class GcsMasterNode():
         self.calc_path_pub = rospy.Publisher(
                 "gcs_master/calculate_path",
                 std_msgs.msg.Bool,
+                queue_size=1)
+        self.activate_planner_pub = rospy.Publisher(
+                "pathplanner/get_is_ready",
+                mavlink_lora.msg.mavlink_lora_pos,
                 queue_size=1)
         # Mavlink topic publishers
         self.heartbeat_pub = rospy.Publisher(
@@ -134,6 +142,7 @@ class GcsMasterNode():
             self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
 
+<<<<<<< HEAD
         if self.state_machine.LAND:
             msg = mavlink_lora.msg.mavlink_lora_command_land()
             msg.lat = self.state_machine.latitude
@@ -146,6 +155,14 @@ class GcsMasterNode():
             msg.precision_land_mode = 2
             self.drone_land_pub.publish(msg)
             self.state_machine.LAND = False
+=======
+        if self.state_machine.ACTIVATE_PLANNER:
+            msg = mavlink_lora.msg.mavlink_lora_pos()
+            msg.lat = self.state_machine.destination[0]
+            msg.lon = self.state_machine.destination[1]
+            self.activate_planner_pub.publish(msg)
+            self.state_machine.ACTIVATE_PLANNER = False
+>>>>>>> pathplanner
 
         if self.state_machine.CALCULATE_PATH:
             self.calc_path_pub.publish(True)
@@ -294,6 +311,8 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
+        for wp in data.waypoints:
+            wp.z = self.altitude
         self.state_machine.route = data.waypoints
         self.state_machine.new_path = True
         if len(data.waypoints) <= self.state_machine.MISSION_LENGTH:
@@ -305,6 +324,16 @@ class GcsMasterNode():
                     data.waypoints[0:self.state_machine.MISSION_LENGTH])
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
+        return
+
+    def pathplanner_isready_callback(self, data):
+        """
+        The incomming boolean data specifies if the pathplanner is ready
+        """
+        if data.data:
+            self.state_machine.planner_ready = True
+        elif not data.data:
+            self.state_machine.planner_ready = False
         return
 
     def send_heartbeat(self):
@@ -356,8 +385,8 @@ class GcsMasterNode():
         return
 
 
-def main():
+def main(altitude=50):
     # Instantiate the gcs_master node class and run it
-    gcs_master = GcsMasterNode()
+    gcs_master = GcsMasterNode(altitude=altitude)
     gcs_master.run()
     return

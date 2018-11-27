@@ -56,8 +56,8 @@ class DronelinkSimNode():
             rospy.loginfo("Requesting new mission")
             # Publish destination coordinates
             msg = mavlink_lora.msg.mavlink_lora_pos()
-            msg.lat = self.lat
-            msg.lon = self.lon
+            msg.lat = self.lat + 0.0005
+            msg.lon = self.lon + 0.0005
             msg.alt = self.alt
             self.dest_pub.publish(msg)
             self.new_mission_pub.publish(True)
