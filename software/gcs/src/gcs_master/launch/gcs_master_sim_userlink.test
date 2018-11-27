@@ -10,7 +10,7 @@
                 --altitude $(arg alt)"/>
 
     <node pkg="gcs_master" type="sim_dronelink" name="sim_dronelink" output= "screen"/>
-    <node pkg="pathplanner" type="pathplanner" name="pathplanner" output= "screen"/>
+    <node pkg="pathplanner" type="pathplanner" name="pathplanner" output= "log"/>
     <test test-name="drone_fsm_test" pkg="gcs_master" type="test_drone_fsm.py"/>
 
 </launch>
