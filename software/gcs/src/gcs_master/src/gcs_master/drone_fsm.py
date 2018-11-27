@@ -59,11 +59,13 @@ class DroneFSM():
         self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
+        # User link related variables
+        self.new_mission = False            # The user has requested new mission
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
         self.mission_ready = False          # The drone received a mission
-        self.new_mission = False            # The drone has started the mission
+        self.mission_started = False        # The drone has started the mission
         self.current_mission = 0
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
@@ -152,9 +154,9 @@ class DroneFSM():
 
         # START MISSION state
         elif self.__state == "start_mission":
-            if self.new_mission:
+            if self.mission_started:
                 self.__state = "fly"
-                self.new_mission = False
+                self.mission_started = False
                 self.state_to_log()
 
         # CALCULATE_PATH state

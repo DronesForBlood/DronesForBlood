@@ -156,6 +156,7 @@ class GcsMasterNode():
             msg.precision_land_mode = 2
             self.drone_land_pub.publish(msg)
             self.state_machine.LAND = False
+
         if self.state_machine.ACTIVATE_PLANNER:
             msg = mavlink_lora.msg.mavlink_lora_pos()
             msg.lat = self.state_machine.destination[0]
@@ -268,7 +269,7 @@ class GcsMasterNode():
                 self.state_machine.mode_updated = True
         if data.command == 300:
             if ack:
-                self.state_machine.new_mission = True
+                self.state_machine.mission_started = True
         return
 
     def mavlink_pos_callback(self, data):
