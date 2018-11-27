@@ -33,12 +33,14 @@ class GcsMasterNode():
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
-    def __init__(self, altitude=50):
+    def __init__(self, altitude=50, takeoff_batt=80, fly_batt=30):
         
         self.altitude = altitude
         rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
-        self.state_machine = drone_fsm.DroneFSM(takeoff_altitude=altitude)
+        self.state_machine = drone_fsm.DroneFSM(
+                takeoff_altitude=altitude, takeoff_batt=takeoff_batt,
+                fly_batt=fly_batt)
 
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
@@ -382,8 +384,9 @@ class GcsMasterNode():
         return
 
 
-def main(altitude=50):
+def main(altitude=50, batt1=80, batt2=30):
     # Instantiate the gcs_master node class and run it
-    gcs_master = GcsMasterNode(altitude=altitude)
+    gcs_master = GcsMasterNode(altitude=altitude, takeoff_batt=batt1,
+                               fly_batt=batt2)
     gcs_master.run()
     return

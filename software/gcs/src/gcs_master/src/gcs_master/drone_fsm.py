@@ -13,16 +13,17 @@ class DroneFSM():
 
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
-    MIN_TAKEOFF_BAT = 80    # Minimum battery level for taking off
-    MIN_FLY_BAT = 30        # Battery warning raised below this level
 
-    def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50):
+    def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50,
+                 takeoff_batt=80, fly_batt=30):
         """
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
         # Flight constant
         self.TAKEOFF_ALTITUDE = takeoff_altitude
+        self.MIN_TAKEOFF_BAT = takeoff_batt # Min battery level for taking off
+        self.MIN_FLY_BAT = fly_batt         # Min battery level for flying
         # Threshold distances
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
         self.destination_threshold_dist = 0.000006   # Dist. for start landing

@@ -24,4 +24,4 @@ if __name__ == "__main__":
     args = parser.parse_args(rospy.myargv()[1:])
     
     rospy.init_node("gcs_master", anonymous=True)
-    gcs_master.main(args.altitude)
+    gcs_master.main(args.altitude, args.batt1, args.batt2)

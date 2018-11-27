@@ -53,7 +53,7 @@ class DronelinkSimNode():
     def main(self):
         rate = rospy.Rate(1)
         while self.run_loop and not rospy.is_shutdown():
-            rospy.loginfo("Requesting new mission")
+            rospy.logdebug("Requesting new mission")
             # Publish destination coordinates
             msg = mavlink_lora.msg.mavlink_lora_pos()
             msg.lat = self.lat + 0.0005
