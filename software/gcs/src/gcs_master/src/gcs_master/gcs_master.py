@@ -142,7 +142,6 @@ class GcsMasterNode():
             self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
 
-<<<<<<< HEAD
         if self.state_machine.LAND:
             msg = mavlink_lora.msg.mavlink_lora_command_land()
             msg.lat = self.state_machine.latitude
@@ -155,14 +154,12 @@ class GcsMasterNode():
             msg.precision_land_mode = 2
             self.drone_land_pub.publish(msg)
             self.state_machine.LAND = False
-=======
         if self.state_machine.ACTIVATE_PLANNER:
             msg = mavlink_lora.msg.mavlink_lora_pos()
             msg.lat = self.state_machine.destination[0]
             msg.lon = self.state_machine.destination[1]
             self.activate_planner_pub.publish(msg)
             self.state_machine.ACTIVATE_PLANNER = False
->>>>>>> pathplanner
 
         if self.state_machine.CALCULATE_PATH:
             self.calc_path_pub.publish(True)
