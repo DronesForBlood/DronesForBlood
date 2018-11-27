@@ -54,6 +54,11 @@ class UTM_node:
                          self.request_no_flight_zones_callback,
                          queue_size=1)
 
+        rospy.Subscriber("utm/request_utm_is_up",
+                      Bool,
+                      self.request_utm_is_up_callback,
+                      queue_size=1)
+
         # Publishers
         self.tracking_data_pub = rospy.Publisher(
             "utm/fetch_tracking_data",
@@ -74,6 +79,12 @@ class UTM_node:
             "utm/fetch_no_flight_circles",
             utm_no_flight_circle,
             queue_size=1000)
+
+
+        self.utm_is_up_pub = rospy.Publisher(
+            "utm/utm_is_up",
+            Bool,
+            queue_size=1)
 
         self.total_number_of_zones = 0
 
@@ -139,6 +150,9 @@ class UTM_node:
 
         return False, r
 
+    def request_utm_is_up_callback(self, msg):
+        newMsg = Bool()
+        self.utm_is_up_pub.publish(newMsg)
 
     def add_tracking_data_callback(self, msg):
         payload = {
