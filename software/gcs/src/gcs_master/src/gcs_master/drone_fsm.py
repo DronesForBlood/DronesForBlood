@@ -12,14 +12,15 @@ import std_msgs.msg
 class DroneFSM():
 
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
-    TAKEOFF_ALTITUDE = 10   # Altitude set point, in meters, after taking off
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
-    def __init__(self, max_lowbatt_distance=100):
+    def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50):
         """
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
+        # Flight constant
+        self.TAKEOFF_ALTITUDE = takeoff_altitude
         # Threshold distances
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
         self.destination_threshold_dist = 0.000006   # Dist. for start landing

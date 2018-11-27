@@ -2,6 +2,8 @@
 """
 GCS master node. Inits a node and imports main script
 """
+# Global libraries
+import argparse
 # Third-party libraries
 import rospy
 # Local libraries
@@ -9,5 +11,17 @@ from gcs_master import gcs_master
 
 
 if __name__ == "__main__":
+
+    # Parse input arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b1", "--batt1", type=lambda t:abs(float(t)),
+            default=80.0, help="Minimum SOC for allowing to take off")
+    parser.add_argument("-b2", "--batt2", type=lambda t:abs(float(t)),
+            default=20.0, help="Critical SOC before entering emergency state")
+    parser.add_argument("-a", "--altitude", type=lambda t:abs(float(t)),
+            default=50.0, help="[in meters] Set point altitude for the flight")
+
+    args = parser.parse_args(rospy.myargv()[1:])
+    
     rospy.init_node("gcs_master", anonymous=True)
-    gcs_master.main()
+    gcs_master.main(args.altitude)
