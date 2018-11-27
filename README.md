@@ -4,11 +4,13 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 # Installation instructions
 
-1. Clone the develop branch to a local folder, as well as the required submodules:
+1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch:
 
     git clone -b develop https://github.com/DronesForBlood/DronesForBlood.git
     cd DronesForBlood
     git submodule update --init --recursive
+    cd simulation/Firmware
+    git checkout drones-for-blood
 
 NOTE: The submodule instruction is assuming that you have a SSH key authentication enabled.
 
