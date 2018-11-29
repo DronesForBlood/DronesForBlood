@@ -22,11 +22,15 @@ try:
     import mavlink_lora.msg
 except ModuleNotFoundError:
     print("Mavlink module not found")
-
+try:
+    import utm.msg
+except ModuleNotFoundError:
+    print("UTM module not found")
 
 class GcsMasterNode():
 
     # Node variables
+    UTM_PERIOD = 1              # Seconds
     HEARBEAT_PERIOD = 0.5       # Seconds
     HEARTBEAT_TIMEOUT = 1.5     # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
@@ -45,6 +49,7 @@ class GcsMasterNode():
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
         self.heartbeat_send_time = 0.0
+        self.utm_send_time = 0.0
         self.battery_check_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
@@ -120,6 +125,11 @@ class GcsMasterNode():
         self.set_mode_pub = rospy.Publisher(
                 "mavlink_interface/command/set_mode",
                 mavlink_lora.msg.mavlink_lora_command_set_mode,
+                queue_size=1)
+        # UTM topic publisher
+        self.utm_data_pub = rospy.Publisher(
+                "utm/add_tracking_data",
+                utm.msg.utm_tracking_data,
                 queue_size=1)
 
     def update_flags(self):
@@ -351,6 +361,44 @@ class GcsMasterNode():
         rospy.logdebug("BIP")
         return
 
+
+    def send_utm_data(self):
+        """
+        Publish drone data to the UTM system
+
+        The data is gathered from different attributes of the drone FSM
+        instance.
+        """
+        # Check if there is already a plan loaded
+        if not self.state_machine.current_path:
+            return
+        # Get the next waypoint in the mission
+        wp_next = self.state_machine.current_path[
+                self.state_machine.current_mission]
+
+        msg = utm.msg.utm_tracking_data()
+        msg.uav_op_status 
+        msg.pos_cur_lat_dd = self.state_machine.latitude
+        msg.pos_cur_lng_dd = self.state_machine.longitude
+        msg.pos_cur_alt_m = self.state_machine.altitude
+        msg.pos_cur_hdg_deg = self.state_machine.heading
+        #TODO: Specify the correct drone velocity
+        msg.pos_cur_vel_mps = 10
+        msg.pos_cur_gps_timestamp = rospy.get_time()
+        msg.wp_next_lat_dd = wp_next.x
+        msg.wp_next_lng_dd = wp_next.y
+        msg.wp_next_alt_m = wp_next.z
+        msg.wp_next_hdg_deg = 0.0
+        #TODO: Specify the correct drone velocity
+        msg.wp_next_vel_mps = 10
+        #TODO: Estimate the epoch that the drone will reach the next wp
+        msg.wp_next_eta_epoch = 0.0
+        msg.uav_bat_soc = self.state_machine.batt_level
+
+        # Publish the message
+        self.utm_data_pub.publish(msg)
+        return
+
     def run(self):
         """ 
         Main loop. Update the FSM and publish variables.
@@ -372,6 +420,9 @@ class GcsMasterNode():
             self.state_machine.update_outputs()
             # Publish the flags of the FSM.
             self.update_flags()
+            # Publish the drone tracking data to the UTM periodically
+            if now > self.utm_send_time + self.UTM_PERIOD:
+                self.send_utm_data()
             # Publish the heartbeat with the adequate rate
             if now > self.heartbeat_send_time + self.HEARBEAT_PERIOD:
                 self.send_heartbeat()
