@@ -30,10 +30,12 @@ class GcsMasterNode():
     HEARBEAT_PERIOD = 0.5       # Seconds
     HEARTBEAT_TIMEOUT = 1.5     # Seconds
 
-    def __init__(self):
-
+    def __init__(self, altitude=50):
+        
+        self.altitude = altitude
+        rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
-        self.state_machine = drone_fsm.DroneFSM()
+        self.state_machine = drone_fsm.DroneFSM(takeoff_altitude=altitude)
 
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
@@ -261,6 +263,8 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
+        for wp in data.waypoints:
+            wp.z = self.altitude
         self.state_machine.route = data.waypoints
         self.state_machine.new_path = True
         if len(data.waypoints) <= self.state_machine.MISSION_LENGTH:
@@ -330,8 +334,8 @@ class GcsMasterNode():
         return
 
 
-def main():
+def main(altitude=50):
     # Instantiate the gcs_master node class and run it
-    gcs_master = GcsMasterNode()
+    gcs_master = GcsMasterNode(altitude=altitude)
     gcs_master.run()
     return
