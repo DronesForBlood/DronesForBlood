@@ -38,9 +38,9 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 There is a custom Gazebo world and launcher file prepared for using for simulating the drone. If Gazebo is installed, in one terminal run the following script:
 
-    ```bash
-    <path-to-main-dir>/simulation/launch_sim_sitl_gazebo.sh
-    ```
+```bash
+/<path-to-main-dir>/simulation/launch_sim_sitl_gazebo.sh
+```
     
 Gazebo should be executed, and the iris drone with the IR lock, as well as the IR beacon, should be spawned in the world.
 
@@ -59,9 +59,9 @@ There is a main launch file that executes the required packages for doing an aut
 Hence, if the user wants to make a simulated flight at 50 meters altitude, withe a minimum take-off battery of 80%, and a critical battery level of 20%, the following instruction has to be run:
 
 
-    ```bash
-    roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
-    ```
+```bash
+roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
+```
     
 **NOTE:** Some errors may be raised and the execution may fail if the system is launched before Gazebo or the actual drone is on and active.
 
