@@ -15,7 +15,7 @@
         <include file="$(find mavlink_lora)/launch/mavlink_lora.launch"/>
     </group>
 
-    <include file="$(find gcs_master)/launch/gcs_master_sim_userlink.test">
+    <include file="$(find gcs_master)/launch/gcs_master.launch">
         <arg name="takeoff-batt" value="$(arg takeoff-batt)"/>
         <arg name="critic-batt" value="$(arg critic-batt)"/>
         <arg name="alt" value="$(arg alt)"/>

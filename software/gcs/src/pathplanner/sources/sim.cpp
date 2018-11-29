@@ -6,9 +6,6 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 
-#include <PATHPLANNER/no_flight_circle.h>
-#include <PATHPLANNER/no_flight_area.h>
-
 #include <mavlink_lora/mavlink_lora_mission_item_int.h>
 #include <mavlink_lora/mavlink_lora_mission_list.h>
 #include <mavlink_lora/mavlink_lora_pos.h>
