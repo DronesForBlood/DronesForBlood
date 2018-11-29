@@ -21,6 +21,7 @@ from std_msgs.msg import Int64
 from utm.msg import utm_tracking_data
 from utm.msg import utm_no_flight_circle
 from utm.msg import utm_no_flight_area
+from utm.msg import utm_rally_point
 
 
 import sys
@@ -59,11 +60,16 @@ class UTM_node:
                       self.request_utm_is_up_callback,
                       queue_size=1)
 
+        rospy.Subscriber("utm/request_rally_points",
+                    Bool,
+                    self.request_utm_is_up_callback,
+                    queue_size=1)
+
         # Publishers
         self.tracking_data_pub = rospy.Publisher(
             "utm/fetch_tracking_data",
             utm_tracking_data,
-            queue_size=1)
+            queue_size=1000)
 
         self.number_of_zones_pub = rospy.Publisher(
             "utm/number_of_zones",
@@ -86,13 +92,18 @@ class UTM_node:
             Bool,
             queue_size=1)
 
+        self.rally_points_pub = rospy.Publisher(
+            "utm/fetch_rally_points",
+            utm_rally_point,
+            queue_size=1000)
+
         self.total_number_of_zones = 0
 
 
 
     def run(self):
         rospy.sleep(1)
-        rate = rospy.Rate(0.1)
+        rate = rospy.Rate(1)
 
         while not rospy.is_shutdown():
             self.fetch_tracking_data()
@@ -102,6 +113,7 @@ class UTM_node:
 
     def connect_to_utm_get(self, url, payload):
         r = ''
+        succes = False
         try:
             r = requests.get(url=url, params=payload, timeout=2)
             r.raise_for_status()
@@ -121,9 +133,16 @@ class UTM_node:
             print(colored(err, 'yellow'))
             sys.exit(1)
         else:
-            return True, r
+            succes = True
 
-        return False, r
+        if r.status_code == 204:
+            print(colored('No data available. Status code: %i' % r.status_code, 'magenta'))
+            succes = False
+        elif succes:
+            print(colored('Status code: %i' % r.status_code, 'yellow'))
+            print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
+
+        return succes, r
 
     def connect_to_utm_post(self, url, payload):
         r = ''
@@ -153,6 +172,9 @@ class UTM_node:
     def request_utm_is_up_callback(self, msg):
         newMsg = Bool()
         self.utm_is_up_pub.publish(newMsg)
+
+    def request_rally_points(self, msg):
+        self.fetch_rally_points()
 
     def add_tracking_data_callback(self, msg):
         payload = {
@@ -201,16 +223,15 @@ class UTM_node:
 
     def fetch_tracking_data(self):
         payload = {
-            'time_delta_s': 100000
+            'time_delta_s': 180
         }
 
         url = 'https://droneid.dk/rmuasd/utm/tracking_data.php'
 
+        print("Fetching tracking data")
         success, r = self.connect_to_utm_get(url, payload)
 
         if success:
-            print(colored('Status code: %i' % r.status_code, 'yellow'))
-            print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
             data_dict = ''
             try:
@@ -247,7 +268,6 @@ class UTM_node:
                     msg.wp_next_eta_epoch = entry['wp_next_eta_epoch']
                     msg.uav_bat_soc = entry['uav_bat_soc']
 
-                    print("Publish UAV")
                     self.tracking_data_pub.publish(msg)
 
     def fetch_static_no_fly_zones(self):
@@ -257,12 +277,10 @@ class UTM_node:
 
         url = 'https://droneid.dk/rmuasd/utm/data.php'
 
+        print("Fetching static no fly zones")
         success, r = self.connect_to_utm_get(url, payload)
 
         if success:
-            print(colored('Status code: %i' % r.status_code, 'yellow'))
-            print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
-
 
             f = open('kml_test.kml', 'w')
             text = r.text[:-7] # For some reason 7 digits are added to the end of the file. They must be removed
@@ -280,7 +298,6 @@ class UTM_node:
                 for i in range(number_of_zones):
                     self.number_of_zones = self.number_of_zones + 1
 
-                    print("SENDING STATIC ZONE")
                     msg = utm_no_flight_area()
 
                     msg.id = i #reader.get_zone_id(i)
@@ -313,11 +330,10 @@ class UTM_node:
 
         url = 'https://droneid.dk/rmuasd/utm/data.php'
 
+        print("Fetching dynamic no flight zones")
         success, r = self.connect_to_utm_get(url, payload)
 
         if success:
-            print(colored('Status code: %i' % r.status_code, 'yellow'))
-            print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
             data_dict = ''
             try:
@@ -327,8 +343,6 @@ class UTM_node:
             else:
                 for entry in data_dict:
                     self.number_of_zones = self.number_of_zones + 1
-
-                    print("SENDING DYNAMIC ZONE")
 
                     zone_type = entry['geometry']
 
@@ -372,10 +386,46 @@ class UTM_node:
 
                         self.no_flight_areas_pub.publish(msg)
 
+    def fetch_rally_points(self):
+        payload = {
+            'data_type': 'rally_points'
+        }
+
+        url = 'https://droneid.dk/rmuasd/utm/data.php'
+
+        print("Fetching rally points")
+        success, r = self.connect_to_utm_get(url, payload)
+
+        if success:
+
+            data_dict = ''
+            try:
+                data_dict = json.loads(r.text)  # convert to json
+            except:
+                print(colored('fetch_rally_points: Error in parsing of data to JSON', 'red'))
+            else:
+                for entry in data_dict:
+
+                    print(entry)
+
+                    msg = utm_rally_point()
+
+                    msg.int_id = int(entry['int_id'])
+                    msg.name = entry['name']
+
+                    msg.lat_dd = entry['lat_dd']
+                    msg.lng_dd = entry['lng_dd']
+
+                    msg.alt_rel_m = entry['alt_rel_m']
+                    msg.safe_radius_m = entry['safe_radius_m']
+
+                    self.rally_points_pub.publish(msg)
+
 
 if __name__ == '__main__':
     utm_node = UTM_node()
     #utm_node.fetch_tracking_data()
     #utm_node.fetch_static_no_fly_zones()
+    #utm_node.fetch_rally_points()
     utm_node.run()
     print("DONE")
