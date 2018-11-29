@@ -33,14 +33,14 @@ class GcsMasterNode():
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
-    def __init__(self, altitude=50, takeoff_batt=80, fly_batt=30):
+    def __init__(self, alt=50, takeoff_batt=80, fly_batt=30, hover_time=30):
         
-        self.altitude = altitude
+        self.altitude = alt
         rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
         self.state_machine = drone_fsm.DroneFSM(
-                takeoff_altitude=altitude, takeoff_batt=takeoff_batt,
-                fly_batt=fly_batt)
+                takeoff_altitude=alt, takeoff_batt=takeoff_batt,
+                fly_batt=fly_batt, hovering_time=hover_time)
 
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
@@ -301,7 +301,6 @@ class GcsMasterNode():
         return
 
     def ui_start_callback(self, data):
-        rospy.logdebug("Start command received")
         self.state_machine.new_mission = True
         return
     #TODO: Acknowledge back to the dronelink that the mission is getting started
@@ -360,6 +359,7 @@ class GcsMasterNode():
         rate = rospy.Rate(100)
         # Update time for checking initial heartbeat
         self.heartbeat_send_time = rospy.get_time()
+        self.state_machine.state_to_log()
 
         while not rospy.is_shutdown():
             now = rospy.get_time()
@@ -385,9 +385,9 @@ class GcsMasterNode():
         return
 
 
-def main(altitude=50, batt1=80, batt2=30):
+def main(alt=50, batt1=80, batt2=30, hover_time=20):
     # Instantiate the gcs_master node class and run it
-    gcs_master = GcsMasterNode(altitude=altitude, takeoff_batt=batt1,
-                               fly_batt=batt2)
+    gcs_master = GcsMasterNode(alt=alt, takeoff_batt=batt1,
+                               fly_batt=batt2, hover_time=hover_time)
     gcs_master.run()
     return
