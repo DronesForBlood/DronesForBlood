@@ -73,6 +73,7 @@ void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &no
         nrBunches = 1;
 
     size_t bunch_size = std::size_t(nodes.size()/nrBunches);
+
     std::vector<std::vector<std::shared_ptr<Node>>> bunches((nodes.size() + bunch_size) / bunch_size);
 
     for(size_t i = 0; i < nodes.size(); i += bunch_size) {
@@ -112,6 +113,7 @@ void Pathfinder::updatePenaltyOfNodeGroup(std::vector<std::shared_ptr<Node>> &no
     //    node->setPenalty(penalty);
 
     resumeSolver();
+    std::cout << "Here 9" << std::endl;
 }
 
 void Pathfinder::threadTest(std::vector<std::shared_ptr<Node> > nodes, double penalty, bool *done)

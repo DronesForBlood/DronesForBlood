@@ -45,7 +45,7 @@ public:
 
     void generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength);
 
-
+    bool checkIfPointIsInNoFlightZone(std::pair<double, double> coord);
 
     std::pair<std::size_t, std::size_t> getMapSize();
     void setGoalPosition(std::pair<double,double> goalCoord) {goalPosition = getClosestNodeIndex(goalCoord);}

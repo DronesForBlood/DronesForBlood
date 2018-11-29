@@ -9,12 +9,14 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
+
 #include <ros/ros.h>
 #include <std_msgs/builtin_int64.h>
 #include <std_msgs/Bool.h>
 //#include <std_msgs/String.h>
 #include <pathplanner/start_end_coord.h>
 #include <pathplanner/flight_mission.h>
+#include <pathplanner/emergency_situation.h>
 
 #include <mavlink_lora/mavlink_lora_mission_item_int.h>
 #include <mavlink_lora/mavlink_lora_mission_list.h>
@@ -25,6 +27,7 @@
 #include <utm/utm_tracking_data.h>
 
 #include "headers/mapcontroller.h"
+#include "headers/global/geofunctions.h"
 
 class rosMsg
 {
@@ -56,10 +59,10 @@ class rosMsg
     void subStart();
 
     void checkForNewNoFlightZones();
-    void checkForDrones();
 
 private:
     bool checkIfIDExists(int id);
+    void publishEmergency(int epochOver);
 
 private:
 
@@ -67,7 +70,7 @@ private:
 
     ros::Publisher pubPath;
     ros::Publisher pubFetchNoFlightZones;
-    ros::Publisher pubFetchDrones;
+    ros::Publisher pubEmergency;
 
     ros::Subscriber subCurrentPosition;
     ros::Subscriber subGoalPosition;
@@ -104,6 +107,7 @@ private:
     int numberOfZonesReceived = 0;
 
     bool initialZonesLoaded = false;
+    bool pathplannerReady = false;
 };
 
 

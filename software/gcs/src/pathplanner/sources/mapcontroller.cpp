@@ -37,22 +37,67 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
+    std::cout << "MapGenerator done" << std::endl;
+
     if(!visualizer)
         visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
     else
         visualizer->setNewMap(map, int(map->size()), int(map->at(0).size()));
 
+    std::cout << "Visualizer done" << std::endl;
+
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
+
+    std::cout << "Solver done" << std::endl;
 
     for(auto &it : preMapPenaltyCircles)
         updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
 
+    std::cout << "PreMapCircles done" << std::endl;
     for(auto &it : preMapPenaltyAreas)
         updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
+    std::cout << "PreMapAreas done" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     mapReady = true;
+}
+
+bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord)
+{
+    if(mapReady) {
+        std::pair<size_t, size_t> index = getClosestNodeIndex(coord);
+        std::shared_ptr<Node> node = map->at(index.first).at(index.second);
+        if(node->getTotalPenalty() > 0)
+            return true;
+        return false;
+    }
+
+    int currentEpoch = int(std::time(nullptr));
+    std::cout << "Epoch: " << currentEpoch << std::endl;
+    for(auto &it : preMapPenaltyAreas) {
+        bool active = false;
+        if((it.epochValidFrom < currentEpoch && it.epochValidTo > currentEpoch) || it.epochValidFrom < 0)
+            active = true;
+        if(active)
+            if(GeoFunctions::pointIsInsidePolygon(it.polygonCoordinates, coord))
+                return true;
+    }
+
+    for(auto &it : preMapPenaltyCircles) {
+        bool active = false;
+        if((it.epochValidFrom < currentEpoch && it.epochValidTo > currentEpoch) || it.epochValidFrom < 0)
+            active = true;
+        if(active) {
+            double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, it.position);
+            if(distanceToCircle <= it.radius)
+                return true;
+        }
+
+
+    }
+
+    return false;
 }
 
 std::pair<std::size_t, std::size_t> MapController::getMapSize()
@@ -139,7 +184,8 @@ bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position
     if(staticZone) {
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
         std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
-        solver.updatePenaltyOfNodeGroup(nodes, penalty);
+        if(!nodes.empty())
+            solver.updatePenaltyOfNodeGroup(nodes, penalty);
     }
     else {
         solver.pauseSolver();
@@ -206,6 +252,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     bool succes = makePathToDestination(goalPosition, nodePath);
 
     if(succes) {
+        std::cout << "Found a path..." << std::endl;
         for(const auto &nodeIndex : nodePath)
             path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
 
@@ -282,9 +329,16 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
 bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos, std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
     std::shared_ptr<Node> currentNode = map->at(pos.first).at(pos.second);
+
+    //std::cout << "From " << pos.first << " " << pos.second << std::endl;
+    //std::cout << "To: " << currentHeading.get()->first << " " << currentHeading.get()->second << std::endl;
+
     if(!currentNode->getUpdated() ||
        !currentNode->getStable()  ||
        !currentNode->getPointerToSource()) {
+        //std::cout << "currentNode->getUpdated(): " << currentNode->getUpdated() << std::endl;
+        //std::cout << "currentNode->getStable(): " << currentNode->getStable() << std::endl;
+        //std::cout << "currentNode->getPointerToSource(): " << currentNode->getPointerToSource() << std::endl;
         return false;
     }
 

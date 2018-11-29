@@ -1,0 +1,9 @@
+int64 secondsToClearGoal
+float64 rallyPointLat
+float64 rallyPointLon
+float64 distanceToRallyPoint_m
+float64 homePointLat
+float64 homePointLon
+float64 distanceToHomePoint_m
+
+

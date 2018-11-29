@@ -6,14 +6,12 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 
-#include <PATHPLANNER/no_flight_circle.h>
-#include <PATHPLANNER/no_flight_area.h>
-
 #include <mavlink_lora/mavlink_lora_mission_item_int.h>
 #include <mavlink_lora/mavlink_lora_mission_list.h>
 #include <mavlink_lora/mavlink_lora_pos.h>
 
 #include <utm/utm_tracking_data.h>
+#include <utm/utm_no_flight_circle.h>
 
 static bool isReady = false;
 
@@ -56,6 +54,22 @@ int main(int argc, char **argv)
     ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
     ros::Subscriber readySub = n.subscribe("pathplanner/is_ready", 1, &pathplannerReady);
 
+    /*
+    self.no_flight_circles_pub = rospy.Publisher(
+        "utm/fetch_no_flight_circles",
+        utm_no_flight_circle,
+        queue_size=1000)
+    */
+
+    ros::Publisher addNoFlightZonePub = n.advertise<utm::utm_no_flight_circle>("utm/fetch_no_flight_circles", 1000);
+    utm::utm_no_flight_circle noFlightMsg;
+    noFlightMsg.id = 3057027508;
+    noFlightMsg.lat = 55.47212;//55.472002;
+    noFlightMsg.lon = 10.41734;//10.415481;
+    noFlightMsg.radius = 25;
+    noFlightMsg.name = "Dont know dont care";
+
+
     mavlink_lora::mavlink_lora_pos currentPositionMsg;
     currentPositionMsg.lat = 55.472015;
     currentPositionMsg.lon = 10.414711;
@@ -66,7 +80,7 @@ int main(int argc, char **argv)
 
     utm::utm_tracking_data droneMsg;
 
-    ros::Rate loopRate(0.1);
+    ros::Rate loopRate(0.5);
 
     ros::spinOnce();
     loopRate.sleep();
@@ -90,10 +104,12 @@ int main(int argc, char **argv)
 
     //goalPositionPub.publish(goalPositionMsg);
 	
+    bool first = true;
 	while(ros::ok()) {
 
         std::cout << "Running.." << std::endl;
 
+        dronePub.publish(droneMsg);
         currentPositionPub.publish(currentPositionMsg);
 
         if(!isReady) {
@@ -103,6 +119,14 @@ int main(int argc, char **argv)
             std::cout << "Send calculatePath" << std::endl;
             std_msgs::Bool msg;
             calculatePathPub.publish(msg);
+
+
+            noFlightMsg.epochValidFrom = int(std::time(nullptr)) + 0;
+            noFlightMsg.epochValidTo = int(std::time(nullptr)) + 2500;
+
+            if(first)
+                addNoFlightZonePub.publish(noFlightMsg);
+            first = false;
         }
 
         ros::spinOnce();

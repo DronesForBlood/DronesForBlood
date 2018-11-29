@@ -19,6 +19,7 @@ add_message_files(
   FILES
   start_end_coord.msg
   flight_mission.msg
+  emergency_situation.msg
 )
 
 
