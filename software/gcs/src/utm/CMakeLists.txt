@@ -11,6 +11,7 @@ add_message_files(
   utm_tracking_data.msg
   utm_no_flight_area.msg
   utm_no_flight_circle.msg
+  utm_rally_point.msg
 )
 
 generate_messages(
