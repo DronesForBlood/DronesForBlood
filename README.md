@@ -4,7 +4,7 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 # Installation instructions
 
-1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch:
+1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch. Finally, compile the Gazebo SITL project:
 
 ```bash
     git clone -b develop https://github.com/DronesForBlood/DronesForBlood.git
@@ -12,6 +12,7 @@ Repo for the groups documents and stuff for blood transport system for drones
     git submodule update --init --recursive
     cd simulation/Firmware
     git checkout drones-for-blood
+    make posix_sitl_default
 ```
 
 
