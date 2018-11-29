@@ -12,9 +12,15 @@ Repo for the groups documents and stuff for blood transport system for drones
     cd simulation/Firmware
     git checkout drones-for-blood
 
-NOTE: The submodule instruction is assuming that you have a SSH key authentication enabled.
+**NOTE:** The submodule instruction is assuming that you have a SSH key authentication enabled.
 
 2. Install the Python dependencies
+    - If a virtual enviroment is being used:
+    
+    ```bash
+    cd <project-dir>
+    pip3 install -r /<project-path>/requirements.txt 
+    ```
 
 3. Make and source the ROS project
 
