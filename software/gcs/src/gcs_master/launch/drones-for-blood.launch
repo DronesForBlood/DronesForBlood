@@ -1,0 +1,25 @@
+
+
+<launch>
+
+    <arg name="takeoff-batt" default="80"/>
+    <arg name="critic-batt" default="20"/>
+    <arg name="alt" default="50"/>
+    <arg name="hover-time" default="20"/>
+    <arg name="sim" default="false"/>
+
+    <group if="$(arg sim)">
+        <include file="$(find mavlink_lora)/launch/mavlink_lora_sim.launch"/>
+    </group>
+    <group unless="$(arg sim)">
+        <include file="$(find mavlink_lora)/launch/mavlink_lora.launch"/>
+    </group>
+
+    <include file="$(find gcs_master)/launch/gcs_master_sim_userlink.test">
+        <arg name="takeoff-batt" value="$(arg takeoff-batt)"/>
+        <arg name="critic-batt" value="$(arg critic-batt)"/>
+        <arg name="alt" value="$(arg alt)"/>
+        <arg name="hover-time" value="$(arg hover-time)"/>
+    </include>
+
+</launch>

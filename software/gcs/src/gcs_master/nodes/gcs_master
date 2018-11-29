@@ -20,8 +20,10 @@ if __name__ == "__main__":
             default=20.0, help="Critical SOC before entering emergency state")
     parser.add_argument("-a", "--altitude", type=lambda t:abs(float(t)),
             default=50.0, help="[in meters] Set point altitude for the flight")
+    parser.add_argument("-ht", "--hovertime", type=lambda t:abs(float(t)),
+            default=50.0, help="[in secs] Hover time before landing")
 
     args = parser.parse_args(rospy.myargv()[1:])
     
     rospy.init_node("gcs_master", anonymous=True)
-    gcs_master.main(args.altitude)
+    gcs_master.main(args.altitude, args.batt1, args.batt2, args.hovertime)

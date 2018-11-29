@@ -11,16 +11,21 @@ import std_msgs.msg
 
 class DroneFSM():
 
+    PLANNER_TIMEOUT = 60    # Timeout, in seconds, for asking again for a path
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
-    def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50):
+    def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50,
+                 takeoff_batt=80, fly_batt=30, hovering_time=20):
         """
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
         """
         # Flight constant
         self.TAKEOFF_ALTITUDE = takeoff_altitude
+        self.MIN_TAKEOFF_BAT = takeoff_batt # Min battery level for taking off
+        self.MIN_FLY_BAT = fly_batt         # Min battery level for flying
+        self.HOVERING_TIME = hovering_time  # Hover time before starting landing
         # Threshold distances
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
         self.destination_threshold_dist = 0.000006   # Dist. for start landing
@@ -33,6 +38,7 @@ class DroneFSM():
         self.CALCULATE_PATH = False
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
+        self.HOLD_POSITION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -48,14 +54,20 @@ class DroneFSM():
         self.armed = False                  # Armed / Disarmed
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
-        self.batt_ok = False                # Battery status
+        self.holding_position = False       # Drone is holding position on air
+        self.mode_updated = False           # The drone has updated the mode
+        self.batt_level = 0                 # Reamining battery capacity
+        self.takeoff_batt_ok = False        # Enough battery for taking off
+        self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
+        # User link related variables
+        self.new_mission = False            # The user has requested new mission
         # Path related variables
         self.new_path = False               # If new path is available
         self.new_waypoint = False           # New waypoint is available
         self.mission_ready = False          # The drone received a mission
-        self.new_mission = False            # The drone has started the mission
+        self.mission_started = False        # The drone has started the mission
         self.current_mission = 0
         self.max_lowbatt_distance = max_lowbatt_distance
         # FSM parameters
@@ -84,21 +96,34 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission and self.comm_ok:
-                self.__state = "arm"
+            if self.new_mission and self.comm_ok and self.takeoff_batt_ok:
+                self.__state = "planner_setup"
                 self.new_mission = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = 0.0
 
-        # ARM state. Wait until mavlink acknowledges the drone implemented
-        # the take-off command and the path planner is ready to calculate path.
-        elif self.__state == "arm":	
-            if self.armed and self.taking_off and self.planner_ready:
-                self.__state = "take_off"
+        # PLANNER SETUP state. Wait until the path planner acknowledges that
+        # it is ready for creating mission plans.
+        elif self.__state == "planner_setup":
+            if self.planner_ready and self.comm_ok and self.takeoff_batt_ok:
+                self.__state = "arm"
+                self.planner_ready = False
                 self.state_to_log()
+                # Restart timer for the new state, so it updates the flags asap.
+                self.__state_timer = 0.0
 
-        # TAKING OFF state. Wait until mavlink acknowledges the drone took off,
+        # ARM state. Wait until mavlink acknowledges the drone implemented
+        # the take-off command.
+        elif self.__state == "arm":	
+            if self.armed and self.taking_off:
+                self.__state = "take_off"
+                self.new_mission = False
+                self.state_to_log()
+                # Restart timer for the new state.
+                self.__state_timer = 0.0
+
+        # TAKE OFF state. Wait until mavlink acknowledges the drone took off,
         # and the path planner sent the first waypoint.
         elif self.__state == "take_off":
             if self.relative_alt>self.TAKEOFF_ALTITUDE-1 and self.new_path:
@@ -108,9 +133,14 @@ class DroneFSM():
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
 
-        # FLYING state. If there are no more waypoints, landing has to start.
+        # FLY state. If there are no more waypoints, landing has to start.
         elif self.__state == "fly":
-            if self.new_path:
+            if not self.comm_ok:
+                self.__state = "recover_comm"
+                rospy.logwarn("Dronelink lost")
+                self.state_to_log()
+                self.__state_timer = 0.0
+            elif self.new_path:
                 self.__state = "upload_mission"
                 self.new_path = False
                 self.state_to_log()
@@ -120,6 +150,7 @@ class DroneFSM():
                         ):
                     self.__state = "land"
                     self.state_to_log()
+                    rospy.loginfo("Hovering {} secs".format(self.HOVERING_TIME))
                     self.__state_timer = rospy.get_time()
             elif self.new_waypoint:
                     self.__state = "calculate_path"
@@ -139,9 +170,9 @@ class DroneFSM():
 
         # START MISSION state
         elif self.__state == "start_mission":
-            if self.new_mission:
+            if self.mission_started:
                 self.__state = "fly"
-                self.new_mission = False
+                self.mission_started = False
                 self.state_to_log()
 
         # CALCULATE_PATH state
@@ -154,7 +185,14 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            pass
+            if self.mode_updated:
+                pass
+            if self.holding_position:
+                self.__state = "calculate_path"
+                self.holding_position = False
+                rospy.loginfo("Communication recovered")
+                self.state_to_log()
+                self.__state_timer = 0.0
 
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
@@ -165,6 +203,7 @@ class DroneFSM():
         elif self.__state == "land":
             if self.relative_alt<0.01:
                 self.__state = "start"
+                self.landing = False
                 self.state_to_log()
                 self.__state_timer = 0.0
 
@@ -185,26 +224,31 @@ class DroneFSM():
                 self.DISARM = True
                 self.__state_timer = rospy.get_time()
 
+        # PLANNER SETUP state
+        elif self.__state == "planner_setup":
+            now = rospy.get_time()
+            if now > self.__state_timer + self.PLANNER_TIMEOUT:
+                self.ACTIVATE_PLANNER = True
+                self.__state_timer = rospy.get_time()
+
         # ARM state
         elif self.__state == "arm":
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
-                if not self.planner_ready:
-                    self.ACTIVATE_PLANNER = True
                 if not self.taking_off:
                     self.TAKE_OFF = True
                 if not self.armed:
                     self.ARM = True
                 self.__state_timer = rospy.get_time()
 
-        # TAKING OFF state
+        # TAKE OFF state
         elif self.__state == "take_off":
             now = rospy.get_time()
             if  now > self.__state_timer + self.TIMEOUT:
                 self.CALCULATE_PATH = True
             pass
 
-        # FLYING state
+        # FLY state
         elif self.__state == "fly":
             # Check that there are no None values in the list
             if all(self.position):
@@ -235,7 +279,10 @@ class DroneFSM():
 
         # RECOVER COMM state
         elif self.__state == "recover_comm":
-            pass
+            now = rospy.get_time()
+            if now > self.__state_timer + self.TIMEOUT:
+                self.HOLD_POSITION = True
+                self.__state_timer = rospy.get_time()
 
         # EMERGENCY LANDING state
         elif self.__state == "emergency_landing":
@@ -244,7 +291,8 @@ class DroneFSM():
         # LANDING state
         elif self.__state == "land":
             now = rospy.get_time()
-            if now > self.__state_timer+self.TIMEOUT and not self.landing:
+            if now > self.__state_timer+self.HOVERING_TIME and not self.landing:
+                rospy.loginfo("Starting landing")
                 self.LAND = True
                 self.__state_timer = rospy.get_time()
 
@@ -252,6 +300,22 @@ class DroneFSM():
         else:
             raise ValueError("Unrecognized state '{}'".format(self.__state))
         return
+
+    def check_battery(self):
+        if self.batt_level > self.MIN_TAKEOFF_BAT:
+            self.takeoff_batt_ok = True
+        else:
+            self.takeoff_batt_ok = False
+            if self.__state == "start":
+                rospy.logwarn("Low battery level: {}%. Take off not allowed"
+                              "".format(self.batt_level))
+        if self.batt_level > self.MIN_FLY_BAT:
+            self.batt_ok = True
+        else:
+            self.batt_ok = False
+            rospy.logwarn("WARNING: Very low battery level: {}%"
+                          "".format(self.batt_level))
+        return self.takeoff_batt_ok
 
     def get_state(self):
         """
