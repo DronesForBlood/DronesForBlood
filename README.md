@@ -22,7 +22,7 @@ Repo for the groups documents and stuff for blood transport system for drones
     
     ```bash
     cd <project-dir>
-    pip3 install -r /<project-path>/requirements.txt 
+    pip3 install -r /<project-path>/software/gcs/requirements.txt 
     ```
 
 3. Make and source the ROS project
@@ -30,7 +30,7 @@ Repo for the groups documents and stuff for blood transport system for drones
     ```bash
     source /opt/ros/<ros-distro>/setup.bash
     cd <project-dir>/software/gcs
-    catkin-make
+    catkin_make
     source ./devel/setup.bash
     ```
     
