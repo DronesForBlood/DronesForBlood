@@ -29,15 +29,23 @@ class PathplannerSimNode():
         self.received_pos = False
 
         rospy.init_node("sim_pathplanner", anonymous=True)
-        
+
         self.new_path_pub = rospy.Publisher(
                 "pathplanner/mission_list",
                 mavlink_lora.msg.mavlink_lora_mission_list,
+                queue_size=1)
+        self.is_ready_pub = rospy.Publisher(
+                "pathplanner/is_ready",
+                std_msgs.msg.Bool,
                 queue_size=1)
 
         rospy.Subscriber("gcs_master/calculate_path",
                         std_msgs.msg.Bool,
                         self.new_path_callback,
+                        queue_size=1)
+        rospy.Subscriber("pathplanner/get_is_ready",
+                        mavlink_lora.msg.mavlink_lora_pos,
+                        self.get_ready_callback,
                         queue_size=1)
 
         rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
@@ -67,6 +75,10 @@ class PathplannerSimNode():
             self.waypoints = self.waypoints[1:]
             for index, _ in enumerate(self.waypoints):
                 self.waypoints[index].seq = index
+        return
+
+    def get_ready_callback(self, data):
+        self.is_ready_pub.publish(True)
         return
 
     def create_waypoints_list(self):
@@ -132,11 +144,12 @@ class PathplannerSimNode():
         way4.autocontinue = 1
 
         self.waypoints = [way1, way2, way3, way4]
-
         return
 
     def main(self):
         rospy.spin()
+        return
+
 
 if __name__ == "__main__":
     pathplanner_node = PathplannerSimNode()

@@ -101,7 +101,7 @@ class DroneFSM():
                 self.new_mission = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
-                self.__state_timer = 0.0
+                self.__state_timer = -100.0
 
         # PLANNER SETUP state. Wait until the path planner acknowledges that
         # it is ready for creating mission plans.
@@ -228,6 +228,7 @@ class DroneFSM():
         elif self.__state == "planner_setup":
             now = rospy.get_time()
             if now > self.__state_timer + self.PLANNER_TIMEOUT:
+                rospy.loginfo("ACTIVATE PLANNER is True")
                 self.ACTIVATE_PLANNER = True
                 self.__state_timer = rospy.get_time()
 
@@ -246,6 +247,7 @@ class DroneFSM():
             now = rospy.get_time()
             if  now > self.__state_timer + self.TIMEOUT:
                 self.CALCULATE_PATH = True
+                self.__state_timer = rospy.get_time()
             pass
 
         # FLY state
