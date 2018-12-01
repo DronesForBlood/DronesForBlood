@@ -67,5 +67,27 @@ Hence, if the user wants to make a simulated flight at 50 meters altitude, withe
 roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
 ```
     
+   
 **NOTE:** Some errors may be raised and the execution may fail if the system is launched before Gazebo or the actual drone is on and active.
+
+
+# Troubleshooting
+
+- __ModuleNotFoundError: No module named 'urllib2'__: when the pykml library is imported, it can not find the urrlib2 library. This is a bug in the _python3_ version of pykml.  As stated in [this blog](http://installfights.blogspot.com/2018/04/how-to-run-pykml-in-python3.html), the source code of the _pykml_ _parser.py_ module has to be editted:
+
+    - With virtual environments, the file is at _~/.virtualenvs/<virtualenv-name>/lib/python3.6/site-packages/pykml/_
+    
+    - If not, it is in the system libraries folder e.g. _~/.local/lib/python3.6/site-packages/pykml/_
+    
+In the file, the line that says `import urrlib2` has to be changed by the following lines:
+
+```python
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
+```
+    
 
