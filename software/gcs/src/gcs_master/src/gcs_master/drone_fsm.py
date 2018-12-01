@@ -28,7 +28,7 @@ class DroneFSM():
         self.HOVERING_TIME = hovering_time  # Hover time before starting landing
         # Threshold distances
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
-        self.destination_threshold_dist = 0.000006   # Dist. for start landing
+        self.destination_threshold_dist = 0.000708   # Dist. for start landing
         # FSM flags. Outputs
         self.DISARM = False
         self.ARM = False
@@ -245,7 +245,7 @@ class DroneFSM():
         # TAKE OFF state
         elif self.__state == "take_off":
             now = rospy.get_time()
-            if  now > self.__state_timer + self.TIMEOUT:
+            if  now > self.__state_timer + self.TIMEOUT + 10:
                 self.CALCULATE_PATH = True
                 self.__state_timer = rospy.get_time()
             pass
