@@ -32,7 +32,7 @@ class GcsMasterNode():
     # Node variables
     UTM_PERIOD = 1              # Seconds
     HEARBEAT_PERIOD = 0.5       # Seconds
-    HEARTBEAT_TIMEOUT = 1.5     # Seconds
+    HEARTBEAT_TIMEOUT = 5       # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
@@ -333,6 +333,7 @@ class GcsMasterNode():
                     data.waypoints[0:self.state_machine.MISSION_LENGTH])
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
+        rospy.loginfo("Current path LENGHT: {}".format(len(self.state_machine.current_path)))
         return
 
     def pathplanner_isready_callback(self, data):
@@ -373,8 +374,7 @@ class GcsMasterNode():
         if not self.state_machine.current_path:
             return
         # Get the next waypoint in the mission
-        wp_next = self.state_machine.current_path[
-                self.state_machine.current_mission]
+        wp_next = self.state_machine.current_path[0]
 
         msg = utm.msg.utm_tracking_data()
         msg.uav_op_status 
