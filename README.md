@@ -90,4 +90,4 @@ except ImportError:
     from urllib2 import urlopen
 ```
     
-
+- Unable to open tty v6 port '__ check if the socat is install, and then run the commands from the launch_sim_sitl_gazebo.sh files 
