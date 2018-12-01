@@ -12,7 +12,7 @@ Repo for the groups documents and stuff for blood transport system for drones
     git submodule update --init --recursive
     cd simulation/Firmware
     git checkout drones-for-blood
-    make posix_sitl_default
+    make posix_sitl_default gazebo
 ```
 
 
