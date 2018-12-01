@@ -92,6 +92,6 @@ except ImportError:
     
 - __[ERROR] [1543662066.324335031]: Unable to open port__: Unable to open tty v6 port when running mavlink_lora. Check if the socat is installed, and then run the commands from the launch_sim_sitl_gazebo.sh files again.
 
-        ```bash
-        sudo apt install socat
-        ```
+    ```bash
+    sudo apt install socat
+    ```
