@@ -66,6 +66,8 @@ set(SOURCES
     headers/watch/watchdrone.h
     headers/watch/watchzone.h
 
+    headers/global/clipper.cpp
+    headers/global/clipper.hpp
     headers/global/coordconverter.h
     headers/global/defines.h
     headers/global/geofunctions.h

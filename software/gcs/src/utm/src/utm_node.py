@@ -131,16 +131,15 @@ class UTM_node:
             # Catastrophic error; bail.
             print(colored('Request error', 'red'))
             print(colored(err, 'yellow'))
-            sys.exit(1)
+            #sys.exit(1)
         else:
-            succes = True
-
-        if r.status_code == 204:
-            print(colored('No data available. Status code: %i' % r.status_code, 'magenta'))
-            succes = False
-        elif succes:
-            print(colored('Status code: %i' % r.status_code, 'yellow'))
-            print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
+            if r.status_code == 204:
+                print(colored('No data available. Status code: %i' % r.status_code, 'magenta'))
+                succes = False
+            else:
+                succes = True
+                print(colored('Status code: %i' % r.status_code, 'yellow'))
+                print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
         return succes, r
 
@@ -330,8 +329,9 @@ class UTM_node:
 
         url = 'https://droneid.dk/rmuasd/utm/data.php'
 
-        print("Fetching dynamic no flight zones")
         success, r = self.connect_to_utm_get(url, payload)
+
+        print("Fetching dynamic no flight zones ", success)
 
         if success:
 

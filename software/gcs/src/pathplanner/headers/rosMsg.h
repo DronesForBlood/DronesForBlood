@@ -29,6 +29,12 @@
 #include "headers/mapcontroller.h"
 #include "headers/global/geofunctions.h"
 
+struct DynamicNoFlightZone {
+    int ID;
+    int epochFrom;
+    int epochTo;
+};
+
 class rosMsg
 {
  public:
@@ -61,7 +67,7 @@ class rosMsg
     void checkForNewNoFlightZones();
 
 private:
-    bool checkIfIDExists(int id);
+    bool checkIfZoneExists(DynamicNoFlightZone &zone);
     void publishEmergency(int epochOver);
 
 private:
@@ -100,7 +106,7 @@ private:
     bool goalCoordSet = false;
     bool mapHasBeenGenerated = false;
 
-    std::vector<int> dynamicIDs;
+    std::vector<DynamicNoFlightZone> dynamicZones;
 
     std::mutex zoneMutex;
     int numberOfExpectedZones = INT_MAX;
@@ -108,6 +114,8 @@ private:
 
     bool initialZonesLoaded = false;
     bool pathplannerReady = false;
+
+    int expandZonesByMeters = 10;
 };
 
 

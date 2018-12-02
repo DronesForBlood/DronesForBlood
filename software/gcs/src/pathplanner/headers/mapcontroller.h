@@ -38,6 +38,7 @@ class MapController
 public:
     MapController();
     ~MapController();
+    void setMapReady(bool val) { mapReady = val;}
     bool getMapReady() { return mapReady;}
 
     void addPreMapPenaltyOfAreaCircle(std::pair<double,double> position, double radius, double penalty, time_t epochValidFrom = -1, time_t epochValidTo = -1);
@@ -78,6 +79,8 @@ private:
     std::vector<std::shared_ptr<WatchDrone>> watchDrones;
     std::pair<std::size_t,std::size_t> goalPosition;
     std::pair<std::size_t,std::size_t> initPosition;
+    std::pair<double,double> goalCoord;
+    std::pair<double,double> initCoord;
     std::shared_ptr<std::pair<std::size_t,std::size_t>> currentHeading;
     std::pair<double, double> currentPosition;
     std::vector<std::pair<std::size_t, std::size_t>> currentPath;

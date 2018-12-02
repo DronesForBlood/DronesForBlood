@@ -37,6 +37,9 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
+    initCoord = startCoord;
+    goalCoord = endCoord;
+
     std::cout << "MapGenerator done" << std::endl;
 
     if(!visualizer)
@@ -59,7 +62,7 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
         updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
     std::cout << "PreMapAreas done" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     mapReady = true;
 }
 
@@ -70,14 +73,13 @@ bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord
         std::shared_ptr<Node> node = map->at(index.first).at(index.second);
         if(node->getTotalPenalty() > 0)
             return true;
-        return false;
     }
 
     int currentEpoch = int(std::time(nullptr));
     std::cout << "Epoch: " << currentEpoch << std::endl;
     for(auto &it : preMapPenaltyAreas) {
         bool active = false;
-        if((it.epochValidFrom < currentEpoch && it.epochValidTo > currentEpoch) || it.epochValidFrom < 0)
+        if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
             active = true;
         if(active)
             if(GeoFunctions::pointIsInsidePolygon(it.polygonCoordinates, coord))
@@ -85,16 +87,19 @@ bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord
     }
 
     for(auto &it : preMapPenaltyCircles) {
+        std::cout << "preMapPenaltyCircles check!" << std::endl;
         bool active = false;
-        if((it.epochValidFrom < currentEpoch && it.epochValidTo > currentEpoch) || it.epochValidFrom < 0)
+        if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
             active = true;
         if(active) {
+            std::cout << "ACTIVE!" << std::endl;
             double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, it.position);
+            std::cout << "distanceToCircle: " << distanceToCircle << std::endl;
+            std::cout << "it.radius: " << it.radius << std::endl;
+            std::cout << "it.position: " << it.position.first << " " << it.position.second << std::endl;
             if(distanceToCircle <= it.radius)
                 return true;
         }
-
-
     }
 
     return false;
@@ -204,11 +209,16 @@ bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position
 
 bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
+    //std::cout << "updatePenaltyOfAreaPolygon" << std::endl;
     double minDistance = 10000;
     bool closerThanMinDistance = false;
     for(auto &it : polygonCoordinates) {
-        double distanceInit = GeoFunctions::calcMeterDistanceBetweensCoords(initPosition, it);
-        double distanceGoal = GeoFunctions::calcMeterDistanceBetweensCoords(goalPosition, it);
+        double distanceInit = GeoFunctions::calcMeterDistanceBetweensCoords(initCoord, it);
+        double distanceGoal = GeoFunctions::calcMeterDistanceBetweensCoords(goalCoord, it);
+        //std::cout << "distanceInit: " << distanceInit << std::endl;
+        //std::cout << "distanceGoal: " << distanceGoal << std::endl;
+        //std::cout << "initCoord: " << initCoord.first << " " << initCoord.second << std::endl;
+        //std::cout << "goalCoord: " << goalCoord.first << " " << goalCoord.second << std::endl;
 
         if(distanceInit < minDistance || distanceGoal < minDistance) {
             closerThanMinDistance = true;
@@ -218,6 +228,7 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
 
     if(!closerThanMinDistance)
         return false;
+    //std::cout << "updatePenaltyOfAreaPolygon 2" << std::endl;
 
     solver.pauseSolver();
     std::shared_ptr<WatchZone> zone;

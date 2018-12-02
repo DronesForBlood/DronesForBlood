@@ -5,6 +5,7 @@
 #include "headers/simulation.h"
 #include "headers/mapcontroller.h"
 #include "headers/rosMsg.h"
+#include "headers/global/geofunctions.h"
 
 #include <std_msgs/Bool.h>
 
@@ -18,6 +19,15 @@ void utmIsUp(const std_msgs::Bool &msg)
 
 int main(int argc, char **argv)
 {
+    std::vector<std::pair<double,double>> temp;
+    temp.push_back(std::pair<double,double>(55.48161,10.40461));
+    temp.push_back(std::pair<double,double>(55.48468,10.41946));
+    temp.push_back(std::pair<double,double>(55.47689,10.41362));
+    temp.push_back(std::pair<double,double>(55.47636,10.39628));
+
+    GeoFunctions::offsetPolygon(temp, 10);
+
+
     ros::init(argc, argv, "pathplanner");
 
     ros::NodeHandle n;
