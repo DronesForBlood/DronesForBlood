@@ -7,6 +7,7 @@ div {
 }
 </style>
 <meta charset="UTF-8">
+<link rel="icon" href="icons/blood-donation.png">
 <link rel="stylesheet" href="OpenLayers/v5.3.0-dist/ol.css" type="text/css">
 <script src="OpenLayers/v5.3.0-dist/ol.js"></script>
 <style>
@@ -17,7 +18,7 @@ div {
 
 </style>
 
-<title>Page Title</title>
+<title>Drones for Blood</title>
 </head>
 <body style="font-family:arial black;">
 
@@ -27,6 +28,7 @@ div {
 <div id="map" class="map"></div>
 <script>		
     var markerOrder = true;
+    var destinationSent = false;
     var startSource = new ol.source.Vector({wrapX: false});
     var destinationSource = new ol.source.Vector({wrapX: false});
     var droneSource = new ol.source.Vector({wrapX: false});
@@ -91,6 +93,7 @@ div {
 
     map.on('click', function(e){
         var translated = new ol.proj.transform(e.coordinate, "EPSG:900913" ,"EPSG:4326");
+	document.getElementById("startBtn").disabled = true;
         if (markerOrder){
             startSource.clear();
             var feature = new ol.Feature({
@@ -123,10 +126,12 @@ function addStartMarker(markPos){
     }); 	
     feature.setStyle(startStyle);
     startSource.addFeature(feature);
+    document.getElementById("startBtn").disabled = true;
 };
 
 function addStartMarkerManual(){
 	var pattern = /\d{2}\.\d{7}/;
+	document.getElementById("startBtn").disabled = true;
 	if (pattern.test(document.getElementById("startLat").value) && pattern.test(document.getElementById("startLon").value))
 	{
 		startSource.clear();
@@ -135,7 +140,7 @@ function addStartMarkerManual(){
             geometry: new ol.geom.Point(markPos),
         }); 	
         feature.setStyle(startStyle);
-        startSource.addFeature(feature);        
+        startSource.addFeature(feature);       
 	}
 };
 
@@ -146,11 +151,13 @@ function addEndMarker(markPos){
     }); 	
     feature.setStyle(destinationStyle);
     destinationSource.addFeature(feature);
+    document.getElementById("startBtn").disabled = true;
+
 };
 
 function addEndMarkerManual(){
 	var pattern = /\d{2}\.\d{7}/;
-    console.info("End Marker Changed!");
+	document.getElementById("startBtn").disabled = true;
 	if (pattern.test(document.getElementById("endLat").value) && pattern.test(document.getElementById("endLon").value))
 	{
 		destinationSource.clear();
@@ -185,16 +192,16 @@ function addDroneMarker(){
 <input type = "number" id = "endLat" step="0.0000001" max="90" min="-90" placeholder="Latitude" required pattern=.{1} oninput="addEndMarkerManual()"/>
 <input type = "number" id = "endLon" step="0.0000001" max="180" min="-180" placeholder="Longitude" required pattern=.{1} oninput="addEndMarkerManual()"/>
 <div></div>
-<nobr>
 <input type="submit" value="Request"/>
-<input type="checkbox" id="package" value="1"/> Package attached
-</nobr>
 </form>
 
 <div></div>
 
 <form style="display:inline-block;" onsubmit="publishStart();return false">
-<input type="submit" value="Start" />
+<nobr>
+<input type="submit" value="Start" id="startBtn" disabled/>
+<input type="checkbox" id="package" value="1"/> Package attached
+</nobr>
 </form>
 
 <div></div>
@@ -210,7 +217,6 @@ function addDroneMarker(){
 <script type="text/javascript" src="http://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
 <script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
 <script type="text/javascript">
-var destinationSent = false;
 var ros = new ROSLIB.Ros({
 	url : 'ws://localhost:9090'
 	});
@@ -227,21 +233,28 @@ var ros = new ROSLIB.Ros({
 
 var droneDestination = new ROSLIB.Topic({
 	ros : ros,
-	name : "/dronelink/destination",
-	messageType : "dronelink/mavlink_lora_pos"
+	name : "/userlink/destination",
+	messageType : "mavlink_lora/mavlink_lora_pos"
 });
     
 var droneStart = new ROSLIB.Topic({
 	ros : ros,
-	name : "/dronelink/start",
+	name : "/userlink/start",
 	messageType : "std_msgs/Int16MultiArray"
 });
 
 var dronePosition = new ROSLIB.Topic({
     ros : ros,
     name : "/mavlink_pos",
-    messageType : "dronelink/mavlink_lora_pos"
-});   
+    messageType : "mavlink_lora/mavlink_lora_pos"
+}); 
+
+//var droneAck = new ROSLIB.Topic({
+    //ros : ros,
+    //name : "",
+    //messageType: "  
+//droneAck.subscribe(function(message){
+//});
 
 dronePosition.subscribe(function(message) {
 	document.getElementById("droneLat").value = message.lat;
@@ -250,44 +263,38 @@ dronePosition.subscribe(function(message) {
 });   
 
 function publishStart(){
-	if (destinationSent){
-		var msg = new ROSLIB.Message({
-			layout: {
-				dim: [{
-					label: "Start",
-					size: 1,
-					stride: 0},
-				     {
-					label: "Package",
-					size: 1,
-					stride: 0}],
-				data_offset: 0
-			},
-			data:[1, Number(document.getElementById("package").value)]
-
-		});
-		droneStart.publish(msg);
-		console.info(msg);
-	}
-	else {
-		alert("You must send a request first!");
-	}
+	var checked = 0;
+	if (document.getElementById("package").checked){
+		var checked = 1;
+	};
+	var msg = new ROSLIB.Message({
+		layout: {
+			dim: [{
+				label: "Start",
+				size: 1,
+				stride: 0},
+				{
+				label: "Package",
+				size: 1,
+				stride: 0}],
+			data_offset: 0
+		},
+		data:[1, checked]
+	});
+	droneStart.publish(msg);
 };
 
 function publishTopic(){
 	var msg = new ROSLIB.Message({
 		time_usec: 0,
-        	lat : document.getElementById("endLat").value,
-        	lon: document.getElementById("endLon").value,
+        	lat : Number(document.getElementById("endLat").value),
+        	lon: Number(document.getElementById("endLon").value),
         	alt: 0.0,
         	relative_alt: 0.0,
         	heading: 0.0,
-        	vx: 0.0,
-        	vy: 0.0,
-        	vz: 0.0
 	});
 	droneDestination.publish(msg);
-	destinationSent = true;
+	document.getElementById("startBtn").disabled = false; // Should only be enabled after an ack from GCS
 };
 </script>
 </body>
