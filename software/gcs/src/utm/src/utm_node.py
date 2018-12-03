@@ -22,6 +22,7 @@ from utm.msg import utm_tracking_data
 from utm.msg import utm_no_flight_circle
 from utm.msg import utm_no_flight_area
 from utm.msg import utm_rally_point
+from utm.msg import utm_rally_point_list
 
 
 import sys
@@ -62,7 +63,7 @@ class UTM_node:
 
         rospy.Subscriber("utm/request_rally_points",
                     Bool,
-                    self.request_utm_is_up_callback,
+                    self.request_rally_points,
                     queue_size=1)
 
         # Publishers
@@ -94,8 +95,8 @@ class UTM_node:
 
         self.rally_points_pub = rospy.Publisher(
             "utm/fetch_rally_points",
-            utm_rally_point,
-            queue_size=1000)
+            utm_rally_point_list,
+            queue_size=1)
 
         self.total_number_of_zones = 0
 
@@ -404,6 +405,7 @@ class UTM_node:
             except:
                 print(colored('fetch_rally_points: Error in parsing of data to JSON', 'red'))
             else:
+                msg_list = utm_rally_point_list()
                 for entry in data_dict:
 
                     print(entry)
@@ -413,13 +415,16 @@ class UTM_node:
                     msg.int_id = int(entry['int_id'])
                     msg.name = entry['name']
 
-                    msg.lat_dd = entry['lat_dd']
-                    msg.lng_dd = entry['lng_dd']
+                    msg.lat_dd = float(entry['lat_dd'])
+                    msg.lng_dd = float(entry['lng_dd'])
 
-                    msg.alt_rel_m = entry['alt_rel_m']
-                    msg.safe_radius_m = entry['safe_radius_m']
+                    msg.alt_rel_m = float(entry['alt_rel_m'])
+                    msg.safe_radius_m = float(entry['safe_radius_m'])
 
-                    self.rally_points_pub.publish(msg)
+                    msg_list.rally_point_list.append(msg)
+                    #self.rally_points_pub.publish(msg)
+
+                self.rally_points_pub.publish(msg_list)
 
 
 if __name__ == '__main__':

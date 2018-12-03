@@ -68,12 +68,14 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
 
 bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord)
 {
+    /*
     if(mapReady) {
         std::pair<size_t, size_t> index = getClosestNodeIndex(coord);
         std::shared_ptr<Node> node = map->at(index.first).at(index.second);
         if(node->getTotalPenalty() > 0)
             return true;
     }
+    */
 
     int currentEpoch = int(std::time(nullptr));
     std::cout << "Epoch: " << currentEpoch << std::endl;
@@ -87,16 +89,16 @@ bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord
     }
 
     for(auto &it : preMapPenaltyCircles) {
-        std::cout << "preMapPenaltyCircles check!" << std::endl;
+        //std::cout << "preMapPenaltyCircles check!" << std::endl;
         bool active = false;
         if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
             active = true;
         if(active) {
-            std::cout << "ACTIVE!" << std::endl;
+            //std::cout << "ACTIVE!" << std::endl;
             double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, it.position);
-            std::cout << "distanceToCircle: " << distanceToCircle << std::endl;
-            std::cout << "it.radius: " << it.radius << std::endl;
-            std::cout << "it.position: " << it.position.first << " " << it.position.second << std::endl;
+            //std::cout << "distanceToCircle: " << distanceToCircle << std::endl;
+            //std::cout << "it.radius: " << it.radius << std::endl;
+            //std::cout << "it.position: " << it.position.first << " " << it.position.second << std::endl;
             if(distanceToCircle <= it.radius)
                 return true;
         }
@@ -259,6 +261,11 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
 {
     path.clear();
     std::vector<std::pair<std::size_t, std::size_t> > nodePath;
+
+    std::cout << "Making a path from index " << currentHeading->first << ", " << currentHeading->second << " to " << goalPosition.first << ", " << goalPosition.second << std::endl;
+
+    if(currentHeading->first == goalPosition.first && currentHeading->second == goalPosition.second)
+        return false;
 
     bool succes = makePathToDestination(goalPosition, nodePath);
 

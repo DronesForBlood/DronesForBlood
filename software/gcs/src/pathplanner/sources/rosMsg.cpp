@@ -14,12 +14,9 @@ rosMsg::~rosMsg()
 void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
 {
     std::cout << "Check ready" << std::endl;
-    pathplannerReady = false;
-    solvingStarted = false;
-    mapHasBeenGenerated = false;
 
     initialZonesLoaded = numberOfZonesReceived >= numberOfExpectedZones;
-    std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
+    //std::cout << "numberOfZonesReceived: " << numberOfZonesReceived << std::endl;
 
     bool currentIsInsideNoFligthZone = false;
     if(currentCoordSet)
@@ -39,17 +36,39 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
 
     if(hasAllInformation) {
         std::pair<double, double> coord(msg.lat, msg.lon);
-        setGoalPosition(coord);
-        std::cout << "Goal pos set!" << std::endl;
 
-        bool goalIsInsideNoFligthZone = controller.checkIfPointIsInNoFlightZone(coord);
+        bool sameGoalAsLast = GeoFunctions::calcMeterDistanceBetweensCoords(coord, goalCoord) < 10;
 
-        if(!goalIsInsideNoFligthZone) {
-            std::cout << "The pathplanner is ready" << std::endl;
-            pathplannerReady = true;
+        if(!sameGoalAsLast) {
+            std::cout << "New goal set" << std::endl;
+            bool goalIsInsideNoFligthZone = controller.checkIfPointIsInNoFlightZone(coord);
+
+            if(!goalIsInsideNoFligthZone) {
+                goalCoordSet = true;
+                goalCoord.first = coord.first;
+                goalCoord.second = coord.second;
+                generateNewMap();
+                std::cout << "The pathplanner is ready" << std::endl;
+                pathplannerReady = true;
+            }
+            else {
+                solvingStarted = false;
+                mapHasBeenGenerated = false;
+                pathplannerReady = false;
+                std::cout << "Not ready! Goal position is inside a no flight zone" << std::endl;
+            }
+
         }
-        else
-            std::cout << "Not ready! Goal position is inside a no flight zone" << std::endl;
+        else {
+            std::cout << "Same goal set" << std::endl;
+            //solvingStarted = false;
+            //mapHasBeenGenerated = false;
+        }
+    }
+    else {
+        solvingStarted = false;
+        mapHasBeenGenerated = false;
+        pathplannerReady = false;
     }
 
     std_msgs::Bool newMsg;
@@ -118,12 +137,15 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
 
     if(intersectsWithFlightPath) {
         controller.setCurrentHeading(currentCoord);
-        double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, goalCoord);
-        if(distanceToCircle <= msg.radius)
-            publishEmergency(int(msg.epochValidTo));
-
+        std_msgs::Bool msg;
+        pubEmergency.publish(msg);
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        calculatePath(msg);
     }
+
+    double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, goalCoord);
+    if(distanceToCircle <= msg.radius)
+        publishBlockedGoal(int(msg.epochValidTo));
 }
 
 void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
@@ -171,15 +193,24 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 
     if(intersectsWithFlightPath) {
         controller.setCurrentHeading(currentCoord);
-        if(GeoFunctions::pointIsInsidePolygon(coords, goalCoord))
-            publishEmergency(int(msg.epochValidTo));
+        std_msgs::Bool msg;
+        pubEmergency.publish(msg);
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        calculatePath(msg);
     }
+
+    if(GeoFunctions::pointIsInsidePolygon(coords, goalCoord))
+        publishBlockedGoal(int(msg.epochValidTo));
 }
 
 void rosMsg::checkDrones(const utm::utm_tracking_data &msg)
 {
 
+}
+
+void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
+{
+    std::cout << "CHECK RALLY POINTS PLZ. Size: " << msg.rally_point_list.size() << std::endl;
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
@@ -194,21 +225,9 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 
     if(!mapHasBeenGenerated && goalCoordSet) {
         std::cout << "THIS SHOULD NEVER HAPPEN... right?" << std::endl;
-        generateNewMap();
-        controller.setCurrentPosition(currentCoord);
+        //generateNewMap();
+        //controller.setCurrentPosition(currentCoord);
     }
-
-}
-
-void rosMsg::setGoalPosition(std::pair<double, double> coord)
-{
-    goalCoordSet = true;
-
-    goalCoord.first = coord.first;
-    goalCoord.second = coord.second;
-
-    if(currentCoordSet)
-        generateNewMap();
 }
 
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
@@ -263,6 +282,8 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             i++;
         }
     }
+    else
+        std::cout << "UNABLE TO FIND A PATH. THIS MIGHT BE BAD" << std::endl;
 
     pubPath.publish(newMsg);
 }
@@ -313,13 +334,16 @@ void rosMsg::subStart()
     subNoFlightCircles = n.subscribe("utm/fetch_no_flight_circles", 1000, &rosMsg::addNoFlightCircle, this);
     subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
     subDrones = n.subscribe("utm/fetch_tracking_data", 1000, &rosMsg::checkDrones, this);
+    subRallyPoints = n.subscribe("utm/fetch_rally_points", 1, &rosMsg::rallyPointsForBlockedGoal, this );
 
     subIsReady = n.subscribe("pathplanner/get_is_ready", 1, &rosMsg::isReady, this );
 
     pubPath  = n.advertise<mavlink_lora::mavlink_lora_mission_list>("pathplanner/mission_list", 1);
     pubFetchNoFlightZones = n.advertise<std_msgs::Bool>("utm/request_no_flight_zones", 1);
     pubIsReady = n.advertise<std_msgs::Bool>("pathplanner/is_ready", 1);
-    pubEmergency = n.advertise<pathplanner::emergency_situation>("pathplanner/emergency", 1);
+    pubEmergency = n.advertise<std_msgs::Bool>("pathplanner/emergency", 1);
+    pubBlockedGoal = n.advertise<pathplanner::blocked_goal>("pathplanner/blocked_goal", 1);
+    pubFetchRallyPoints = n.advertise<std_msgs::Bool>("utm/request_rally_points", 1);
 
     getZonesFromUTM();
 
@@ -351,7 +375,10 @@ bool rosMsg::checkIfZoneExists(DynamicNoFlightZone &zone)
     return false;
 }
 
-void rosMsg::publishEmergency(int epochOver)
+void rosMsg::publishBlockedGoal(int epochOver)
 {
-    std::cout << "EMERGENCY!" << std::endl;
+    std::cout << "BLOCKED GOAL!" << std::endl;
+    std_msgs::Bool msg;
+    pubFetchRallyPoints.publish(msg);
+
 };

@@ -109,7 +109,6 @@ std::vector<std::shared_ptr<Node> > WatchZone::getNodesInArea()
 
 bool WatchZone::checkLineIntersect(std::pair<double, double> p1, std::pair<double, double> p2)
 {
-    std::cout << "Check line intersect!" << std::endl;
     if(usePolygon) {
         if(linesIntersects(p1, p2, polygonCoordinates.front(), polygonCoordinates.back()))
             return true;

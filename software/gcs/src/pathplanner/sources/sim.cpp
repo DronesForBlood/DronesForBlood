@@ -42,6 +42,8 @@ static bool emptyPath = false;
 
 static ros::Publisher calculatePathPub;
 
+static bool gotPathMsg = true;
+
 void pathplannerReady(const std_msgs::Bool &msg)
 {
     isReady = msg.data;
@@ -50,7 +52,7 @@ void pathplannerReady(const std_msgs::Bool &msg)
         std::cout << "PATHPLANNER IS NOW READY" << std::endl;
         std::cout << "Send calculatePath" << std::endl;
         std_msgs::Bool msg;
-        calculatePathPub.publish(msg);
+        //calculatePathPub.publish(msg);
     }
 }
 
@@ -65,7 +67,7 @@ double calculateHeading(GPS &current, GPS &next)
 void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
 {
     std::cout << "GOT PATH!" << std::endl;
-
+    gotPathMsg = true;
 
     if(!msg.waypoints.empty()) {
         drone.next_WP.latitude = double(msg.waypoints.front().x)/1e7;
@@ -222,6 +224,8 @@ int main(int argc, char **argv)
             std::cout << "Running first" << std::endl;
             first = false;
             drone = makeDrone(currentCoord, goalCoord);
+            std_msgs::Bool msg;
+            calculatePathPub.publish(msg);
         }
         else {
             std::cout << "Running else" << std::endl;
@@ -250,7 +254,12 @@ int main(int argc, char **argv)
                 }
                 else {
                     std_msgs::Bool msg;
-                    calculatePathPub.publish(msg);
+                    if(gotPathMsg) {
+                        calculatePathPub.publish(msg);
+                        gotPathMsg = false;
+                    }
+                    ros::spinOnce();
+                    loopRateFast.sleep();
                 }
             }
 
