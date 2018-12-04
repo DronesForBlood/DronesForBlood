@@ -56,7 +56,7 @@ class PathplannerSimNode():
         self.lon = 10000000 * data.lon
         self.alt = data.alt
         if not self.received_pos:
-            self.create_waypoints_list()
+            self.create_linear_waypoints_list()
             self.received_pos = True
             rospy.loginfo("Created waypoints list")
         return
@@ -81,7 +81,26 @@ class PathplannerSimNode():
         self.is_ready_pub.publish(True)
         return
 
-    def create_waypoints_list(self):
+    def create_linear_waypoints_list(self):
+        # WAYPOINT 1
+        way1 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way1.target_system = 0
+        way1.target_component = 0
+        way1.seq = 0
+        way1.frame = 6 #global pos, relative alt_int
+        way1.command = 16
+        way1.param1 = 0 # hold time
+        way1.param2 = 5 # acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
+        way1.param3 = 0 # pass though waypoint, no trajectory control
+        way1.x = int(self.lat + 5000)
+        way1.y = int(self.lon + 5000)
+        way1.z = 20
+        way1.autocontinue = 1
+
+        self.waypoints = [way1]
+        return
+
+    def create_squre_waypoints_list(self):
 
         # WAYPOINT 1
         way1 = mavlink_lora.msg.mavlink_lora_mission_item_int()

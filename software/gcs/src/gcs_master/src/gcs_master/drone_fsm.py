@@ -28,9 +28,8 @@ class DroneFSM():
         self.HOVERING_TIME = hovering_time  # Hover time before starting landing
         # Threshold distances
         self.new_waypoint_distance = 5      # Distance for getting new waypoint
-        self.destination_threshold_dist = 0.000708   # Dist. for start landing
+        self.destination_threshold_dist = 0.000006   # Dist. for start landing
         # FSM flags. Outputs
-        self.DISARM = False
         self.ARM = False
         self.TAKE_OFF = False
         self.LAND = False
@@ -39,6 +38,7 @@ class DroneFSM():
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
         self.HOLD_POSITION = False
+        self.CLEAR_MISSION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -61,6 +61,7 @@ class DroneFSM():
         self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
+        self.gps_ok = False                 # GPS data is being received
         # User link related variables
         self.new_mission = False            # The user has requested new mission
         # Path related variables
@@ -96,9 +97,11 @@ class DroneFSM():
 
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
-            if self.new_mission and self.comm_ok and self.takeoff_batt_ok:
+            if (self.new_mission and self.comm_ok and self.takeoff_batt_ok
+                    and self.gps_ok):
                 self.__state = "planner_setup"
                 self.new_mission = False
+                self.mission_ready = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = -100.0
@@ -148,7 +151,11 @@ class DroneFSM():
             elif (self.current_mission == len(self.current_path)-1 and
                         self.distance_to_dest < self.destination_threshold_dist
                         ):
+                    rospy.logdebug("Distance to dest: {}"
+                                   "".format(self.distance_to_dest))
                     self.__state = "land"
+                    self.mission_ready = False
+                    self.mission_started = False
                     self.state_to_log()
                     rospy.loginfo("Hovering {} secs".format(self.HOVERING_TIME))
                     self.__state_timer = rospy.get_time()
@@ -203,6 +210,7 @@ class DroneFSM():
         elif self.__state == "land":
             if self.relative_alt<0.01:
                 self.__state = "start"
+                self.mission_ready = False
                 self.landing = False
                 self.state_to_log()
                 self.__state_timer = 0.0
@@ -220,15 +228,14 @@ class DroneFSM():
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
             now = rospy.get_time()
-            if self.armed and now > self.__state_timer + self.TIMEOUT:
-                self.DISARM = True
+            if now>self.__state_timer + self.TIMEOUT and not self.mission_ready:
+                self.CLEAR_MISSION = True
                 self.__state_timer = rospy.get_time()
 
         # PLANNER SETUP state
         elif self.__state == "planner_setup":
             now = rospy.get_time()
             if now > self.__state_timer + self.PLANNER_TIMEOUT:
-                rospy.loginfo("ACTIVATE PLANNER is True")
                 self.ACTIVATE_PLANNER = True
                 self.__state_timer = rospy.get_time()
 
@@ -293,10 +300,18 @@ class DroneFSM():
         # LANDING state
         elif self.__state == "land":
             now = rospy.get_time()
-            if now > self.__state_timer+self.HOVERING_TIME and not self.landing:
+            # After hovering, upload a mission with the land waypoint
+            if now > self.__state_timer+self.HOVERING_TIME and not self.mission_ready:
                 rospy.loginfo("Starting landing")
                 self.LAND = True
                 self.__state_timer = rospy.get_time()
+            # When the mission is uploaded, send the start mission command
+            if (now>self.__state_timer+self.TIMEOUT and self.mission_ready
+                    and not self.mission_started):
+                rospy.loginfo("Landing uploaded")
+                self.START_MISSION = True
+                self.__state_timer = rospy.get_time()
+
 
         # Non-valid state
         else:

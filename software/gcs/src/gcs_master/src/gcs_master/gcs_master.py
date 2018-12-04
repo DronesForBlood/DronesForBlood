@@ -34,6 +34,7 @@ class GcsMasterNode():
     HEARBEAT_PERIOD = 0.5       # Seconds
     HEARTBEAT_TIMEOUT = 5       # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
+    GPS_TIMEOUT = 5             # Seconds
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
@@ -51,6 +52,7 @@ class GcsMasterNode():
         self.heartbeat_send_time = 0.0
         self.utm_send_time = 0.0
         self.battery_check_time = 0.0
+        self.gps_receive_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
         # Dronelink topic susbscribers
@@ -134,10 +136,6 @@ class GcsMasterNode():
 
     def update_flags(self):
 
-        if self.state_machine.DISARM:
-            self.drone_arm_pub.publish(False)
-            self.state_machine.DISARM = False
-
         if self.state_machine.ARM:
             self.drone_arm_pub.publish(True)
             self.state_machine.ARM = False
@@ -155,16 +153,24 @@ class GcsMasterNode():
             self.state_machine.TAKE_OFF = False
 
         if self.state_machine.LAND:
-            msg = mavlink_lora.msg.mavlink_lora_command_land()
-            msg.lat = self.state_machine.latitude
-            msg.lon = self.state_machine.longitude
-            msg.altitude = (self.state_machine.altitude -
-                            self.state_machine.relative_alt)
-            msg.yaw_angle = float('NaN')
-            msg.abort_alt = 5
-            # 2: required precision land with irlock
-            msg.precision_land_mode = 2
-            self.drone_land_pub.publish(msg)
+            # Landing waypoint
+            wp = mavlink_lora.msg.mavlink_lora_mission_item_int()
+            wp.target_system = 0
+            wp.target_component = 0
+            wp.seq = 0
+            wp.frame = 6 #global pos, relative alt_int
+            wp.command = 21
+            wp.param1 = 5 # abort alt
+            wp.param2 = 2 # precision landing. 0 = normal landing
+            wp.x = int(10000000 * self.state_machine.destination[0])
+            wp.y = int(10000000 * self.state_machine.destination[1])
+            wp.z = 5
+            wp.autocontinue = 1
+            # Create mission list and send it to Mavlink
+            land_mission = mavlink_lora.msg.mavlink_lora_mission_list()
+            land_mission.waypoints.append(wp)
+            self.new_mission_pub.publish(land_mission)
+            rospy.logdebug("Published a land mission to Mavlink")
             self.state_machine.LAND = False
 
         if self.state_machine.ACTIVATE_PLANNER:
@@ -204,6 +210,11 @@ class GcsMasterNode():
             msg.custom_mode = 4 << 16 | 3 << 24
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
+
+        if self.state_machine.CLEAR_MISSION:
+            self.clear_mission_pub.publish()
+            self.state_machine.CLEAR_MISSION = False
+            rospy.loginfo("Mission cleared")
 
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
@@ -263,11 +274,7 @@ class GcsMasterNode():
                 self.state_machine.taking_off = True
         if data.command == 400:
             if ack:
-                if self.state_machine.get_state() == "start":
-                    self.state_machine.armed = False
-                    rospy.loginfo("Drone is disarmed")
-                else:
-                    self.state_machine.armed = True
+                self.state_machine.armed = True
         if data.command == 21:
             if ack:
                 self.state_machine.landing = True
@@ -291,6 +298,8 @@ class GcsMasterNode():
 
         self.state_machine.position[0] = data.lat
         self.state_machine.position[1] = data.lon
+        self.state_machine.gps_ok = True
+        self.gps_receive_time = rospy.get_time()
         return
 
     def mavlink_currentmission_callback(self, data):
@@ -430,6 +439,11 @@ class GcsMasterNode():
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
                 if self.state_machine.comm_ok:
                     self.state_machine.comm_ok = False
+            # Check if the drone gps times out.
+            if now > self.gps_receive_time + self.GPS_TIMEOUT:
+                if self.state_machine.gps_ok:
+                    self.state_machine.gps_ok = False
+                    rospy.logwarn("GPS data lost")
             # Finish the loop cycle.
             rate.sleep()
         self.clear_mission_pub.publish()
