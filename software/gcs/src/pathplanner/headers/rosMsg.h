@@ -96,6 +96,7 @@ private:
     ros::Subscriber subIsReady;
 
     std::vector<std::pair<double, double> > path;
+    std::pair<double, double> initCoord;
     std::pair<double, double> currentCoord;
     std::pair<double, double> goalCoord;
     int nodeDist;
@@ -121,6 +122,8 @@ private:
     bool pathplannerReady = false;
 
     int expandZonesByMeters = 10;
+
+    int epochBlockedUntil = INT_MAX;
 };
 
 

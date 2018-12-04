@@ -13,6 +13,8 @@
 #include <utm/utm_tracking_data.h>
 #include <utm/utm_no_flight_circle.h>
 
+#include <pathplanner/blocked_goal.h>
+
 #include <headers/global/geofunctions.h>
 
 struct GPS {
@@ -44,6 +46,10 @@ static ros::Publisher calculatePathPub;
 
 static bool gotPathMsg = true;
 
+static ros::Publisher readyPub;
+
+static bool droneMayFly = true;
+
 void pathplannerReady(const std_msgs::Bool &msg)
 {
     isReady = msg.data;
@@ -54,6 +60,12 @@ void pathplannerReady(const std_msgs::Bool &msg)
         std_msgs::Bool msg;
         //calculatePathPub.publish(msg);
     }
+}
+
+void gotEmergency(const std_msgs::Bool &msg)
+{
+    std::cout << "GOT EMERGENCY!" << std::endl;
+    droneMayFly = false;
 }
 
 double calculateHeading(GPS &current, GPS &next)
@@ -75,11 +87,26 @@ void gotPath(const mavlink_lora::mavlink_lora_mission_list &msg)
         std::cout << "drone.next_WP.latitude: " << drone.next_WP.latitude << std::endl;
         std::cout << "drone.next_WP.longitude: " << drone.next_WP.longitude << std::endl;
         drone.cur_heading = calculateHeading(drone.cur_pos, drone.next_WP);
+        droneMayFly = true;
     }
-    else
+    else {
         emptyPath = true;
+        droneMayFly = false;
+    }
 }
 
+void gotBlockedGoal(const pathplanner::blocked_goal &msg)
+{
+    std::cout << "GOT BLOCKED GOAL" << std::endl;
+
+    mavlink_lora::mavlink_lora_pos newMsg;
+    newMsg.lat = msg.homePointLat;
+    newMsg.lon = msg.homePointLon;
+
+    droneMayFly = false;
+
+    readyPub.publish(newMsg);
+}
 
 int calculateETA(UTMDrone &drone)
 {
@@ -159,13 +186,13 @@ int main(int argc, char **argv)
     ros::Publisher currentPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("mavlink_pos", 1);
     //ros::Publisher goalPositionPub = n.advertise<mavlink_lora::mavlink_lora_pos>("dronelink/destination", 1);
     calculatePathPub = n.advertise<std_msgs::Bool>("gcs_master/calculate_path", 1);
-    ros::Publisher readyPub = n.advertise<mavlink_lora::mavlink_lora_pos>("pathplanner/get_is_ready", 1);
+    readyPub = n.advertise<mavlink_lora::mavlink_lora_pos>("pathplanner/get_is_ready", 1);
     ros::Publisher dronePub = n.advertise<utm::utm_tracking_data>("utm/add_tracking_data", 1);
 
-
     ros::Subscriber pathSub = n.subscribe("pathplanner/mission_list", 1, &gotPath);
+    ros::Subscriber blockedGoalSub = n.subscribe("pathplanner/blocked_goal", 1, &gotBlockedGoal);
     ros::Subscriber readySub = n.subscribe("pathplanner/is_ready", 1, &pathplannerReady);
-
+    ros::Subscriber emergencySub = n.subscribe("pathplanner/emergency", 1, &gotEmergency);
 
     std::pair<double,double> currentCoord(55.472015, 10.414711);
     std::pair<double,double> goalCoord(55.472127, 10.417346);
@@ -264,7 +291,8 @@ int main(int argc, char **argv)
             }
 
             if(isReady) {
-                calculateNextDrone(drone);
+                //if(droneMayFly)
+                    calculateNextDrone(drone);
 
                 currentPositionMsg.lat = drone.cur_pos.latitude;
                 currentPositionMsg.lon = drone.cur_pos.longitude;

@@ -139,6 +139,7 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
         controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
+        ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         calculatePath(msg);
     }
@@ -195,6 +196,7 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
         controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
+        ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         calculatePath(msg);
     }
@@ -211,6 +213,34 @@ void rosMsg::checkDrones(const utm::utm_tracking_data &msg)
 void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
 {
     std::cout << "CHECK RALLY POINTS PLZ. Size: " << msg.rally_point_list.size() << std::endl;
+
+    std::pair<double,double> shortestDistancePoint(msg.rally_point_list[0].lat_dd, msg.rally_point_list[0].lng_dd);
+    double minDistance = GeoFunctions::calcMeterDistanceBetweensCoords(shortestDistancePoint, currentCoord);
+
+    for(auto &it : msg.rally_point_list) {
+        std::pair<double,double> point(it.lat_dd, it.lng_dd);
+        double distanceToPoint = GeoFunctions::calcMeterDistanceBetweensCoords(point, currentCoord);
+        if(distanceToPoint < minDistance) {
+            shortestDistancePoint = point;
+            minDistance = distanceToPoint;
+        }
+    }
+
+    double distanceToHome = GeoFunctions::calcMeterDistanceBetweensCoords(initCoord, currentCoord);
+
+    pathplanner::blocked_goal newMsg;
+
+    newMsg.epochBlockedUntil = epochBlockedUntil;
+
+    newMsg.distanceToHomePoint_m = distanceToHome;
+    newMsg.homePointLat = initCoord.first;
+    newMsg.homePointLon = initCoord.second;
+
+    newMsg.distanceToRallyPoint_m = minDistance;
+    newMsg.rallyPointLat = shortestDistancePoint.first;
+    newMsg.rallyPointLon = shortestDistancePoint.second;
+
+    pubBlockedGoal.publish(newMsg);
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
@@ -256,6 +286,9 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
         controller.setCurrentHeading(path.back());
 
+        double ETA = 0;
+        std::pair<double,double> previousCoord = currentCoord;
+
         for(auto it = path.rbegin(); it != path.rend(); it++) {
             mavlink_lora::mavlink_lora_mission_item_int item;
             item.target_system = 0;
@@ -270,6 +303,11 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             item.y = int32_t(it->second * 1e7);
             item.z = altitude;
             item.autocontinue = 1;
+
+            double distanceToPoint = GeoFunctions::calcMeterDistanceBetweensCoords(previousCoord, std::pair<double,double>(it->first, it->second));
+            ETA += distanceToPoint / DRONE_MAX_SPEED;
+
+            item.param1 = ETA;
 
             /*
             std::cout << "Sending x: " << it->first << std::endl;
@@ -298,6 +336,8 @@ void rosMsg::generateNewMap()
     }
 
     mapHasBeenGenerated = true;
+
+    initCoord = currentCoord;
 
     nodeDist = 1;
     mapWidth =  200;
@@ -378,7 +418,9 @@ bool rosMsg::checkIfZoneExists(DynamicNoFlightZone &zone)
 void rosMsg::publishBlockedGoal(int epochOver)
 {
     std::cout << "BLOCKED GOAL!" << std::endl;
+    epochBlockedUntil = epochOver;
     std_msgs::Bool msg;
     pubFetchRallyPoints.publish(msg);
+
 
 };

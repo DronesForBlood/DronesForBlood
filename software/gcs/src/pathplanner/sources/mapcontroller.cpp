@@ -34,6 +34,7 @@ void MapController::addPreMapPenaltyOfAreaPolygon(std::vector<std::pair<double, 
 
 void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength)
 {
+    mapReady = false;
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
 
@@ -184,27 +185,35 @@ bool MapController::updateDrone(std::string aDroneID, std::string aName, int ope
 
 bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
+    std::cout << "updatePenaltyOfAreaCircle 1" << std::endl;
     std::shared_ptr<WatchZone> zone;
 
     bool staticZone = (epochValidFrom < 0 || epochValidTo < 0);
 
     if(staticZone) {
+        std::cout << "updatePenaltyOfAreaCircle 2.0" << std::endl;
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
         std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
         if(!nodes.empty())
             solver.updatePenaltyOfNodeGroup(nodes, penalty);
     }
     else {
+        std::cout << "updatePenaltyOfAreaCircle 2.1" << std::endl;
         solver.pauseSolver();
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
         solver.resumeSolver();
     }
 
+    std::cout << "updatePenaltyOfAreaCircle 3" << std::endl;
+
     watchZones.push_back(zone);
 
+    std::cout << "updatePenaltyOfAreaCircle 4" << std::endl;
     bool intersectsWithFlightPath = false;
-    if(currentHeading)
+    if(mapReady && currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+
+    std::cout << "updatePenaltyOfAreaCircle 5" << std::endl;
 
     return intersectsWithFlightPath;
 }
@@ -251,7 +260,7 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
     }
 
     bool intersectsWithFlightPath = false;
-    if(currentHeading)
+    if(mapReady && currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
     return intersectsWithFlightPath;

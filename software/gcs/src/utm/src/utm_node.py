@@ -87,7 +87,6 @@ class UTM_node:
             utm_no_flight_circle,
             queue_size=1000)
 
-
         self.utm_is_up_pub = rospy.Publisher(
             "utm/utm_is_up",
             Bool,

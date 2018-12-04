@@ -1,4 +1,4 @@
-int64 secondsToClearGoal
+int64 epochBlockedUntil
 float64 rallyPointLat
 float64 rallyPointLon
 float64 distanceToRallyPoint_m
