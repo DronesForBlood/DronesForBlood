@@ -53,10 +53,10 @@ class GcsMasterNode():
         self.battery_check_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
-        # Dronelink topic susbscribers
-        rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
+        # Userlink topic susbscribers
+        rospy.Subscriber("userlink/start", std_msgs.msg.Bool,
                          self.ui_start_callback, queue_size=1)
-        rospy.Subscriber("dronelink/destination",
+        rospy.Subscriber("userlink/destination",
                          mavlink_lora.msg.mavlink_lora_pos,
                          self.ui_destination_callback, queue_size=1)
         # Pathplanner topic susbscribers
