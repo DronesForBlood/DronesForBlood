@@ -5,7 +5,7 @@
     <arg name="takeoff-batt" default="80"/>
     <arg name="critic-batt" default="20"/>
     <arg name="alt" default="50"/>
-    <arg name="hover-time" default="20"/>
+    <arg name="hovertime" default="10"/>
     <arg name="sim" default="false"/>
 
     <group if="$(arg sim)">
@@ -19,7 +19,7 @@
         <arg name="takeoff-batt" value="$(arg takeoff-batt)"/>
         <arg name="critic-batt" value="$(arg critic-batt)"/>
         <arg name="alt" value="$(arg alt)"/>
-        <arg name="hover-time" value="$(arg hover-time)"/>
+        <arg name="hovertime" value="$(arg hovertime)"/>
     </include>
 
 </launch>

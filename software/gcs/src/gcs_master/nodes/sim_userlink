@@ -27,10 +27,10 @@ class DronelinkSimNode():
         rospy.init_node("sim_dronelink", anonymous=True)
 
         # Publishers configuration
-        self.new_mission_pub = rospy.Publisher("dronelink/start",
-                                               std_msgs.msg.Bool,
+        self.new_mission_pub = rospy.Publisher("userlink/start",
+                                               std_msgs.msg.Int16MultiArray,
                                                queue_size=1)
-        self.dest_pub = rospy.Publisher("dronelink/destination",
+        self.dest_pub = rospy.Publisher("userlink/destination",
                                         mavlink_lora.msg.mavlink_lora_pos,
                                         queue_size=1)
 
@@ -63,7 +63,9 @@ class DronelinkSimNode():
                 msg.lon = self.lon + 0.0005
                 msg.alt = self.alt
                 self.dest_pub.publish(msg)
-                self.new_mission_pub.publish(True)
+                start_msg = std_msgs.msg.Int16MultiArray()
+                start_msg.data = [1, 0]
+                self.new_mission_pub.publish(start_msg)
             rate.sleep()
         return
 
