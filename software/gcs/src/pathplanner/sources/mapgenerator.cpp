@@ -8,14 +8,14 @@ MapGenerator::MapGenerator()
 
 void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node> > > > &map, std::vector<NodeCollection> &nodeCollections, std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength)
 {
-    std::cout << "GenerateMap 1" << std::endl;
+    //std::cout << "GenerateMap 1" << std::endl;
 
     for(auto &it : *map) {
         if(it.size() > 0) {
             it.clear();
         }
     }
-    std::cout << "GenerateMap 1.2" << std::endl;
+    //std::cout << "GenerateMap 1.2" << std::endl;
 
     if(map->size() > 0)
         map->clear();
@@ -23,26 +23,26 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
     map = std::make_shared<std::vector<std::vector<std::shared_ptr<Node>>>>();
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
-    std::cout << "GenerateMap 1.3" << std::endl;
+    //std::cout << "GenerateMap 1.3" << std::endl;
 
     if(nodeCollections.size() > 0)
         nodeCollections.clear();
 
-    std::cout << "GenerateMap 2" << std::endl;
+    //std::cout << "GenerateMap 2" << std::endl;
     double length = GeoFunctions::calcMeterDistanceBetweensCoords(startCoord, endCoord);
 
     std::size_t mapSizeX = std::size_t(width/distanceBetweenNodes);
     std::size_t mapSizeY = std::size_t((length + 2*padLength)/distanceBetweenNodes);
 
-    std::cout << "GenerateMap 3" << std::endl;
+    //std::cout << "GenerateMap 3" << std::endl;
     std::pair<double,double> normalToLine = calcNormalVector(startCoord, endCoord);
     std::pair<double,double> shifted = calcShiftedCoord(startCoord, normalToLine.second, normalToLine.first);
     std::pair<double,double> normalToUse = calcNormalVector(shifted, startCoord);
 
-    std::cout << "GenerateMap 4" << std::endl;
+    //std::cout << "GenerateMap 4" << std::endl;
     startCoord = calcShiftedCoord(startCoord, normalToUse.second * -padLength, normalToUse.first * -padLength);
 
-    std::cout << "GenerateMap 5" << std::endl;
+    //std::cout << "GenerateMap 5" << std::endl;
     for(std::size_t i = 0; i < mapSizeX + 1; i++) {
         double posOnWidth = width/mapSizeX * i - width/2.;
         std::pair<double,double> shiftedCoord = calcShiftedCoord(startCoord, normalToLine.second * posOnWidth, normalToLine.first * posOnWidth);
@@ -60,7 +60,7 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
         //std::cout << "GenerateMap 5.6" << std::endl;
         map->push_back(row);
     }
-    std::cout << "GenerateMap 6" << std::endl;
+    //std::cout << "GenerateMap 6" << std::endl;
 
     // Give all nodes a pointer to their neighbors.
     for(std::size_t i = 0; i < map->size(); i++) {
@@ -71,7 +71,7 @@ void MapGenerator::generateMap(std::shared_ptr<std::vector<std::vector<std::shar
             currentNode->setNeighbors(neighborNodes);
         }
     }
-    std::cout << "GenerateMap 7" << std::endl;
+    //std::cout << "GenerateMap 7" << std::endl;
 
     // Divide the nodes into square collections.
     divideIntoCollections(map, nodeCollections);

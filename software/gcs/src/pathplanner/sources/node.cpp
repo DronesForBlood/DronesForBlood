@@ -260,8 +260,8 @@ void Node::updateSourceAndCost(std::pair<std::size_t, std::size_t> sourceNodeInd
 bool Node::willBeInDynamicZone(DynamicPenalty &dynamic, double distanceToNode)
 {
     int currentTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    int lateArrivalTime = currentTime + (distanceToNode - 1000) / DRONE_MAX_SPEED;
-    int earlyArrivalTime = currentTime + (distanceToNode + 1000) / DRONE_MAX_SPEED;
+    int lateArrivalTime = currentTime + (distanceToNode - 10) / DRONE_MAX_SPEED;
+    int earlyArrivalTime = currentTime + (distanceToNode + 10) / DRONE_MAX_SPEED;
 
     /*
     std::cout << "earlyArrivalTime:  " << earlyArrivalTime << std::endl;
