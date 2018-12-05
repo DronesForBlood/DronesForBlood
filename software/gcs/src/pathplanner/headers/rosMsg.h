@@ -16,7 +16,6 @@
 //#include <std_msgs/String.h>
 #include <pathplanner/start_end_coord.h>
 #include <pathplanner/flight_mission.h>
-#include <pathplanner/emergency_situation.h>
 #include <pathplanner/blocked_goal.h>
 
 #include <mavlink_lora/mavlink_lora_mission_item_int.h>
