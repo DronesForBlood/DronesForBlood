@@ -343,7 +343,10 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
-        self.next_wp_epoch = int(data.waypoints[0].param4)
+        try:
+            self.next_wp_epoch = int(data.waypoints[0].param4)
+        except IndexError:
+            rospy.logwarn("Ignoring waypoint Epoch: No waypoints in path")
         for wp in data.waypoints:
             wp.z = self.altitude
         self.state_machine.route = data.waypoints
