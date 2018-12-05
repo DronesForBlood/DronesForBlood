@@ -97,6 +97,7 @@ private:
     std::vector<std::pair<double, double> > path;
     std::pair<double, double> initCoord;
     std::pair<double, double> currentCoord;
+    std::pair<double, double> currentHeading;
     std::pair<double, double> goalCoord;
     int nodeDist;
     int mapWidth;

@@ -271,6 +271,12 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
 
     bool succes = controller.getPathToDestination(path);
 
+    double distanceFromExpectedPosition = GeoFunctions::calcMeterDistanceBetweensCoords(currentCoord, currentHeading);
+    if(distanceFromExpectedPosition > 10) {
+        controller.setCurrentHeading(currentCoord);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    }
+
     if(!succes) {
         for(int i = 0; i < 3; i++) {
             std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -284,7 +290,8 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
         unsigned short i = 0;
         path.pop_back();
 
-        controller.setCurrentHeading(path.back());
+        currentHeading = path.back();
+        controller.setCurrentHeading(currentHeading);
 
         double ETA = 0;
         std::pair<double,double> previousCoord = currentCoord;
