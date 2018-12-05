@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 
     loopRate.sleep();
 
-    std::cout << "Connecting to UTM node" << std::endl;
+    std::cout << "PATHPLANNER: Connecting to UTM node" << std::endl;
 
     while(ros::ok() && !utmReady) {
         pubCheckReady.publish(msg);
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         loopRate.sleep();
     }
 
-    std::cout << "Succesfully connected to UTM node" << std::endl;
+    std::cout << "PATHPLANNER: Succesfully connected to UTM node" << std::endl;
 
     rosMsg rosMsgObject;
 

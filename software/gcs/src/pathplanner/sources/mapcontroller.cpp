@@ -41,28 +41,28 @@ void MapController::generateMap(std::pair<double, double> startCoord, std::pair<
     initCoord = startCoord;
     goalCoord = endCoord;
 
-    std::cout << "MapGenerator done" << std::endl;
+    //std::cout << "MapGenerator done" << std::endl;
 
     if(!visualizer)
         visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
     else
         visualizer->setNewMap(map, int(map->size()), int(map->at(0).size()));
 
-    std::cout << "Visualizer done" << std::endl;
+    //std::cout << "Visualizer done" << std::endl;
 
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
 
-    std::cout << "Solver done" << std::endl;
+    //std::cout << "Solver done" << std::endl;
 
     for(auto &it : preMapPenaltyCircles)
         updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
 
-    std::cout << "PreMapCircles done" << std::endl;
+    //std::cout << "PreMapCircles done" << std::endl;
     for(auto &it : preMapPenaltyAreas)
         updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
-    std::cout << "PreMapAreas done" << std::endl;
+    //std::cout << "PreMapAreas done" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     mapReady = true;
 }
@@ -79,7 +79,7 @@ bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord
     */
 
     int currentEpoch = int(std::time(nullptr));
-    std::cout << "Epoch: " << currentEpoch << std::endl;
+    //std::cout << "Epoch: " << currentEpoch << std::endl;
     for(auto &it : preMapPenaltyAreas) {
         bool active = false;
         if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
@@ -185,35 +185,35 @@ bool MapController::updateDrone(std::string aDroneID, std::string aName, int ope
 
 bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
-    std::cout << "updatePenaltyOfAreaCircle 1" << std::endl;
+    //std::cout << "updatePenaltyOfAreaCircle 1" << std::endl;
     std::shared_ptr<WatchZone> zone;
 
     bool staticZone = (epochValidFrom < 0 || epochValidTo < 0);
 
     if(staticZone) {
-        std::cout << "updatePenaltyOfAreaCircle 2.0" << std::endl;
+        //std::cout << "updatePenaltyOfAreaCircle 2.0" << std::endl;
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
         std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
         if(!nodes.empty())
             solver.updatePenaltyOfNodeGroup(nodes, penalty);
     }
     else {
-        std::cout << "updatePenaltyOfAreaCircle 2.1" << std::endl;
+        //std::cout << "updatePenaltyOfAreaCircle 2.1" << std::endl;
         solver.pauseSolver();
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
         solver.resumeSolver();
     }
 
-    std::cout << "updatePenaltyOfAreaCircle 3" << std::endl;
+    //std::cout << "updatePenaltyOfAreaCircle 3" << std::endl;
 
     watchZones.push_back(zone);
 
-    std::cout << "updatePenaltyOfAreaCircle 4" << std::endl;
+    //std::cout << "updatePenaltyOfAreaCircle 4" << std::endl;
     bool intersectsWithFlightPath = false;
     if(mapReady && currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
-    std::cout << "updatePenaltyOfAreaCircle 5" << std::endl;
+    //std::cout << "updatePenaltyOfAreaCircle 5" << std::endl;
 
     return intersectsWithFlightPath;
 }
@@ -271,7 +271,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     path.clear();
     std::vector<std::pair<std::size_t, std::size_t> > nodePath;
 
-    std::cout << "Making a path from index " << currentHeading->first << ", " << currentHeading->second << " to " << goalPosition.first << ", " << goalPosition.second << std::endl;
+    //std::cout << "Making a path from index " << currentHeading->first << ", " << currentHeading->second << " to " << goalPosition.first << ", " << goalPosition.second << std::endl;
 
     if(currentHeading->first == goalPosition.first && currentHeading->second == goalPosition.second)
         return false;
@@ -279,7 +279,7 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     bool succes = makePathToDestination(goalPosition, nodePath);
 
     if(succes) {
-        std::cout << "Found a path..." << std::endl;
+        //std::cout << "Found a path..." << std::endl;
         for(const auto &nodeIndex : nodePath)
             path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
 
@@ -371,7 +371,7 @@ bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos
 
     for(auto it = path.begin(); it != path.end(); ++it)
         if(pos == *it) {
-            std::cout << "INFINITE ROUTE DUE TO CYCLE. THIS SHOULD NEVER HAPPEN." << std::endl;
+            std::cout << "PATHPLANNER: INFINITE ROUTE DUE TO CYCLE. THIS SHOULD NEVER HAPPEN." << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             return false;
         }
