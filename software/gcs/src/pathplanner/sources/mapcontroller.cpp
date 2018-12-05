@@ -34,25 +34,78 @@ void MapController::addPreMapPenaltyOfAreaPolygon(std::vector<std::pair<double, 
 
 void MapController::generateMap(std::pair<double, double> startCoord, std::pair<double, double> endCoord, double distanceBetweenNodes, double width, double padLength)
 {
+    mapReady = false;
     MapGenerator generator;
     generator.generateMap(map, nodeCollections, startCoord, endCoord, distanceBetweenNodes, width, padLength);
+
+    initCoord = startCoord;
+    goalCoord = endCoord;
+
+    std::cout << "MapGenerator done" << std::endl;
 
     if(!visualizer)
         visualizer = std::make_shared<Visualizer>(map, int(map->size()), int(map->at(0).size()));
     else
         visualizer->setNewMap(map, int(map->size()), int(map->at(0).size()));
 
+    std::cout << "Visualizer done" << std::endl;
+
     solver.setMap(map);
     solver.setNodeCollections(nodeCollections);
+
+    std::cout << "Solver done" << std::endl;
 
     for(auto &it : preMapPenaltyCircles)
         updatePenaltyOfAreaCircle(it.position, it.radius, it.penalty, it.epochValidFrom, it.epochValidTo);
 
+    std::cout << "PreMapCircles done" << std::endl;
     for(auto &it : preMapPenaltyAreas)
         updatePenaltyOfAreaPolygon(it.polygonCoordinates, it.penalty, it.epochValidFrom, it.epochValidTo);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::cout << "PreMapAreas done" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     mapReady = true;
+}
+
+bool MapController::checkIfPointIsInNoFlightZone(std::pair<double, double> coord)
+{
+    /*
+    if(mapReady) {
+        std::pair<size_t, size_t> index = getClosestNodeIndex(coord);
+        std::shared_ptr<Node> node = map->at(index.first).at(index.second);
+        if(node->getTotalPenalty() > 0)
+            return true;
+    }
+    */
+
+    int currentEpoch = int(std::time(nullptr));
+    std::cout << "Epoch: " << currentEpoch << std::endl;
+    for(auto &it : preMapPenaltyAreas) {
+        bool active = false;
+        if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
+            active = true;
+        if(active)
+            if(GeoFunctions::pointIsInsidePolygon(it.polygonCoordinates, coord))
+                return true;
+    }
+
+    for(auto &it : preMapPenaltyCircles) {
+        //std::cout << "preMapPenaltyCircles check!" << std::endl;
+        bool active = false;
+        if((it.epochValidFrom <= currentEpoch && it.epochValidTo >= currentEpoch) || it.epochValidFrom < 0)
+            active = true;
+        if(active) {
+            //std::cout << "ACTIVE!" << std::endl;
+            double distanceToCircle = GeoFunctions::calcMeterDistanceBetweensCoords(coord, it.position);
+            //std::cout << "distanceToCircle: " << distanceToCircle << std::endl;
+            //std::cout << "it.radius: " << it.radius << std::endl;
+            //std::cout << "it.position: " << it.position.first << " " << it.position.second << std::endl;
+            if(distanceToCircle <= it.radius)
+                return true;
+        }
+    }
+
+    return false;
 }
 
 std::pair<std::size_t, std::size_t> MapController::getMapSize()
@@ -132,37 +185,51 @@ bool MapController::updateDrone(std::string aDroneID, std::string aName, int ope
 
 bool MapController::updatePenaltyOfAreaCircle(std::pair<double, double> position, double radius, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
+    std::cout << "updatePenaltyOfAreaCircle 1" << std::endl;
     std::shared_ptr<WatchZone> zone;
 
     bool staticZone = (epochValidFrom < 0 || epochValidTo < 0);
 
     if(staticZone) {
+        std::cout << "updatePenaltyOfAreaCircle 2.0" << std::endl;
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer);
         std::vector<std::shared_ptr<Node>> nodes = zone->getNodesInArea();
-        solver.updatePenaltyOfNodeGroup(nodes, penalty);
+        if(!nodes.empty())
+            solver.updatePenaltyOfNodeGroup(nodes, penalty);
     }
     else {
+        std::cout << "updatePenaltyOfAreaCircle 2.1" << std::endl;
         solver.pauseSolver();
         zone = std::make_shared<WatchZone>(map, position, radius, visualizer, epochValidFrom, epochValidTo);
         solver.resumeSolver();
     }
 
+    std::cout << "updatePenaltyOfAreaCircle 3" << std::endl;
+
     watchZones.push_back(zone);
 
+    std::cout << "updatePenaltyOfAreaCircle 4" << std::endl;
     bool intersectsWithFlightPath = false;
-    if(currentHeading)
+    if(mapReady && currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
+
+    std::cout << "updatePenaltyOfAreaCircle 5" << std::endl;
 
     return intersectsWithFlightPath;
 }
 
 bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,double>> polygonCoordinates, double penalty, time_t epochValidFrom, time_t epochValidTo)
 {
+    //std::cout << "updatePenaltyOfAreaPolygon" << std::endl;
     double minDistance = 10000;
     bool closerThanMinDistance = false;
     for(auto &it : polygonCoordinates) {
-        double distanceInit = GeoFunctions::calcMeterDistanceBetweensCoords(initPosition, it);
-        double distanceGoal = GeoFunctions::calcMeterDistanceBetweensCoords(goalPosition, it);
+        double distanceInit = GeoFunctions::calcMeterDistanceBetweensCoords(initCoord, it);
+        double distanceGoal = GeoFunctions::calcMeterDistanceBetweensCoords(goalCoord, it);
+        //std::cout << "distanceInit: " << distanceInit << std::endl;
+        //std::cout << "distanceGoal: " << distanceGoal << std::endl;
+        //std::cout << "initCoord: " << initCoord.first << " " << initCoord.second << std::endl;
+        //std::cout << "goalCoord: " << goalCoord.first << " " << goalCoord.second << std::endl;
 
         if(distanceInit < minDistance || distanceGoal < minDistance) {
             closerThanMinDistance = true;
@@ -172,6 +239,7 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
 
     if(!closerThanMinDistance)
         return false;
+    //std::cout << "updatePenaltyOfAreaPolygon 2" << std::endl;
 
     solver.pauseSolver();
     std::shared_ptr<WatchZone> zone;
@@ -192,7 +260,7 @@ bool MapController::updatePenaltyOfAreaPolygon(std::vector<std::pair<double,doub
     }
 
     bool intersectsWithFlightPath = false;
-    if(currentHeading)
+    if(mapReady && currentHeading)
         intersectsWithFlightPath = zone->checkLineIntersect(currentPosition, map->at(currentHeading->first).at(currentHeading->second)->getWorldCoordinate());
 
     return intersectsWithFlightPath;
@@ -203,9 +271,15 @@ bool MapController::getPathToDestination(std::vector<std::pair<double, double> >
     path.clear();
     std::vector<std::pair<std::size_t, std::size_t> > nodePath;
 
+    std::cout << "Making a path from index " << currentHeading->first << ", " << currentHeading->second << " to " << goalPosition.first << ", " << goalPosition.second << std::endl;
+
+    if(currentHeading->first == goalPosition.first && currentHeading->second == goalPosition.second)
+        return false;
+
     bool succes = makePathToDestination(goalPosition, nodePath);
 
     if(succes) {
+        std::cout << "Found a path..." << std::endl;
         for(const auto &nodeIndex : nodePath)
             path.push_back(map->at(nodeIndex.first).at(nodeIndex.second)->getWorldCoordinate());
 
@@ -282,9 +356,16 @@ std::pair<std::size_t, std::size_t> MapController::getClosestNodeIndex(std::pair
 bool MapController::makePathToDestination(std::pair<std::size_t,std::size_t> pos, std::vector<std::pair<std::size_t, std::size_t> > &path)
 {
     std::shared_ptr<Node> currentNode = map->at(pos.first).at(pos.second);
+
+    //std::cout << "From " << pos.first << " " << pos.second << std::endl;
+    //std::cout << "To: " << currentHeading.get()->first << " " << currentHeading.get()->second << std::endl;
+
     if(!currentNode->getUpdated() ||
        !currentNode->getStable()  ||
        !currentNode->getPointerToSource()) {
+        //std::cout << "currentNode->getUpdated(): " << currentNode->getUpdated() << std::endl;
+        //std::cout << "currentNode->getStable(): " << currentNode->getStable() << std::endl;
+        //std::cout << "currentNode->getPointerToSource(): " << currentNode->getPointerToSource() << std::endl;
         return false;
     }
 

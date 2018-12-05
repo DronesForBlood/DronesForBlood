@@ -50,6 +50,7 @@ void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epo
     DynamicPenalty *dynamicPenalty;
 
     bool exists = false;
+    /*
     for(auto &it : dynamicPenalties)
         if(it.ID == ID) {
             dynamicPenalty = &it;
@@ -60,6 +61,7 @@ void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epo
             exists = true;
             break;
         }
+        */
 
 
 
@@ -70,8 +72,9 @@ void Node::addDynamicPenalty(std::string ID, int penalty, int epochFrom, int epo
     }
 
     int difference = 0;
-    if(willBeInDynamicZone(*dynamicPenalty, cost))
+    if(willBeInDynamicZone(*dynamicPenalty, cost)) {
         difference = dynamicPenalty->penalty;
+    }
 
     //updated = false;
 

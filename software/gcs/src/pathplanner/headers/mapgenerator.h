@@ -16,7 +16,7 @@ class MapGenerator
 {
 public:
     MapGenerator();
-    void generateMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, std::vector<NodeCollection> &nodeCollections, std::pair<double,double> startCoord, std::pair<double,double> endCoord, double distanceBetweenNodes, double width, double padLength);
+    void generateMap(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node> > > > &map, std::vector<NodeCollection> &nodeCollections, std::pair<double,double> startCoord, std::pair<double,double> endCoord, double distanceBetweenNodes, double width, double padLength);
 
 private:
     void divideIntoCollections(std::shared_ptr<std::vector<std::vector<std::shared_ptr<Node>>>> map, std::vector<NodeCollection> &nodeCollections);

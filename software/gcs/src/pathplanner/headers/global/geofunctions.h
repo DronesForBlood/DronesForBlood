@@ -4,8 +4,11 @@
 #include <utility>
 #include <math.h>
 #include <vector>
+#include <iostream>
 
 #include "headers/global/defines.h"
+#include "headers/global/clipper.hpp"
+#include "headers/global/coordconverter.h"
 
 namespace GeoFunctions
 {
@@ -96,6 +99,35 @@ static inline double calcAngle(std::pair<double, double> startCoord, std::pair<d
     //brng = 360 - brng; // count degrees counter-clockwise - remove to make clockwise
 
     return brng;
+}
+
+static inline std::vector<std::pair<double,double>> offsetPolygon(std::vector<std::pair<double,double>> polygonCoords, double offsetMeters)
+{
+    ClipperLib::Path utmPath;
+    ClipperLib::Paths offsetUtmPath;
+
+    std::string UTMZone;
+    for(auto &it : polygonCoords) {
+        std::pair<double, double> pointUTM;
+        RobotLocalization::NavsatConversions::LLtoUTM(it.first, it.second, pointUTM.first, pointUTM.second, UTMZone);
+        utmPath << ClipperLib::IntPoint(int(pointUTM.first), int(pointUTM.second));
+    }
+
+    ClipperLib::ClipperOffset co;
+    co.AddPath(utmPath, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
+    co.Execute(offsetUtmPath, offsetMeters);
+
+    std::vector<std::pair<double,double>> offsetCoords;
+
+    for(auto &it : offsetUtmPath[0]) {
+        std::pair<double, double> pointCoord;
+        RobotLocalization::NavsatConversions::UTMtoLL(it.X, it.Y, UTMZone, pointCoord.first, pointCoord.second);
+        //std::cout.precision(10);
+        //std::cout << "Path: " << pointCoord.first << " " << pointCoord.second << std::endl;
+        offsetCoords.push_back(pointCoord);
+    }
+
+    return offsetCoords;
 }
 
 }

@@ -19,6 +19,7 @@ add_message_files(
   FILES
   start_end_coord.msg
   flight_mission.msg
+  blocked_goal.msg
 )
 
 
@@ -65,6 +66,8 @@ set(SOURCES
     headers/watch/watchdrone.h
     headers/watch/watchzone.h
 
+    headers/global/clipper.cpp
+    headers/global/clipper.hpp
     headers/global/coordconverter.h
     headers/global/defines.h
     headers/global/geofunctions.h
