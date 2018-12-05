@@ -6,10 +6,6 @@ find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generatio
 
 catkin_python_setup()
 
-add_message_files(
-  FILES
-)
-
 generate_messages(
   DEPENDENCIES
   std_msgs
@@ -29,7 +25,6 @@ set(SOURCES
     src/dock_node.py
 )
 
-
 add_executable(utm
     ${SOURCES}
     )
@@ -44,9 +39,9 @@ install(PROGRAMS
 )
 
 
-add_dependencies(dock ${catkin_EXPORTED_TARGETS})
+#add_dependencies(dock ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(dock ${catkin_LIBRARIES})
+#target_link_libraries(dock ${catkin_LIBRARIES})
 
 
 
