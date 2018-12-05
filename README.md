@@ -4,24 +4,37 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 # Installation instructions
 
-1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch:
+1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch. Finally, compile the Gazebo SITL project:
 
+```bash
     git clone -b develop https://github.com/DronesForBlood/DronesForBlood.git
     cd DronesForBlood
     git submodule update --init --recursive
     cd simulation/Firmware
     git checkout drones-for-blood
+    make posix_sitl_default gazebo
+```
 
-NOTE: The submodule instruction is assuming that you have a SSH key authentication enabled.
+
+**NOTE:** The submodule instruction is assuming that you have a SSH key authentication enabled.
 
 2. Install the Python dependencies
+    - If a virtual enviroment is being used:
+    
+    ```bash
+    cd <project-dir>
+    pip3 install -r /<project-path>/software/gcs/requirements.txt 
+    ```
 
 3. Make and source the ROS project
 
+    ```bash
     source /opt/ros/<ros-distro>/setup.bash
     cd <project-dir>/software/gcs
-    catkin-make
+    catkin_make
     source ./devel/setup.bash
+    ```
+    
 
 # Execution instructions
 
@@ -29,7 +42,9 @@ NOTE: The submodule instruction is assuming that you have a SSH key authenticati
 
 There is a custom Gazebo world and launcher file prepared for using for simulating the drone. If Gazebo is installed, in one terminal run the following script:
 
-    <path-to-main-dir>/simulation/launch_sim_sitl_gazebo.sh
+```bash
+/<path-to-main-dir>/simulation/launch_sim_sitl_gazebo.sh
+```
     
 Gazebo should be executed, and the iris drone with the IR lock, as well as the IR beacon, should be spawned in the world.
 
@@ -47,7 +62,36 @@ There is a main launch file that executes the required packages for doing an aut
 
 Hence, if the user wants to make a simulated flight at 50 meters altitude, withe a minimum take-off battery of 80%, and a critical battery level of 20%, the following instruction has to be run:
 
-    roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
+
+```bash
+roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
+```
     
+   
 **NOTE:** Some errors may be raised and the execution may fail if the system is launched before Gazebo or the actual drone is on and active.
 
+
+# Troubleshooting
+
+- __ModuleNotFoundError: No module named 'urllib2'__: when the pykml library is imported, it can not find the urrlib2 library. This is a bug in the _python3_ version of pykml.  As stated in [this blog](http://installfights.blogspot.com/2018/04/how-to-run-pykml-in-python3.html), the source code of the _pykml_ _parser.py_ module has to be editted:
+
+    - With virtual environments, the file is at _~/.virtualenvs/<virtualenv-name>/lib/python3.6/site-packages/pykml/_
+    
+    - If not, it is in the system libraries folder e.g. _~/.local/lib/python3.6/site-packages/pykml/_
+    
+In the file, the line that says `import urrlib2` has to be changed by the following lines:
+
+```python
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
+```
+    
+- __[ERROR] [1543662066.324335031]: Unable to open port__: Unable to open tty v6 port when running mavlink_lora. Check if the socat is installed, and then run the commands from the launch_sim_sitl_gazebo.sh files again.
+
+    ```bash
+    sudo apt install socat
+    ```

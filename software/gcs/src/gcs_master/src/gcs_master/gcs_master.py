@@ -22,14 +22,19 @@ try:
     import mavlink_lora.msg
 except ModuleNotFoundError:
     print("Mavlink module not found")
-
+try:
+    import utm.msg
+except ModuleNotFoundError:
+    print("UTM module not found")
 
 class GcsMasterNode():
 
     # Node variables
+    UTM_PERIOD = 1              # Seconds
     HEARBEAT_PERIOD = 0.5       # Seconds
-    HEARTBEAT_TIMEOUT = 1.5     # Seconds
+    HEARTBEAT_TIMEOUT = 5       # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
+    GPS_TIMEOUT = 5             # Seconds
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
@@ -45,13 +50,15 @@ class GcsMasterNode():
         # Timestamps variables. Sending time set to zero for forcing the sending
         # of a heartbeat in the first iteration.
         self.heartbeat_send_time = 0.0
+        self.utm_send_time = 0.0
         self.battery_check_time = 0.0
+        self.gps_receive_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
 
-        # Dronelink topic susbscribers
-        rospy.Subscriber("dronelink/start", std_msgs.msg.Bool,
+        # Userlink topic susbscribers
+        rospy.Subscriber("userlink/start", std_msgs.msg.Int16MultiArray,
                          self.ui_start_callback, queue_size=1)
-        rospy.Subscriber("dronelink/destination",
+        rospy.Subscriber("userlink/destination",
                          mavlink_lora.msg.mavlink_lora_pos,
                          self.ui_destination_callback, queue_size=1)
         # Pathplanner topic susbscribers
@@ -121,12 +128,13 @@ class GcsMasterNode():
                 "mavlink_interface/command/set_mode",
                 mavlink_lora.msg.mavlink_lora_command_set_mode,
                 queue_size=1)
+        # UTM topic publisher
+        self.utm_data_pub = rospy.Publisher(
+                "utm/add_tracking_data",
+                utm.msg.utm_tracking_data,
+                queue_size=1)
 
     def update_flags(self):
-
-        if self.state_machine.DISARM:
-            self.drone_arm_pub.publish(False)
-            self.state_machine.DISARM = False
 
         if self.state_machine.ARM:
             self.drone_arm_pub.publish(True)
@@ -145,16 +153,24 @@ class GcsMasterNode():
             self.state_machine.TAKE_OFF = False
 
         if self.state_machine.LAND:
-            msg = mavlink_lora.msg.mavlink_lora_command_land()
-            msg.lat = self.state_machine.latitude
-            msg.lon = self.state_machine.longitude
-            msg.altitude = (self.state_machine.altitude -
-                            self.state_machine.relative_alt)
-            msg.yaw_angle = float('NaN')
-            msg.abort_alt = 5
-            # 2: required precision land with irlock
-            msg.precision_land_mode = 2
-            self.drone_land_pub.publish(msg)
+            # Landing waypoint
+            wp = mavlink_lora.msg.mavlink_lora_mission_item_int()
+            wp.target_system = 0
+            wp.target_component = 0
+            wp.seq = 0
+            wp.frame = 6 #global pos, relative alt_int
+            wp.command = 21
+            wp.param1 = 5 # abort alt
+            wp.param2 = 2 # precision landing. 0 = normal landing
+            wp.x = int(10000000 * self.state_machine.destination[0])
+            wp.y = int(10000000 * self.state_machine.destination[1])
+            wp.z = 5
+            wp.autocontinue = 1
+            # Create mission list and send it to Mavlink
+            land_mission = mavlink_lora.msg.mavlink_lora_mission_list()
+            land_mission.waypoints.append(wp)
+            self.new_mission_pub.publish(land_mission)
+            rospy.logdebug("Published a land mission to Mavlink")
             self.state_machine.LAND = False
 
         if self.state_machine.ACTIVATE_PLANNER:
@@ -194,6 +210,11 @@ class GcsMasterNode():
             msg.custom_mode = 4 << 16 | 3 << 24
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
+
+        if self.state_machine.CLEAR_MISSION:
+            self.clear_mission_pub.publish()
+            self.state_machine.CLEAR_MISSION = False
+            rospy.loginfo("Mission cleared")
 
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
@@ -253,11 +274,7 @@ class GcsMasterNode():
                 self.state_machine.taking_off = True
         if data.command == 400:
             if ack:
-                if self.state_machine.get_state() == "start":
-                    self.state_machine.armed = False
-                    rospy.loginfo("Drone is disarmed")
-                else:
-                    self.state_machine.armed = True
+                self.state_machine.armed = True
         if data.command == 21:
             if ack:
                 self.state_machine.landing = True
@@ -281,6 +298,8 @@ class GcsMasterNode():
 
         self.state_machine.position[0] = data.lat
         self.state_machine.position[1] = data.lon
+        self.state_machine.gps_ok = True
+        self.gps_receive_time = rospy.get_time()
         return
 
     def mavlink_currentmission_callback(self, data):
@@ -323,6 +342,7 @@ class GcsMasterNode():
                     data.waypoints[0:self.state_machine.MISSION_LENGTH])
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
+        rospy.loginfo("Current path LENGHT: {}".format(len(self.state_machine.current_path)))
         return
 
     def pathplanner_isready_callback(self, data):
@@ -351,6 +371,43 @@ class GcsMasterNode():
         rospy.logdebug("BIP")
         return
 
+
+    def send_utm_data(self):
+        """
+        Publish drone data to the UTM system
+
+        The data is gathered from different attributes of the drone FSM
+        instance.
+        """
+        # Check if there is already a plan loaded
+        if not self.state_machine.current_path:
+            return
+        # Get the next waypoint in the mission
+        wp_next = self.state_machine.current_path[0]
+
+        msg = utm.msg.utm_tracking_data()
+        msg.uav_op_status 
+        msg.pos_cur_lat_dd = self.state_machine.latitude
+        msg.pos_cur_lng_dd = self.state_machine.longitude
+        msg.pos_cur_alt_m = self.state_machine.altitude
+        msg.pos_cur_hdg_deg = self.state_machine.heading
+        #TODO: Specify the correct drone velocity
+        msg.pos_cur_vel_mps = 10
+        msg.pos_cur_gps_timestamp = rospy.get_time()
+        msg.wp_next_lat_dd = wp_next.x
+        msg.wp_next_lng_dd = wp_next.y
+        msg.wp_next_alt_m = wp_next.z
+        msg.wp_next_hdg_deg = 0.0
+        #TODO: Specify the correct drone velocity
+        msg.wp_next_vel_mps = 10
+        #TODO: Estimate the epoch that the drone will reach the next wp
+        msg.wp_next_eta_epoch = 0.0
+        msg.uav_bat_soc = self.state_machine.batt_level
+
+        # Publish the message
+        self.utm_data_pub.publish(msg)
+        return
+
     def run(self):
         """ 
         Main loop. Update the FSM and publish variables.
@@ -372,6 +429,9 @@ class GcsMasterNode():
             self.state_machine.update_outputs()
             # Publish the flags of the FSM.
             self.update_flags()
+            # Publish the drone tracking data to the UTM periodically
+            if now > self.utm_send_time + self.UTM_PERIOD:
+                self.send_utm_data()
             # Publish the heartbeat with the adequate rate
             if now > self.heartbeat_send_time + self.HEARBEAT_PERIOD:
                 self.send_heartbeat()
@@ -379,6 +439,11 @@ class GcsMasterNode():
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
                 if self.state_machine.comm_ok:
                     self.state_machine.comm_ok = False
+            # Check if the drone gps times out.
+            if now > self.gps_receive_time + self.GPS_TIMEOUT:
+                if self.state_machine.gps_ok:
+                    self.state_machine.gps_ok = False
+                    rospy.logwarn("GPS data lost")
             # Finish the loop cycle.
             rate.sleep()
         self.clear_mission_pub.publish()
