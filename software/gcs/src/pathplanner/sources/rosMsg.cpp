@@ -32,7 +32,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
         std::cout << "PATHPLANNER: Not ready! Current position is inside a no flight zone" << std::endl;
 
     // REMOVE THIS LINE
-    hasAllInformation = initialZonesLoaded && currentCoordSet;
+    //hasAllInformation = initialZonesLoaded && currentCoordSet;
 
     if(hasAllInformation) {
         std::pair<double, double> coord(msg.lat, msg.lon);
@@ -44,7 +44,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
             bool goalIsInsideNoFligthZone = controller.checkIfPointIsInNoFlightZone(coord);
 
             // REMOVE THIS LINE
-            goalIsInsideNoFligthZone = false;
+            //goalIsInsideNoFligthZone = false;
 
             if(!goalIsInsideNoFligthZone) {
                 goalCoordSet = true;
