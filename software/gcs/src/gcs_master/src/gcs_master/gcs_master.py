@@ -12,6 +12,7 @@ In order to ensure the correct working of the FSM, there must be mutexes
 placed in order to avoid variable changes while evolving the states.
 """
 # Standard libraries
+import time
 # Third-party libraries
 import rospy
 import geometry_msgs.msg
@@ -38,7 +39,7 @@ class GcsMasterNode():
 
     MAX_COMM_LOSES = 3          # Tries before entering recover_comm state
 
-    def __init__(self, alt=50, takeoff_batt=80, fly_batt=30, hover_time=30):
+    def __init__(self, alt=50, takeoff_batt=80, fly_batt=30, hover_time=10):
         
         self.altitude = alt
         rospy.logdebug("ALTITUDE: {}".format(self.altitude))
@@ -54,6 +55,7 @@ class GcsMasterNode():
         self.battery_check_time = 0.0
         self.gps_receive_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
+        self.next_wp_epoch = 0
 
         # Userlink topic susbscribers
         rospy.Subscriber("userlink/start", std_msgs.msg.Int16MultiArray,
@@ -86,6 +88,11 @@ class GcsMasterNode():
                          std_msgs.msg.String,
                          self.mavlink_missionack_callback, queue_size=1)
 
+        # Userlink topic publishers
+        self.userlink_ack_pub = rospy.Publisher(
+                "gcs_master/destination_ack",
+                std_msgs.msg.Bool,
+                queue_size=1)
         # Pathplanner topic publishers
         self.calc_path_pub = rospy.Publisher(
                 "gcs_master/calculate_path",
@@ -164,8 +171,8 @@ class GcsMasterNode():
             wp.param2 = 2 # precision landing. 0 = normal landing
             wp.x = int(10000000 * self.state_machine.destination[0])
             wp.y = int(10000000 * self.state_machine.destination[1])
-            wp.z = 5
-            wp.autocontinue = 1
+            wp.z = 20
+            wp.autocontinue = 0
             # Create mission list and send it to Mavlink
             land_mission = mavlink_lora.msg.mavlink_lora_mission_list()
             land_mission.waypoints.append(wp)
@@ -178,6 +185,7 @@ class GcsMasterNode():
             msg.lat = self.state_machine.destination[0]
             msg.lon = self.state_machine.destination[1]
             self.activate_planner_pub.publish(msg)
+            rospy.loginfo("Activating pathplanner")
             self.state_machine.ACTIVATE_PLANNER = False
 
         if self.state_machine.CALCULATE_PATH:
@@ -321,6 +329,12 @@ class GcsMasterNode():
 
     def ui_start_callback(self, data):
         self.state_machine.new_mission = True
+        if all(coord is not None for coord in self.state_machine.destination):
+            self.userlink_ack_pub.publish(True)
+            rospy.loginfo("Destination received and acknowledged")
+        else:
+            self.userlink_ack_pub.publish(False)
+            rospy.logwarn("At least one destination coordinate is not valid")
         return
     #TODO: Acknowledge back to the dronelink that the mission is getting started
 
@@ -329,6 +343,10 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
+        try:
+            self.next_wp_epoch = int(data.waypoints[0].param4)
+        except IndexError:
+            rospy.logwarn("Ignoring waypoint Epoch: No waypoints in path")
         for wp in data.waypoints:
             wp.z = self.altitude
         self.state_machine.route = data.waypoints
@@ -393,7 +411,7 @@ class GcsMasterNode():
         msg.pos_cur_hdg_deg = self.state_machine.heading
         #TODO: Specify the correct drone velocity
         msg.pos_cur_vel_mps = 10
-        msg.pos_cur_gps_timestamp = rospy.get_time()
+        msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x
         msg.wp_next_lng_dd = wp_next.y
         msg.wp_next_alt_m = wp_next.z
@@ -401,7 +419,7 @@ class GcsMasterNode():
         #TODO: Specify the correct drone velocity
         msg.wp_next_vel_mps = 10
         #TODO: Estimate the epoch that the drone will reach the next wp
-        msg.wp_next_eta_epoch = 0.0
+        msg.wp_next_eta_epoch = self.next_wp_epoch
         msg.uav_bat_soc = self.state_machine.batt_level
 
         # Publish the message

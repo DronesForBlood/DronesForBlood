@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--altitude", type=lambda t:abs(float(t)),
             default=50.0, help="[in meters] Set point altitude for the flight")
     parser.add_argument("-ht", "--hovertime", type=lambda t:abs(float(t)),
-            default=50.0, help="[in secs] Hover time before landing")
+            default=10.0, help="[in secs] Hover time before landing")
 
     args = parser.parse_args(rospy.myargv()[1:])
     

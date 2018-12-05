@@ -11,12 +11,12 @@ import std_msgs.msg
 
 class DroneFSM():
 
-    PLANNER_TIMEOUT = 60    # Timeout, in seconds, for asking again for a path
+    PLANNER_TIMEOUT = 5     # Timeout, in seconds, for asking again for a path
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
     def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50,
-                 takeoff_batt=80, fly_batt=30, hovering_time=20):
+                 takeoff_batt=80, fly_batt=30, hovering_time=10):
         """
         :param int max_lowbatt_distance: maximum distance in meters that
          can be covered by the drone after entering low battery mode.
@@ -227,10 +227,11 @@ class DroneFSM():
         """
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
-            now = rospy.get_time()
-            if now>self.__state_timer + self.TIMEOUT and not self.mission_ready:
-                self.CLEAR_MISSION = True
-                self.__state_timer = rospy.get_time()
+            pass
+            # now = rospy.get_time()
+            # if now>self.__state_timer + self.TIMEOUT and not self.mission_ready:
+            #     self.CLEAR_MISSION = True
+            #     self.__state_timer = rospy.get_time()
 
         # PLANNER SETUP state
         elif self.__state == "planner_setup":

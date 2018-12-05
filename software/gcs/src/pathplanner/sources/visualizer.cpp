@@ -140,6 +140,7 @@ void Visualizer::printPathImage()
 
 void Visualizer::printShortPathImage()
 {
+    //std::cout << "Size of short path: " << currentShortPath.size() << std::endl;
     for(std::size_t i = 0; i < previousShortPath.size(); i++) {
         for(int j = int(previousShortPath[i].second) - squareSize; j < int(previousShortPath[i].second) + squareSize; j++)
             for(int k = int(previousShortPath[i].first) - squareSize; k < int(previousShortPath[i].first) + squareSize; k++) {
