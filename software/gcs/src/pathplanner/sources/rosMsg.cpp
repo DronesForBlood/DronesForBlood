@@ -32,7 +32,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
         std::cout << "PATHPLANNER: Not ready! Current position is inside a no flight zone" << std::endl;
 
     // REMOVE THIS LINE
-    // hasAllInformation = initialZonesLoaded && currentCoordSet;
+    hasAllInformation = initialZonesLoaded && currentCoordSet;
 
     if(hasAllInformation) {
         std::pair<double, double> coord(msg.lat, msg.lon);
@@ -42,6 +42,9 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
         if(!sameGoalAsLast) {
             //std::cout << "New goal set" << std::endl;
             bool goalIsInsideNoFligthZone = controller.checkIfPointIsInNoFlightZone(coord);
+
+            // REMOVE THIS LINE
+            goalIsInsideNoFligthZone = false;
 
             if(!goalIsInsideNoFligthZone) {
                 goalCoordSet = true;
@@ -274,12 +277,12 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
     double distanceFromExpectedPosition = GeoFunctions::calcMeterDistanceBetweensCoords(currentCoord, currentHeading);
     if(distanceFromExpectedPosition > 10) {
         controller.setCurrentHeading(currentCoord);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
     if(!succes) {
         for(int i = 0; i < 3; i++) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             succes = controller.getPathToDestination(path);
             if(succes)
                 break;
@@ -293,7 +296,7 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
         currentHeading = path.back();
         controller.setCurrentHeading(currentHeading);
 
-        double ETA = 0;
+        double ETA = std::time(nullptr);
         std::pair<double,double> previousCoord = currentCoord;
 
         for(auto it = path.rbegin(); it != path.rend(); it++) {
