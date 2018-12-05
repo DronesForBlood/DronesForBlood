@@ -54,6 +54,7 @@ class GcsMasterNode():
         self.battery_check_time = 0.0
         self.gps_receive_time = 0.0
         self.heartbeat_receive_time = rospy.get_time()
+        self.next_wp_epoch = 0
 
         # Userlink topic susbscribers
         rospy.Subscriber("userlink/start", std_msgs.msg.Int16MultiArray,
@@ -178,6 +179,7 @@ class GcsMasterNode():
             msg.lat = self.state_machine.destination[0]
             msg.lon = self.state_machine.destination[1]
             self.activate_planner_pub.publish(msg)
+            rospy.loginfo("Activating pathplanner")
             self.state_machine.ACTIVATE_PLANNER = False
 
         if self.state_machine.CALCULATE_PATH:
@@ -329,6 +331,7 @@ class GcsMasterNode():
         return
 
     def pathplanner_newplan_callback(self, data):
+        self.next_wp_epoch = data.wp[0].param4
         for wp in data.waypoints:
             wp.z = self.altitude
         self.state_machine.route = data.waypoints
