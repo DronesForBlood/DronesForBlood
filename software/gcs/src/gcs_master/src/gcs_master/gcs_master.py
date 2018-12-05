@@ -84,6 +84,11 @@ class GcsMasterNode():
                          std_msgs.msg.String,
                          self.mavlink_missionack_callback, queue_size=1)
 
+        # Userlink topic publishers
+        self.userlink_ack_pub = rospy.Publisher(
+                "gcs_master/destination_ack",
+                std_msgs.msg.Bool,
+                queue_size=1)
         # Pathplanner topic publishers
         self.calc_path_pub = rospy.Publisher(
                 "gcs_master/calculate_path",
@@ -312,6 +317,12 @@ class GcsMasterNode():
 
     def ui_start_callback(self, data):
         self.state_machine.new_mission = True
+        if all(coord is not None for coord in self.state_machine.destination):
+            self.userlink_ack_pub.publish(True)
+            rospy.loginfo("Destination received and acknowledged")
+        else:
+            self.userlink_ack_pub.publish(False)
+            rospy.logwarn("At least one destination coordinate is not valid")
         return
     #TODO: Acknowledge back to the dronelink that the mission is getting started
 
