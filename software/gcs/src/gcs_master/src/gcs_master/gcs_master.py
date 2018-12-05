@@ -54,7 +54,7 @@ class GcsMasterNode():
         self.heartbeat_receive_time = rospy.get_time()
 
         # Userlink topic susbscribers
-        rospy.Subscriber("userlink/start", std_msgs.msg.Bool,
+        rospy.Subscriber("userlink/start", std_msgs.msg.Int16MultiArray,
                          self.ui_start_callback, queue_size=1)
         rospy.Subscriber("userlink/destination",
                          mavlink_lora.msg.mavlink_lora_pos,
