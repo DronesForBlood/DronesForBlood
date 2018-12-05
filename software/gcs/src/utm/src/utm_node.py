@@ -24,6 +24,7 @@ from utm.msg import utm_no_flight_area
 from utm.msg import utm_rally_point
 from utm.msg import utm_rally_point_list
 
+from lora_ground_control.msg import heartbeat_node
 
 import sys
 import requests
@@ -38,12 +39,26 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 uav_id = 3013
+# We expect to have one heartbeat at least every second. We often publisher a bit faster
+# to ensure we uphold the timing
+HEARTBEAT_PERIOD = 0.5
+HEARTBEAT_PERIOD_EXPECTED = 1
 
 class UTM_node:
 
     def __init__(self):
 
         rospy.init_node('UTM_node', anonymous=True)
+
+        # heartbeat last sent
+        self.last_heartbeat = rospy.get_time()
+
+        self.id = 10
+        self.name = "UTM"
+        self.current_task = "Idle"
+        self.main_status = "Running"
+        self.has_error = False
+
 
         # Subscribers
         rospy.Subscriber("utm/add_tracking_data",
@@ -97,19 +112,42 @@ class UTM_node:
             utm_rally_point_list,
             queue_size=1)
 
+        self.heartbeat_pub = rospy.Publisher(
+            "/lora_ground_control/heartbeat_nodes_rx",
+            heartbeat_node,
+            queue_size=1)
+
         self.total_number_of_zones = 0
 
 
 
     def run(self):
         rospy.sleep(1)
-        rate = rospy.Rate(1)
+        rate = rospy.Rate(100)
 
         while not rospy.is_shutdown():
             self.fetch_tracking_data()
+
+            if self.last_heartbeat + rospy.rostime.Duration.from_sec(HEARTBEAT_PERIOD).secs <= rospy.get_time():
+                self.send_heartbeat()
+
             rate.sleep()
 
         return
+
+    def send_heartbeat(self):
+        # make and send heartbeat
+        hb = heartbeat_node()
+        hb.current_task = self.current_task
+        hb.main_status = self.main_status
+        hb.expected_interval = HEARTBEAT_PERIOD_EXPECTED
+        hb.has_error = self.has_error
+        hb.id = self.id
+        hb.name = self.name
+
+        self.heartbeat_pub.publish(hb)
+        self.last_heartbeat = rospy.get_time()
+
 
     def connect_to_utm_get(self, url, payload):
         r = ''
