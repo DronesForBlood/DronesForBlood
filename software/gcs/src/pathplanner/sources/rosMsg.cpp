@@ -307,7 +307,7 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             double distanceToPoint = GeoFunctions::calcMeterDistanceBetweensCoords(previousCoord, std::pair<double,double>(it->first, it->second));
             ETA += distanceToPoint / DRONE_MAX_SPEED;
 
-            item.param1 = ETA;
+            item.param4 = ETA;
 
             /*
             std::cout << "Sending x: " << it->first << std::endl;
