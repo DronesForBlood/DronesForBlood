@@ -44,6 +44,9 @@ uav_id = 3013
 HEARTBEAT_PERIOD = 0.5
 HEARTBEAT_PERIOD_EXPECTED = 1
 
+DATA_FETCH_PERIOD = 0.5
+DATA_FETCH_PERIOD_EXPECTED = 1
+
 class UTM_node:
 
     def __init__(self):
@@ -52,6 +55,7 @@ class UTM_node:
 
         # heartbeat last sent
         self.last_heartbeat = rospy.get_time()
+        self.last_tracking_fetch = rospy.get_time()
 
         self.id = 10
         self.name = "UTM"
@@ -123,16 +127,18 @@ class UTM_node:
 
     def run(self):
         rospy.sleep(1)
-        rate = rospy.Rate(100)
+        rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
-            self.fetch_tracking_data()
+            if self.last_tracking_fetch + rospy.rostime.Duration.from_sec(DATA_FETCH_PERIOD).secs <= rospy.get_time():
+                self.fetch_tracking_data()
 
             if self.last_heartbeat + rospy.rostime.Duration.from_sec(HEARTBEAT_PERIOD).secs <= rospy.get_time():
                 self.send_heartbeat()
 
             rate.sleep()
 
+        self.main_status = "Shutting down"
         return
 
     def send_heartbeat(self):
@@ -211,9 +217,12 @@ class UTM_node:
         self.utm_is_up_pub.publish(newMsg)
 
     def request_rally_points(self, msg):
+        self.current_task = "Loading rally points"
         self.fetch_rally_points()
+        self.current_task = "Idle"
 
     def add_tracking_data_callback(self, msg):
+        self.current_task = "Posting UAV tracking data"
         payload = {
             'uav_id': uav_id,
             'uav_auth_key': '8bdb3673e9429c9f011368d2433558d3860d69975cc830c84e4f86b1b712f18c67ff693a54304ca417f44161bf13f4e2ecd66a7c080889225f2f1f171f6f20c8',
@@ -245,20 +254,26 @@ class UTM_node:
                 print(colored('Status code: %i' % r.status_code, 'yellow'))
                 print(colored('Content type: %s' % r.headers['content-type'], 'yellow'))
 
+        self.current_task = "Idle"
+
     def request_no_flight_zones_callback(self, msg):
         include_static_zones = msg.data
 
         self.number_of_zones = 0
 
         if include_static_zones:
+            self.current_task = "Loading static no fly zones"
             self.fetch_static_no_fly_zones()
 
+        self.current_task = "Loading dynamic no fly zones"
         self.fetch_dynamic_no_fly_zones()
 
         self.number_of_zones_pub.publish(self.number_of_zones)
         print("Number of zones: ", self.number_of_zones)
+        self.current_task = "Idle"
 
     def fetch_tracking_data(self):
+        self.current_task = "Loading UAV tracking data"
         payload = {
             'time_delta_s': 180
         }
@@ -306,6 +321,9 @@ class UTM_node:
                     msg.uav_bat_soc = entry['uav_bat_soc']
 
                     self.tracking_data_pub.publish(msg)
+
+        self.last_tracking_fetch = rospy.get_time()
+        self.current_task = "Idle"
 
     def fetch_static_no_fly_zones(self):
         payload = {
