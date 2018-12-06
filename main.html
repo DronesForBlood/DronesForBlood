@@ -35,6 +35,7 @@ div {
     var destinationSource = new ol.source.Vector({wrapX: false});
     var droneSource = new ol.source.Vector({wrapX: false});
     var pathSource = new ol.source.Vector({wrapX: false});
+    var crumbSource = new ol.source.Vector({wrapX: false});
     var countdown = 0;
     
     var startStyle = new ol.style.Style({
@@ -73,6 +74,13 @@ div {
 	})
     });
 
+    var crumbStyle = new ol.style.Style({
+	image : new ol.style.Circle({
+	    radius : 3000, 
+	    color: [255, 0, 0, 0.5]
+	})
+    });
+
     var startLayer = new ol.layer.Vector({
         source: startSource,
         style: startStyle,
@@ -94,6 +102,11 @@ div {
 	style : pathStyle
     });
 
+    var crumbLayer = new ol.layer.Vector({
+	source : crumbSource,
+ 	style : crumbStyle,
+    });
+
     var raster = new ol.layer.Tile({
         source: new ol.source.XYZ({url : 'https://{1-4}.aerial.maps.cit.api.here.com' +
         '/maptile/2.1/maptile/newest/hybrid.day/{z}/{x}/{y}/256/png' +
@@ -107,7 +120,7 @@ div {
 
     var map = new ol.Map({
         target: 'map',
-        layers: [raster, startLayer, destinationLayer, droneLayer, pathLayer],
+        layers: [raster, startLayer, destinationLayer, droneLayer, pathLayer, crumbLayer],
 	loadTilesWhileInteracting: true,
         view: view
       });
@@ -228,7 +241,7 @@ function setDestination(){
 };
 
 function startETA(){
-   intervalId = setInterval(function() {
+   etaId = setInterval(function() {
 	var hours = parseInt(countdown / 3600);
 	var minutes = parseInt(countdown / 60);
 	var seconds = parseInt(countdown % 60); 
@@ -236,8 +249,8 @@ function startETA(){
 	document.getElementById("eta").innerHTML = hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + ":" + minutes.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + 
 	":" + seconds.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
 
-	if (--countdown < 0){
-            clearInterval(intervalId);
+	if (--countdown <= 0){
+            clearInterval(etaId);
 	}
    }, 1000);
 };
@@ -275,7 +288,7 @@ function centerDrone(){
     if (pattern.test(lon) && pattern.test(lat)){
         map.setView(new ol.View({
 	    center : ol.proj.fromLonLat([Number(lon), Number(lat)]),
-	    zoom : 15
+	    zoom : 17
         }));
     }
     else {
@@ -289,24 +302,51 @@ function drawPath(message){
     var arrLength = waypoints.length;
     var coordinates = [];
     for (i = 0; i < arrLength; i++){
-	var coord = ol.proj.fromLonLat([waypoints[i].y / 100000, waypoints[i].x / 100000]);
+	var coord = ol.proj.fromLonLat([waypoints[i].y / 10000000, waypoints[i].x / 10000000]);
 	coordinates.push(coord);
     };
     var feature = new ol.Feature({
         geometry: new ol.geom.LineString(coordinates),
 	name : "Line"
-    });  	
+    });  
+    feature.setId("Line");	
     feature.setStyle(pathStyle);
     pathSource.addFeature(feature);
 
     // WRITE ETA
-    countdown = waypoints[waypoints.length - 1].param4; // ETA OF WAYPOINT IN SECONDS
+    countdown = waypoints[waypoints.length - 1].param4 - Math.round((new Date()).getTime() / 1000); 
+    console.info(waypoints[waypoints.length - 1].y / 10000000, waypoints[waypoints.length - 1].x / 10000000);
     var hours = parseInt(countdown / 3600);
     var minutes = parseInt(countdown / 60);
     var seconds = parseInt(countdown % 60); 
 
     document.getElementById("eta").innerHTML = hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + ":" + minutes.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + 
 	":" + seconds.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
+};
+
+function drawCrumbs(){
+    crumbSource.clear();
+    crumbId = setInterval(function() {
+	console.info("Creating crumbs!");
+	var pattern = /\d{2}\.\d{7}/;
+	if (pattern.test(document.getElementById("droneLat").value) && pattern.test(document.getElementById("droneLon").value))
+	{
+	    var crumb = new ol.proj.transform([Number(document.getElementById("droneLon").value),
+			Number(document.getElementById("droneLat").value)], "EPSG:4326", "EPSG:3857");
+	    var feature = new ol.Feature({
+		geometry: new ol.geom.Point([Number(document.getElementById("droneLon").value),
+			Number(document.getElementById("droneLat").value)]), 
+	    }); 	
+	    console.info(feature.geometry);
+	    feature.setStyle(crumbStyle);
+	    crumbSource.addFeature(feature);
+	    
+ 	    // Check for arrival
+	    if (arrLength = 0){
+		clearInterval(crumbId);
+	    } 
+	}
+    }, 3000);
 };
 
 // ROS INTEGRATION BELOW //
@@ -373,7 +413,8 @@ gcsAck.subscribe(function(message){
    };
 });
 
-function sendAck(){
+// Used to simulate GCS
+function sendAck(){ 
    var msg = new ROSLIB.Message({
 	data : true
    });
@@ -401,6 +442,7 @@ function publishStart(){
 	});
 	droneStart.publish(msg);
 	startETA();
+	drawCrumbs();
 };
 
 function publishDestination(){
@@ -415,6 +457,7 @@ function publishDestination(){
 	droneDestination.publish(msg);
 };
 
+// Used to simulate a path published to /pathplanner/mission_list
 function sendPath(){
 	var msg = new ROSLIB.Message({
 		time_usec: 0,
