@@ -173,12 +173,13 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
         publishBlockedGoal(int(msg.epochValidTo));
     else if(intersectsWithFlightPath) {
         *currentTask = "Zone intersects path. Calculating new";
-        controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
+        ros::spinOnce();
+        controller.setCurrentHeading(currentCoord);
+
         //mavlink_lora::mavlink_lora_mission_list newMsg;
         //pubPath.publish(newMsg);
-        ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         //calculatePath(msg);
         //*currentTask = "Zone intersects path. New send";
@@ -232,12 +233,13 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
         publishBlockedGoal(int(msg.epochValidTo));
     else if(intersectsWithFlightPath) {
         *currentTask = "Zone intersects path. Calculating new";
-        controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
+        ros::spinOnce();
+        controller.setCurrentHeading(currentCoord);
+
         //mavlink_lora::mavlink_lora_mission_list newMsg;
         //pubPath.publish(newMsg);
-        ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         //calculatePath(msg);
         //*currentTask = "Zone intersects path. New path send";
