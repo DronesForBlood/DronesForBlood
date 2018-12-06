@@ -71,6 +71,7 @@ class DroneFSM():
         self.planner_ready = False          # Pathplanner status
         self.gps_ok = False                 # GPS data is being received
         self.dest_unreachable = False       # UTM no-fly zone over destination
+        self.emergency_stop = False         # Path planner requires to stop
         # User link related variables
         self.new_mission = False            # The user has requested new mission
         # Path related variables
@@ -176,7 +177,7 @@ class DroneFSM():
                     self.state_to_log()
                     rospy.loginfo("Hovering {} secs".format(self.HOVERING_TIME))
                     self.__state_timer = rospy.get_time()
-            elif self.new_waypoint:
+            elif self.new_waypoint or self.emergency_stop:
                     self.__state = "calculate_path"
                     self.new_waypoint = False
                     self.state_to_log()
@@ -201,9 +202,12 @@ class DroneFSM():
 
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
-            if self.new_path:
+            if self.new_path and not (self.emergency_stop and
+                                      not self.holding_position):
                 self.__state = "upload_mission"
+                self.emergency_stop = False
                 self.new_path = False
+                self.holding_position = False
                 self.state_to_log()
                 self.__state_timer = 0.0
 
@@ -297,6 +301,8 @@ class DroneFSM():
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
                 self.CALCULATE_PATH = True
+                if self.emergency_stop:
+                    self.HOLD_POSITION = True
                 self.__state_timer = rospy.get_time()
 
         # UPLOAD_MISSION state

@@ -69,6 +69,8 @@ class GcsMasterNode():
                          self.pathplanner_newplan_callback)
         rospy.Subscriber("pathplanner/is_ready", std_msgs.msg.Bool,
                          self.pathplanner_isready_callback)
+        rospy.Subscriber("pathplanner/emergency", std_msgs.msg.Bool,
+                         self.pathplanner_emergency_callback)
         # Docking station topic subscriber
         rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Bool,
                          self.docking_station_callback)
@@ -407,6 +409,10 @@ class GcsMasterNode():
             self.state_machine.planner_ready = True
         elif not data.data:
             self.state_machine.planner_ready = False
+        return
+
+    def pathplanner_emergency_callback(self, data):
+        self.state_machine.emergency_stop = True
         return
 
     def docking_station_callback(self, data):
