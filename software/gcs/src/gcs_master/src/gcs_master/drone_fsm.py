@@ -13,7 +13,7 @@ from gcs_master import path_operations
 
 class DroneFSM():
 
-    PLANNER_TIMEOUT = 5     # Timeout, in seconds, for asking again for a path
+    PLANNER_TIMEOUT = 10     # Timeout, in seconds, for asking again for a path
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
@@ -299,10 +299,11 @@ class DroneFSM():
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
             now = rospy.get_time()
-            if now > self.__state_timer + self.TIMEOUT:
+            if now > self.__state_timer + self.PLANNER_TIMEOUT:
                 self.CALCULATE_PATH = True
                 if self.emergency_stop:
                     self.HOLD_POSITION = True
+                    rospy.loginfo("Emergency: Hold position")
                 self.__state_timer = rospy.get_time()
 
         # UPLOAD_MISSION state

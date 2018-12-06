@@ -264,6 +264,8 @@ class GcsMasterNode():
             pass
         elif sub_mode == 3:
             # Loiter mode
+            if not self.state_machine.holding_position:
+                rospy.logwarn("Holding position")
             self.state_machine.holding_position = True
         elif sub_mode == 5:
             # RTL mode
@@ -412,6 +414,7 @@ class GcsMasterNode():
         return
 
     def pathplanner_emergency_callback(self, data):
+        rospy.logwarn("Emergency stop command received")
         self.state_machine.emergency_stop = True
         return
 
