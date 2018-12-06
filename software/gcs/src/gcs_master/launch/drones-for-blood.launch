@@ -7,6 +7,10 @@
     <arg name="alt" default="50"/>
     <arg name="hovertime" default="10"/>
     <arg name="sim" default="false"/>
+    <arg name="flyzones" default="true"/>
+
+    <arg unless="$(arg flyzones)" name="ignore-fly-zones" value="-z"/>
+    <arg     if="$(arg flyzones)" name="ignore-fly-zones" value=""/>
 
     <group if="$(arg sim)">
         <include file="$(find mavlink_lora)/launch/mavlink_lora_sim.launch"/>
@@ -20,6 +24,7 @@
         <arg name="critic-batt" value="$(arg critic-batt)"/>
         <arg name="alt" value="$(arg alt)"/>
         <arg name="hovertime" value="$(arg hovertime)"/>
+        <arg name="fly-zones" value="$(arg ignore-fly-zones)"/>
     </include>
 
 </launch>

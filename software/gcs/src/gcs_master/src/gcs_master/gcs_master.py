@@ -172,7 +172,14 @@ class GcsMasterNode():
 
         if self.state_machine.ASK_DOCKING:
             self.docking_station_pub.publish(True)
+            rospy.loginfo("Requesting status to docking station")
             self.state_machine.ASK_DOCKING = False
+
+        if self.state_machine.CLEAR_MISSION:
+            self.clear_mission_pub.publish()
+            rospy.loginfo("Clearing the mission list")
+            self.state_machine.mission_cleared = True
+            self.state_machine.CLEAR_MISSION = False
 
         if self.state_machine.LAND:
             # Landing waypoint

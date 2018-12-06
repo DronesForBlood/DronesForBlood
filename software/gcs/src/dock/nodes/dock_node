@@ -7,7 +7,12 @@ from std_msgs.msg import Int64
 
 class dock_node:
 
+    WAIT_TIME = 8.0
+
     def __init__(self):
+
+        self.request_time = 0.0
+        self.request = False
 
         rospy.init_node('dock_node', anonymous=True)
 
@@ -24,14 +29,22 @@ class dock_node:
             queue_size=1)
 
     def run(self):
-        rospy.spin()
+        rate = rospy.Rate(1)
+        while not rospy.is_shutdown():
+            now = rospy.get_time()
+            if now > self.request_time + self.WAIT_TIME and self.request:
+                self.status_pub.publish(True)
+                self.request = False
+            rate.sleep()
         return
 
     def sendStatus(self, msg):
-        newMsg = 1
-        self.status_pub.publish(newMsg)
+        if not self.request:
+            self.request_time = rospy.get_time()
+        self.request = True
+        return
+
 
 if __name__ == '__main__':
     dock_node = dock_node()
     dock_node.run()
-    print("Dock Node running ...")
