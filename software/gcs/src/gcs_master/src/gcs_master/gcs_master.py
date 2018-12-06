@@ -87,6 +87,9 @@ class GcsMasterNode():
         rospy.Subscriber("mavlink_interface/mission/ack",
                          std_msgs.msg.String,
                          self.mavlink_missionack_callback, queue_size=1)
+        rospy.Subscriber("mavlink_gps_raw",
+                         mavlink_lora.msg.mavlink_lora_gps_raw,
+                         self.mavlink_gps_callback, queue_size=1)
 
         # Userlink topic publishers
         self.userlink_ack_pub = rospy.Publisher(
@@ -327,6 +330,11 @@ class GcsMasterNode():
             rospy.logwarn("Mission acknowledge failed!")
         return
 
+    def mavlink_gps_callback(self, data):
+        rospy.logwarn("Set speed from GPS")
+        self.state_machine.cur_speed = data.vel
+        return
+
     def ui_start_callback(self, data):
         self.state_machine.new_mission = True
         if all(coord is not None for coord in self.state_machine.destination):
@@ -410,15 +418,15 @@ class GcsMasterNode():
         msg.pos_cur_alt_m = self.state_machine.altitude
         msg.pos_cur_hdg_deg = self.state_machine.heading
         #TODO: Specify the correct drone velocity
-        msg.pos_cur_vel_mps = 10
+        msg.pos_cur_vel_mps = self.state_machine.cur_speed
         msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x
         msg.wp_next_lng_dd = wp_next.y
         msg.wp_next_alt_m = (self.state_machine.altitude + 
                              (wp_next.z - self.state_machine.relative_alt))
-        msg.wp_next_hdg_deg = 0.0
+        msg.wp_next_hdg_deg = wp_next.param1
         #TODO: Specify the correct drone velocity
-        msg.wp_next_vel_mps = 10
+        msg.wp_next_vel_mps = 5
         #TODO: Estimate the epoch that the drone will reach the next wp
         msg.wp_next_eta_epoch = self.next_wp_epoch
         msg.uav_bat_soc = self.state_machine.batt_level

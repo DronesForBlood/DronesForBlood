@@ -46,6 +46,7 @@ class DroneFSM():
         self.latitude = None                # Drone latitude
         self.longitude = None               # Drone longitude
         self.heading = None                 # Heading, in degrees
+        self.cur_speed = 0                  # Drone current ground speed
         self.position = [None, None]        # Current position
         self.destination = [None, None]     # Destination location
         self.route = []                     # List of all waypoints
