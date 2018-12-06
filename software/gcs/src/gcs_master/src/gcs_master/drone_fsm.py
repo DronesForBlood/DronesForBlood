@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 import std_msgs.msg
 # Local libraries
-import path_operations
+from gcs_master import path_operations
 
 
 class DroneFSM():
