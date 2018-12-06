@@ -41,8 +41,11 @@ class rosMsg
 {
  public:
     rosMsg();
+    rosMsg(std::string *main, std::string *current);
     ~rosMsg();
 
+    void setCheckZonesBeforeTakeoff(bool val);
+    void setStatusMessages(std::string *main, std::string *current);
     void isReady(const mavlink_lora::mavlink_lora_pos &msg);
     bool getIsReady();
 
@@ -124,6 +127,11 @@ private:
     int expandZonesByMeters = 10;
 
     int epochBlockedUntil = INT_MAX;
+
+    std::string *mainStatus;
+    std::string *currentTask;
+
+    bool checkZonesBeforeTakeoff = true;
 };
 
 
