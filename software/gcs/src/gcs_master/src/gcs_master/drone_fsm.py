@@ -7,6 +7,8 @@ Finite-State-Machine (FSM) class implementing the drone behaviour.
 import numpy as np
 import rospy
 import std_msgs.msg
+# Local libraries
+import path_operations
 
 
 class DroneFSM():
@@ -65,6 +67,7 @@ class DroneFSM():
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
         self.gps_ok = False                 # GPS data is being received
+        self.dest_unreachable = False       # UTM no-fly zone over destination
         # User link related variables
         self.new_mission = False            # The user has requested new mission
         # Path related variables
@@ -152,6 +155,8 @@ class DroneFSM():
                 self.new_path = False
                 self.state_to_log()
                 self.__state_timer = 0.0
+            elif self.dest_unreachable:
+                pass
             elif (self.current_mission == len(self.current_path)-1 and
                         self.distance_to_dest < self.destination_threshold_dist
                         ):
@@ -268,6 +273,9 @@ class DroneFSM():
             if all(self.position):
                 self.distance_to_dest = np.linalg.norm(
                         np.array(self.destination)-np.array(self.position))
+            if self.dest_unreachable:
+                self.destination = path_operations.get_new_goal(
+                        self.position, self.destination, 1, 1, self.batt_level)
             pass
 
         # CALCULATE_PATH state
