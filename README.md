@@ -35,7 +35,6 @@ Repo for the groups documents and stuff for blood transport system for drones
     catkin_make
     source ./devel/setup.bash
     ```
-    
 
 # Execution instructions
 
@@ -72,6 +71,17 @@ roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 
 **NOTE:** Some errors may be raised and the execution may fail if the system is launched before Gazebo or the actual drone is on and active.
 
 
+## Running LoraGroundControl
+The LoraGroundControl is dependent on Mavlink_Lora which publishes the package information on ros topics. Without a running instance 
+of mavlink_lora the gui will not update or show any information. 
+
+Launch the groundcontrol monitoring with:
+```
+roslaunch lora_ground_control groundcontrol.launch
+```
+
+**Note:** if the roscore is getting closed while LoraGroundControl is running, and a new roscore is started, then 
+it is nessecary to restart LoraGroundControl so it can reconnect its listeners on the new roscore. 
 # Troubleshooting
 
 - __ModuleNotFoundError: No module named 'urllib2'__: when the pykml library is imported, it can not find the urrlib2 library. This is a bug in the _python3_ version of pykml.  As stated in [this blog](http://installfights.blogspot.com/2018/04/how-to-run-pykml-in-python3.html), the source code of the _pykml_ _parser.py_ module has to be editted:
