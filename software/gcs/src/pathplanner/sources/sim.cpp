@@ -238,7 +238,7 @@ int main(int argc, char **argv)
 	while(ros::ok()) {
 
 
-        //dronePub.publish(droneMsg);
+        dronePub.publish(droneMsg);
 
         if(!isReady) {
             std::cout << "Running not ready" << std::endl;
