@@ -18,10 +18,11 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 **NOTE:** The submodule instruction is assuming that you have a SSH key authentication enabled.
 
-2. Install the Python dependencies
+2. Install the Python and system dependencies
     - If a virtual enviroment is being used:
     
     ```bash
+    sudo apt install qtlocation5-dev qt5positioning-dev
     cd <project-dir>
     pip3 install -r /<project-path>/software/gcs/requirements.txt 
     ```
