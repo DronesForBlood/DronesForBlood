@@ -4,7 +4,7 @@ Module containing a path decision-making function.
 """
 
 def get_new_goal(current_pos, current_dest, home_pos, rally_point, batt_level,
-                 speed=5, energy_consumption=1):
+                 blocking_time=10, speed=5, energy_consumption=1):
     """
     Function for deciding the new goal
 
