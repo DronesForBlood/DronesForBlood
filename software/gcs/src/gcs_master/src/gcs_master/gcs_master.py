@@ -381,11 +381,12 @@ class GcsMasterNode():
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
         rospy.loginfo("Current path LENGHT: {}".format(len(self.state_machine.current_path)))
-        for (element in self.state_machine.current_path):
-            element.param1 = 0
-            element.param2 = 5
-            element.param3 = 0
-            element.param4 = 0
+        if len(self.state_machine.current_path) > 0:
+            for element in self.state_machine.current_path:
+                element.param1 = 0
+                element.param2 = 5
+                element.param3 = 0
+                element.param4 = float('nan')
         return
 
     def pathplanner_isready_callback(self, data):
