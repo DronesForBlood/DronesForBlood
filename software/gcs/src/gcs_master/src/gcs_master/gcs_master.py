@@ -343,7 +343,7 @@ class GcsMasterNode():
         return
 
     def mavlink_gps_callback(self, data):
-        rospy.logwarn("Set speed from GPS")
+        rospy.logdebug("Set speed from GPS")
         self.state_machine.cur_speed = data.vel
         return
 
@@ -495,6 +495,7 @@ class GcsMasterNode():
             if now > self.heartbeat_receive_time + self.HEARTBEAT_TIMEOUT:
                 if self.state_machine.comm_ok:
                     self.state_machine.comm_ok = False
+                    rospy.logwarn("Dronelink lost")
             # Check if the drone gps times out.
             if now > self.gps_receive_time + self.GPS_TIMEOUT:
                 if self.state_machine.gps_ok:
