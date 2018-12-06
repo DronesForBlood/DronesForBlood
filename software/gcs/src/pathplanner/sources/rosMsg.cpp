@@ -379,13 +379,12 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             newMsg.waypoints.push_back(item);
             i++;
         }
+        pubPath.publish(newMsg);
     }
     else {
         *currentTask = "UNABLE TO FIND A PATH";
         std::cout << "PATHPLANNER: UNABLE TO FIND A PATH. THIS MIGHT BE BAD" << std::endl;
     }
-
-    pubPath.publish(newMsg);
 }
 
 void rosMsg::generateNewMap()
