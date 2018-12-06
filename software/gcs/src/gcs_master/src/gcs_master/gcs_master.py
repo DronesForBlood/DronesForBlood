@@ -349,17 +349,17 @@ class GcsMasterNode():
 
     def ui_start_callback(self, data):
         self.state_machine.new_mission = True
+        return
+    #TODO: Acknowledge back to the dronelink that the mission is getting started
+
+    def ui_destination_callback(self, data):
+        self.state_machine.destination = [data.lat, data.lon]
         if all(coord is not None for coord in self.state_machine.destination):
             self.userlink_ack_pub.publish(True)
             rospy.loginfo("Destination received and acknowledged")
         else:
             self.userlink_ack_pub.publish(False)
             rospy.logwarn("At least one destination coordinate is not valid")
-        return
-    #TODO: Acknowledge back to the dronelink that the mission is getting started
-
-    def ui_destination_callback(self, data):
-        self.state_machine.destination = [data.lat, data.lon]
         return
 
     def pathplanner_newplan_callback(self, data):
@@ -381,6 +381,11 @@ class GcsMasterNode():
             rospy.logdebug("Taking the first {} waypoints in the mission"
                            "".format(self.state_machine.MISSION_LENGTH))
         rospy.loginfo("Current path LENGHT: {}".format(len(self.state_machine.current_path)))
+        for (element in self.state_machine.current_path):
+            element.param1 = 0
+            element.param2 = 5
+            element.param3 = 0
+            element.param4 = 0
         return
 
     def pathplanner_isready_callback(self, data):

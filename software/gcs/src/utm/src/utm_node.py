@@ -223,9 +223,6 @@ class UTM_node:
 
     def add_tracking_data_callback(self, msg):
         rospy.loginfo("here")
-        rospy.logdebug()
-        rospy.logerror()
-        rospy.logwarn()
         self.current_task = "Posting UAV tracking data"
         payload = {
             'uav_id': uav_id,
