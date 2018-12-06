@@ -441,8 +441,8 @@ class GcsMasterNode():
         #TODO: Specify the correct drone velocity
         msg.pos_cur_vel_mps = self.state_machine.cur_speed
         msg.pos_cur_gps_timestamp = int(time.time())
-        msg.wp_next_lat_dd = wp_next.x
-        msg.wp_next_lng_dd = wp_next.y
+        msg.wp_next_lat_dd = wp_next.x / 10000000.0
+        msg.wp_next_lng_dd = wp_next.y / 10000000.0
         msg.wp_next_alt_m = (self.state_machine.altitude + 
                              (wp_next.z - self.state_machine.relative_alt))
         msg.wp_next_hdg_deg = wp_next.param1
