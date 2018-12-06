@@ -414,7 +414,8 @@ class GcsMasterNode():
         msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x
         msg.wp_next_lng_dd = wp_next.y
-        msg.wp_next_alt_m = wp_next.z
+        msg.wp_next_alt_m = (self.state_machine.altitude + 
+                             (wp_next.z - self.state_machine.relative_alt))
         msg.wp_next_hdg_deg = 0.0
         #TODO: Specify the correct drone velocity
         msg.wp_next_vel_mps = 10
@@ -424,6 +425,8 @@ class GcsMasterNode():
 
         # Publish the message
         self.utm_data_pub.publish(msg)
+        # Update the UTM timer
+        self.utm_send_time = rospy.get_time()
         return
 
     def run(self):
