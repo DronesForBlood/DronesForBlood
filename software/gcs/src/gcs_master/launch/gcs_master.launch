@@ -9,6 +9,7 @@
           args="--batt1 $(arg takeoff-batt) --batt2 $(arg critic-batt)
                 --altitude $(arg alt) --hovertime $(arg hovertime)"/>
 
+    <node pkg="dock" type="dock_node" name="dock_node" output="screen"/>
     <node pkg="pathplanner" type="pathplanner" name="pathplanner" output= "screen"/>
     <node pkg="utm" type="utm_node.py" name="utm" output= "log"/>
 

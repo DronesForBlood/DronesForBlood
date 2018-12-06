@@ -17,6 +17,7 @@
         <include file="$(find mavlink_lora)/launch/mavlink_lora.launch"/>
     </group>
 
+    <node pkg="dock" type="dock_node" name="dock_node" output="screen"/>
     <node pkg="gcs_master" type="sim_userlink" name="sim_userlink" output= "screen"/>
     <node pkg="pathplanner" type="pathplanner" name="pathplanner" output= "screen"/>
     <node pkg="utm" type="utm_node.py" name="utm" output= "log"/>

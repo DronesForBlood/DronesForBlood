@@ -69,6 +69,9 @@ class GcsMasterNode():
                          self.pathplanner_newplan_callback)
         rospy.Subscriber("pathplanner/is_ready", std_msgs.msg.Bool,
                          self.pathplanner_isready_callback)
+        # Docking station topic subscriber
+        rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Bool,
+                         self.docking_station_callback)
         # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_status",
                          mavlink_lora.msg.mavlink_lora_status,
@@ -104,6 +107,11 @@ class GcsMasterNode():
         self.activate_planner_pub = rospy.Publisher(
                 "pathplanner/get_is_ready",
                 mavlink_lora.msg.mavlink_lora_pos,
+                queue_size=1)
+        # Docking station topic publisher
+        self.docking_station_pub = rospy.Publisher(
+                "docklink/statusRequest",
+                std_msgs.msg.Bool,
                 queue_size=1)
         # Mavlink topic publishers
         self.heartbeat_pub = rospy.Publisher(
@@ -161,6 +169,10 @@ class GcsMasterNode():
             msg.pitch = 0
             self.drone_takeoff_pub.publish(msg)
             self.state_machine.TAKE_OFF = False
+
+        if self.state_machine.ASK_DOCKING:
+            self.docking_station_pub.publish(True)
+            self.state_machine.ASK_DOCKING = False
 
         if self.state_machine.LAND:
             # Landing waypoint
@@ -379,6 +391,15 @@ class GcsMasterNode():
             self.state_machine.planner_ready = True
         elif not data.data:
             self.state_machine.planner_ready = False
+        return
+
+    def docking_station_callback(self, data):
+        if data.data:
+            self.state_machine.docking = True
+            rospy.loginfo("Docking station is OK")
+        else:
+            self.state_machine.docking = False
+            rospy.logwarn("Docking station is not OK")
         return
 
     def send_heartbeat(self):

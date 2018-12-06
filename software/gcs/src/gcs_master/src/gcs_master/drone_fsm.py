@@ -31,6 +31,7 @@ class DroneFSM():
         self.destination_threshold_dist = 0.000006   # Dist. for start landing
         # FSM flags. Outputs
         self.ARM = False
+        self.ASK_DOCKING = False
         self.TAKE_OFF = False
         self.LAND = False
         self.ACTIVATE_PLANNER = False
@@ -53,6 +54,7 @@ class DroneFSM():
         self.current_path = []              # List of immediate waypoints
         self.distance_to_dest = 0           # Distance to the final destination
         self.armed = False                  # Armed / Disarmed
+        self.docking = False                # Docking station allows the takeoff
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
         self.holding_position = False       # Drone is holding position on air
@@ -99,10 +101,11 @@ class DroneFSM():
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
             if (self.new_mission and self.comm_ok and self.takeoff_batt_ok
-                    and self.gps_ok):
+                    and self.gps_ok and self.docking):
                 self.__state = "planner_setup"
                 self.new_mission = False
                 self.mission_ready = False
+                self.docking = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = -100.0
@@ -229,10 +232,10 @@ class DroneFSM():
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
             pass
-            # now = rospy.get_time()
-            # if now>self.__state_timer + self.TIMEOUT and not self.mission_ready:
-            #     self.CLEAR_MISSION = True
-            #     self.__state_timer = rospy.get_time()
+            now = rospy.get_time()
+            if now>self.__state_timer + self.TIMEOUT and not self.docking:
+                self.ASK_DOCKING = True
+                self.__state_timer = rospy.get_time()
 
         # PLANNER SETUP state
         elif self.__state == "planner_setup":
