@@ -322,6 +322,9 @@ class GcsMasterNode():
         self.state_machine.position[0] = data.lat
         self.state_machine.position[1] = data.lon
         self.state_machine.gps_ok = True
+        if not all(self.state_machine.home_pos):
+            self.state_machine.home_pos = [data.lat, data.lon]
+            rospy.loginfo("Setting HOME position")
         self.gps_receive_time = rospy.get_time()
         return
 

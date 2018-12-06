@@ -52,6 +52,7 @@ class DroneFSM():
         self.cur_speed = 0                  # Drone current ground speed
         self.position = [None, None]        # Current position
         self.destination = [None, None]     # Destination location
+        self.home_pos = [None, None]        # Home position
         self.route = []                     # List of all waypoints
         self.current_path = []              # List of immediate waypoints
         self.distance_to_dest = 0           # Distance to the final destination
