@@ -45,7 +45,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
     bool hasAllInformation = initialZonesLoaded && currentCoordSet && !currentIsInsideNoFligthZone;
 
     if(!initialZonesLoaded) {
-        *currentTask = "Waiting for zones from UTM. Expects " + std::to_string(numberOfExpectedZones) + ", has " + std::to_string(numberOfZonesReceived);
+        *currentTask = "Waiting for zones (" + std::to_string(numberOfExpectedZones) + ", " + std::to_string(numberOfZonesReceived) + ")";
         std::cout << "PATHPLANNER: Not ready! Waiting for no flight zones" << std::endl;
     }
     else if(!currentCoordSet) {
@@ -53,7 +53,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
         std::cout << "PATHPLANNER: Not ready! Waiting for current position" << std::endl;
     }
     else if(currentIsInsideNoFligthZone) {
-        *currentTask = "Current position is inside no fly zone";
+        *currentTask = "Current position is in no fly zone";
         std::cout << "PATHPLANNER: Not ready! Current position is inside a no fly zone" << std::endl;
     }
 
@@ -86,7 +86,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
                 solvingStarted = false;
                 mapHasBeenGenerated = false;
                 pathplannerReady = false;
-                *currentTask = "Goal position is inside no fly zone";
+                *currentTask = "Goal position is in no fly zone";
                 std::cout << "PATHPLANNER: Not ready! Goal position is inside a no flight zone" << std::endl;
             }
 
@@ -115,7 +115,7 @@ bool rosMsg::getIsReady()
 
 void rosMsg::getZonesFromUTM()
 {
-    *currentTask = "Waiting for zones from UTM";
+    *currentTask = "Waiting for zones (" + std::to_string(numberOfExpectedZones) + ", " + std::to_string(numberOfZonesReceived) + ")";
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std_msgs::Bool msg;
     msg.data = true;
@@ -124,7 +124,7 @@ void rosMsg::getZonesFromUTM()
 
 void rosMsg::setNumberOfExpectedZones(const std_msgs::Int64 &msg)
 {
-    *currentTask = "Waiting for zones from UTM. Expects " + std::to_string(numberOfExpectedZones);
+    *currentTask = "Waiting for zones (" + std::to_string(numberOfExpectedZones) + ", " + std::to_string(numberOfZonesReceived) + ")";
     if(!initialZonesLoaded) {
         numberOfExpectedZones = int(msg.data);
         //std::cout << "numberOfExpectedZones: " << numberOfExpectedZones << std::endl;
@@ -172,14 +172,14 @@ void rosMsg::addNoFlightCircle(const utm::utm_no_flight_circle &msg)
     if(distanceToCircle <= msg.radius)
         publishBlockedGoal(int(msg.epochValidTo));
     else if(intersectsWithFlightPath) {
-        *currentTask = "Zone intersects the path. Calculating new";
+        *currentTask = "Zone intersects path. Calculating new";
         controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
         ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         calculatePath(msg);
-        *currentTask = "Zone intersects the path. New send";
+        *currentTask = "Zone intersects path. New send";
     }
 }
 
@@ -229,14 +229,14 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
     if(GeoFunctions::pointIsInsidePolygon(coords, goalCoord))
         publishBlockedGoal(int(msg.epochValidTo));
     else if(intersectsWithFlightPath) {
-        *currentTask = "Zone intersects the path. Calculating new";
+        *currentTask = "Zone intersects path. Calculating new";
         controller.setCurrentHeading(currentCoord);
         std_msgs::Bool msg;
         pubEmergency.publish(msg);
         ros::spinOnce();
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         calculatePath(msg);
-        *currentTask = "Zone intersects the path. New path send";
+        *currentTask = "Zone intersects path. New path send";
     }
 }
 
@@ -298,6 +298,7 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 void rosMsg::calculatePath(const std_msgs::Bool &msg)
 {
     if(!goalCoordSet || !currentCoordSet || !mapHasBeenGenerated) {
+        *currentTask = "Cannot find path. Missing info";
         std::cout << "PATHPLANNER: Unable to calculate a path. Missing information" << std::endl;
         return;
     }
@@ -385,6 +386,7 @@ void rosMsg::generateNewMap()
 {
     std::cout << "PATHPLANNER: Generating a new map" << std::endl;
     if(!goalCoordSet || !currentCoordSet || !initialZonesLoaded) {
+        *currentTask = "Cannot make map. Missing info";
         std::cout << goalCoordSet << " " << currentCoordSet << " " << initialZonesLoaded << std::endl;
         std::cout << "PATHPLANNER: Unable to generate new map. Missing information" << std::endl;
         return;
