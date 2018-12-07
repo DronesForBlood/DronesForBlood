@@ -60,11 +60,13 @@ There is a main launch file that executes the required packages for doing an aut
 
 - **sim:** If true, Mavlink will establish a communication with the Gazebo simulation, instead of doing it with the drone
 
+- **flyzones:** If false, the restricted fly zones will be ignored when taking off, so the flight/simulation is faster (suitable for debugging).
+
 Hence, if the user wants to make a simulated flight at 50 meters altitude, withe a minimum take-off battery of 80%, and a critical battery level of 20%, the following instruction has to be run:
 
 
 ```bash
-roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true takeoff-batt:=80 critic-batt:=20
+roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true flyzones:=false takeoff-batt:=80 critic-batt:=20
 ```
     
    
