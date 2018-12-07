@@ -341,7 +341,7 @@ class GcsMasterNode():
 
     def mavlink_pos_callback(self, data):
         """
-        Parse incomming Mavlink position message
+        Parse incomming Mavlink position message.
         """
         self.state_machine.latitude = data.lat
         self.state_machine.longitude = data.lon
@@ -361,6 +361,12 @@ class GcsMasterNode():
         return
 
     def mavlink_currentmission_callback(self, data):
+        """
+        Parse incomming Mavlink current mission message.
+
+        data.data specifies which is the index of the current waypoint
+        in the mission list.
+        """
         # If first waypoint is reached, set the FSM flag to true
         if data.data != self.state_machine.current_mission:
             if data.data > self.state_machine.current_mission:
@@ -370,6 +376,12 @@ class GcsMasterNode():
         return
 
     def mavlink_missionack_callback(self, data):
+        """
+        Parse incomming Mavlink Mission ACK message.
+
+        It is received after sending an 'upload mission' message or a
+        'clear mission' command.
+        """
         if data.data == "MAV_MISSION_ACCEPTED":
             # In the start state, only the clear mission is sent
             if self.state_machine.get_state() == "planner_setup":

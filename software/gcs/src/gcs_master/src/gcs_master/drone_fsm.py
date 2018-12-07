@@ -341,7 +341,6 @@ class DroneFSM():
                 self.START_MISSION = True
                 self.__state_timer = rospy.get_time()
 
-
         # Non-valid state
         else:
             raise ValueError("Unrecognized state '{}'".format(self.__state))
