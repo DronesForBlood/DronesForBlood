@@ -96,14 +96,6 @@ class DroneFSM():
         """
         Update the state of the FSM, based on the state variables.
         """
-        # TODO:Check for errors first!
-        # if self.msg._connection_header["topic"] == "/mavlink/drone/error":
-        #     if self.msg == "BATTERY_ERROR":                                         # Battery error
-        #         self.__state = "emergency_landing"
-
-        #     elif self.msg == "RC_LINK_LOSS":                                        # Commlink error
-        #         self.__state = "recover_comm"
-
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
             if (self.new_mission and self.comm_ok and self.takeoff_batt_ok

@@ -163,7 +163,6 @@ class GcsMasterNode():
 
         if self.state_machine.TAKE_OFF:
             rospy.loginfo("Sending TAKE OFF command")
-            #TODO: Set the parameters to adequate values
             msg = mavlink_lora.msg.mavlink_lora_command_takeoff()
             msg.latitude = self.state_machine.latitude
             msg.longtitude = self.state_machine.longitude
@@ -191,10 +190,13 @@ class GcsMasterNode():
             wp.target_system = 0
             wp.target_component = 0
             wp.seq = 0
-            wp.frame = 6 #global pos, relative alt_int
+            # Global pos, relative alt_int
+            wp.frame = 6
             wp.command = 21
-            wp.param1 = 5 # abort alt
-            wp.param2 = 2 # precision landing. 0 = normal landing
+            # Abort altitude
+            wp.param1 = 5
+            # Precision landing. 0 = normal landing
+            wp.param2 = 2
             wp.x = int(10000000 * self.state_machine.destination[0])
             wp.y = int(10000000 * self.state_machine.destination[1])
             wp.z = 20
@@ -284,7 +286,9 @@ class GcsMasterNode():
         return
 
     def mavlink_ack_callback(self, data):
-        ## Check if command is acknowledged
+        """
+        Parse ACK answer after sending command to Mavlink
+        """
         ack = False
         if data.result == 0:
             ack = True
@@ -336,6 +340,9 @@ class GcsMasterNode():
         return
 
     def mavlink_pos_callback(self, data):
+        """
+        Parse incomming Mavlink position message
+        """
         self.state_machine.latitude = data.lat
         self.state_machine.longitude = data.lon
         self.state_machine.altitude = data.alt
