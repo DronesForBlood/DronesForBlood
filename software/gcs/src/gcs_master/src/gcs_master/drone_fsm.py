@@ -157,6 +157,11 @@ class DroneFSM():
                 rospy.logwarn("Dronelink lost")
                 self.state_to_log()
                 self.__state_timer = 0.0
+            elif self.emergency_stop:
+                self.__state = "calculate_path"
+                self.new_waypoint = False
+                self.state_to_log()
+                self.__state_timer = 0.0
             elif self.new_path:
                 self.__state = "upload_mission"
                 self.mission_ready = False
@@ -177,12 +182,10 @@ class DroneFSM():
                     self.state_to_log()
                     rospy.loginfo("Hovering {} secs".format(self.HOVERING_TIME))
                     self.__state_timer = rospy.get_time()
-            elif self.new_waypoint or self.emergency_stop:
+            elif self.new_waypoint:
                     self.__state = "calculate_path"
                     self.new_waypoint = False
                     self.state_to_log()
-                    # rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
-                    #               " not applied)")
                     self.__state_timer = 0.0
 
         # UPLOAD MISSION state
