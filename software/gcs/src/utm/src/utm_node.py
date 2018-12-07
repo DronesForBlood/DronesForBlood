@@ -222,6 +222,7 @@ class UTM_node:
         self.current_task = "Idle"
 
     def add_tracking_data_callback(self, msg):
+        rospy.loginfo("here")
         self.current_task = "Posting UAV tracking data"
         payload = {
             'uav_id': uav_id,

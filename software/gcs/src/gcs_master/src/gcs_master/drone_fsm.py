@@ -7,11 +7,13 @@ Finite-State-Machine (FSM) class implementing the drone behaviour.
 import numpy as np
 import rospy
 import std_msgs.msg
+# Local libraries
+from gcs_master import path_operations
 
 
 class DroneFSM():
 
-    PLANNER_TIMEOUT = 5     # Timeout, in seconds, for asking again for a path
+    PLANNER_TIMEOUT = 10     # Timeout, in seconds, for asking again for a path
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
 
@@ -31,8 +33,10 @@ class DroneFSM():
         self.destination_threshold_dist = 0.000006   # Dist. for start landing
         # FSM flags. Outputs
         self.ARM = False
+        self.ASK_DOCKING = False
         self.TAKE_OFF = False
         self.LAND = False
+        self.CLEAR_MISSION = False
         self.ACTIVATE_PLANNER = False
         self.CALCULATE_PATH = False
         self.UPLOAD_MISSION = False
@@ -46,22 +50,28 @@ class DroneFSM():
         self.latitude = None                # Drone latitude
         self.longitude = None               # Drone longitude
         self.heading = None                 # Heading, in degrees
+        self.cur_speed = 0                  # Drone current ground speed
         self.position = [None, None]        # Current position
         self.destination = [None, None]     # Destination location
+        self.home_pos = [None, None]        # Home position
         self.route = []                     # List of all waypoints
         self.current_path = []              # List of immediate waypoints
         self.distance_to_dest = 0           # Distance to the final destination
         self.armed = False                  # Armed / Disarmed
+        self.docking = False                # Docking station allows the takeoff
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
         self.holding_position = False       # Drone is holding position on air
         self.mode_updated = False           # The drone has updated the mode
         self.batt_level = 0                 # Reamining battery capacity
         self.takeoff_batt_ok = False        # Enough battery for taking off
+        self.mission_cleared = False
         self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
         self.gps_ok = False                 # GPS data is being received
+        self.dest_unreachable = False       # UTM no-fly zone over destination
+        self.emergency_stop = False         # Path planner requires to stop
         # User link related variables
         self.new_mission = False            # The user has requested new mission
         # Path related variables
@@ -98,10 +108,11 @@ class DroneFSM():
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
             if (self.new_mission and self.comm_ok and self.takeoff_batt_ok
-                    and self.gps_ok):
+                    and self.gps_ok and self.docking):
                 self.__state = "planner_setup"
                 self.new_mission = False
                 self.mission_ready = False
+                self.docking = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
                 self.__state_timer = -100.0
@@ -109,8 +120,10 @@ class DroneFSM():
         # PLANNER SETUP state. Wait until the path planner acknowledges that
         # it is ready for creating mission plans.
         elif self.__state == "planner_setup":
-            if self.planner_ready and self.comm_ok and self.takeoff_batt_ok:
+            if (self.planner_ready and self.comm_ok and self.takeoff_batt_ok
+                    and self.mission_cleared):
                 self.__state = "arm"
+                self.mission_cleared = False
                 self.planner_ready = False
                 self.state_to_log()
                 # Restart timer for the new state, so it updates the flags asap.
@@ -122,6 +135,7 @@ class DroneFSM():
             if self.armed and self.taking_off:
                 self.__state = "take_off"
                 self.new_mission = False
+                self.armed = False
                 self.state_to_log()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
@@ -143,11 +157,20 @@ class DroneFSM():
                 rospy.logwarn("Dronelink lost")
                 self.state_to_log()
                 self.__state_timer = 0.0
+            elif self.emergency_stop:
+                self.__state = "calculate_path"
+                self.new_waypoint = False
+                self.state_to_log()
+                self.__state_timer = 0.0
             elif self.new_path:
                 self.__state = "upload_mission"
+                self.mission_ready = False
+                self.mission_started = False
                 self.new_path = False
                 self.state_to_log()
                 self.__state_timer = 0.0
+            elif self.dest_unreachable:
+                pass
             elif (self.current_mission == len(self.current_path)-1 and
                         self.distance_to_dest < self.destination_threshold_dist
                         ):
@@ -163,8 +186,6 @@ class DroneFSM():
                     self.__state = "calculate_path"
                     self.new_waypoint = False
                     self.state_to_log()
-                    # rospy.loginfo("FSM state: calculate_path (DEBUG: Transition"
-                    #               " not applied)")
                     self.__state_timer = 0.0
 
         # UPLOAD MISSION state
@@ -184,9 +205,12 @@ class DroneFSM():
 
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
-            if self.new_path:
+            if self.new_path and not (self.emergency_stop and
+                                      not self.holding_position):
                 self.__state = "upload_mission"
+                self.emergency_stop = False
                 self.new_path = False
+                self.holding_position = False
                 self.state_to_log()
                 self.__state_timer = 0.0
 
@@ -227,17 +251,23 @@ class DroneFSM():
         """
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
-            pass
-            # now = rospy.get_time()
-            # if now>self.__state_timer + self.TIMEOUT and not self.mission_ready:
-            #     self.CLEAR_MISSION = True
-            #     self.__state_timer = rospy.get_time()
+            now = rospy.get_time()
+            if now>self.__state_timer + self.TIMEOUT and not self.docking:
+                self.ASK_DOCKING = True
+                self.__state_timer = rospy.get_time()
+            if all(self.home_pos):
+                distance_to_home = np.linalg.norm(
+                        np.array(self.home_pos)-np.array(self.position))
+                if distance_to_home > 0.0001:
+                    self.destination = self.home_pos
+                    self.new_mission = True
 
         # PLANNER SETUP state
         elif self.__state == "planner_setup":
             now = rospy.get_time()
-            if now > self.__state_timer + self.PLANNER_TIMEOUT:
+            if now > self.__state_timer + self.TIMEOUT:
                 self.ACTIVATE_PLANNER = True
+                self.CLEAR_MISSION = True
                 self.__state_timer = rospy.get_time()
 
         # ARM state
@@ -264,13 +294,19 @@ class DroneFSM():
             if all(self.position):
                 self.distance_to_dest = np.linalg.norm(
                         np.array(self.destination)-np.array(self.position))
+            if self.dest_unreachable:
+                self.destination = path_operations.get_new_goal(
+                        self.position, self.destination, 1, 1, self.batt_level)
             pass
 
         # CALCULATE_PATH state
         elif self.__state == "calculate_path":
             now = rospy.get_time()
-            if now > self.__state_timer + self.TIMEOUT:
+            if now > self.__state_timer + self.PLANNER_TIMEOUT:
                 self.CALCULATE_PATH = True
+                if self.emergency_stop:
+                    self.HOLD_POSITION = True
+                    rospy.loginfo("Emergency: Hold position")
                 self.__state_timer = rospy.get_time()
 
         # UPLOAD_MISSION state

@@ -4,12 +4,15 @@
     <arg name="critic-batt" default="20"/>
     <arg name="alt" default="50"/>
     <arg name="hovertime" default="20"/>
+    <arg name="fly-zones" default="-z"/>
 
-    <node pkg="gcs_master" type="gcs_master" name="gcs_master" output= "screen"
+    <node pkg="gcs_master" type="gcs_master" name="gcs_master" output="screen"
           args="--batt1 $(arg takeoff-batt) --batt2 $(arg critic-batt)
                 --altitude $(arg alt) --hovertime $(arg hovertime)"/>
 
-    <node pkg="pathplanner" type="pathplanner" name="pathplanner" output= "screen"/>
-    <node pkg="utm" type="utm_node.py" name="utm" output= "log"/>
+    <node pkg="dock" type="dock_node" name="dock_node" output="screen"/>
+    <node pkg="pathplanner" type="pathplanner" name="pathplanner" output="screen"
+          args="$(arg fly-zones)"/>
+    <node pkg="utm" type="utm_node.py" name="utm" output="log"/>
 
 </launch>
