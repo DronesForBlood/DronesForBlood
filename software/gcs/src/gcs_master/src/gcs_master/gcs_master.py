@@ -469,9 +469,12 @@ class GcsMasterNode():
         if self.state_machine.current_path:
             wp_next = self.state_machine.current_path[0]
         else:
+            # If no waypoints available, mock the next one as a copy of the
+            # current situation.
             wp_next.x = self.state_machine.lat
             wp_next.y = self.state_machine.lon
             wp_next.z = self.state_machine.altitude
+            wp_next.param1 = self.state_machine.heading
 
         msg = utm.msg.utm_tracking_data()
         msg.uav_op_status = status
