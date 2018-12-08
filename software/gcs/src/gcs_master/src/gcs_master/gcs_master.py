@@ -532,7 +532,7 @@ class GcsMasterNode():
             # current situation.
             wp_next.x = self.state_machine.latitude
             wp_next.y = self.state_machine.longitude
-            wp_next.z = self.state_machine.altitude
+            wp_next.z = self.state_machine.relative_alt
             wp_next.param1 = self.state_machine.heading
 
         msg = utm.msg.utm_tracking_data()

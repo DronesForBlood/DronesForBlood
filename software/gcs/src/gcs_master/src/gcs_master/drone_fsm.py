@@ -13,9 +13,10 @@ from gcs_master import path_operations
 
 class DroneFSM():
 
-    PLANNER_TIMEOUT = 10     # Timeout, in seconds, for asking again for a path
+    PLANNER_TIMEOUT = 10    # Timeout, in seconds, for asking again for a path
     TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
+    DOCK_TIMEOUT = 15       # Timeout for asking again the docking station
 
     def __init__(self, max_lowbatt_distance=100, takeoff_altitude=50,
                  takeoff_batt=80, fly_batt=30, hovering_time=10):
@@ -242,7 +243,7 @@ class DroneFSM():
         # START state. Void. Wait until new operation is requested.
         if self.__state == "start":
             now = rospy.get_time()
-            if now>self.__state_timer + self.TIMEOUT and not self.docking:
+            if now>self.__state_timer + self.DOCK_TIMEOUT and not self.docking:
                 self.ASK_DOCKING = True
                 self.__state_timer = rospy.get_time()
             if all(self.home_pos):

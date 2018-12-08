@@ -13,7 +13,7 @@ class dock_node:
 
         self.request_time = 0.0
         self.request = False
-        self.payload = False
+        self.payload = True
 
         rospy.init_node('dock_node', anonymous=True)
 
@@ -42,10 +42,12 @@ class dock_node:
         while not rospy.is_shutdown():
             now = rospy.get_time()
             if now > self.request_time + self.WAIT_TIME and self.request:
+                data = Int64()
                 if self.payload:
-                    self.status_pub.publish(1)
+                    data.data = 1
                 else:
-                    self.status_pub.publish(2)
+                    data.data = 2
+                self.status_pub.publish(data)
                 self.request = False
             rate.sleep()
         return
