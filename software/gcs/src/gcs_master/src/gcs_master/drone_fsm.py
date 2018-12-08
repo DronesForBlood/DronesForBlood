@@ -136,7 +136,6 @@ class DroneFSM():
         elif self.__state == "take_off":
             if self.relative_alt>self.TAKEOFF_ALTITUDE-1 and self.new_path:
                 self.__state = "fly"
-                self.taking_off = False
                 self.state_to_log()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
@@ -372,11 +371,8 @@ class DroneFSM():
         Reset the class FSM state flags
         """
         rospy.loginfo("Reseting FSM state variables")
-        self.armed = False
         self.docking = False
-        self.taking_off = False
         self.landing = False
-        self.holding_position = False
         self.mode_updated = False
         self.takeoff_batt_ok = False
         self.mission_cleared = False

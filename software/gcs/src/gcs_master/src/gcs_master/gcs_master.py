@@ -72,7 +72,7 @@ class GcsMasterNode():
         rospy.Subscriber("pathplanner/emergency", std_msgs.msg.Bool,
                          self.pathplanner_emergency_callback)
         # Docking station topic subscriber
-        rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Bool,
+        rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Int64,
                          self.docking_station_callback)
         # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_status",
@@ -262,19 +262,26 @@ class GcsMasterNode():
         rospy.logdebug("Sub mode: {}. Base mode: {}".format(sub_mode, base_mode))
         if sub_mode == 2:
             # Take off mode
+            if not self.state_machine.taking_off:
+                rospy.loginfo("Switched to TAKE OFF mode")
+            self.state_machine.taking_off = True
             self.state_machine.holding_position = False
         elif sub_mode == 3:
             # Loiter mode
             if not self.state_machine.holding_position:
                 rospy.logwarn("Switched to HOLD POSITION mode")
+            self.state_machine.taking_off = False
             self.state_machine.holding_position = True
         elif sub_mode == 4:
             # mission mode
+            self.state_machine.taking_off = False
             self.state_machine.holding_position = False
         elif sub_mode == 5:
             # RTL mode
+            self.state_machine.taking_off = False
             self.state_machine.holding_position = False
         else:
+            self.state_machine.taking_off = False
             self.state_machine.holding_position = False
 
         # Assess whether the drone is armed or not
@@ -323,7 +330,6 @@ class GcsMasterNode():
         ## Check command to be acknowledged
         if data.command == 22:
             if ack:
-                self.state_machine.taking_off = True
                 rospy.loginfo("'Take off' acknowledged")
         if data.command == 400:
             if ack:
@@ -360,7 +366,7 @@ class GcsMasterNode():
         self.state_machine.position[1] = data.lon
         if not self.state_machine.gps_ok:
             self.state_machine.gps_ok = True
-            rospy.loginfor("GPS communication OK")
+            rospy.loginfo("GPS communication OK")
         if not all(self.state_machine.home_pos):
             self.state_machine.home_pos = [data.lat, data.lon]
             rospy.loginfo("Setting HOME position")
@@ -465,12 +471,17 @@ class GcsMasterNode():
         return
 
     def docking_station_callback(self, data):
-        if data.data:
-            self.state_machine.docking = True
-            rospy.loginfo("Docking station is OK")
-        else:
+        if data.data == 0:
             self.state_machine.docking = False
             rospy.logwarn("Docking station is not OK")
+        if data.data == 1:
+            self.state_machine.docking = True
+            self.state_machine.payload = True
+            rospy.loginfo("Docking station is OK and payload is attached")
+        elif data.data == 2:
+            self.state_machine.docking = True
+            self.state_machine.payload = False
+            rospy.loginfo("Docking station is OK and payload is dettached")
         return
 
     def send_heartbeat(self):
@@ -512,7 +523,9 @@ class GcsMasterNode():
             status = 21
         # Get the next waypoint in the mission
         wp_next = mavlink_lora.msg.mavlink_lora_mission_item_int()
-        if self.state_machine.current_path:
+        if not self.state_machine.gps_ok:
+            return
+        elif self.state_machine.current_path:
             wp_next = self.state_machine.current_path[0]
         else:
             # If no waypoints available, mock the next one as a copy of the

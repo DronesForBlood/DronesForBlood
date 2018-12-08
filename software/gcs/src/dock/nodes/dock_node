@@ -13,35 +13,41 @@ class dock_node:
 
         self.request_time = 0.0
         self.request = False
+        self.payload = False
 
         rospy.init_node('dock_node', anonymous=True)
 
         # Subscribers
         rospy.Subscriber("docklink/statusRequest",
                          Bool,
-                         self.sendStatus,
+                         self.request_callback,
                          queue_size=1)
 
         # Publishers
         self.status_pub = rospy.Publisher(
             "docklink/statusPublish",
-            Bool,
+            Int64,
             queue_size=1)
+
+    def request_callback(self, msg):
+        if not self.request:
+            self.request_time = rospy.get_time()
+        self.request = True
+        self.payload = not self.payload
+        return
+
 
     def run(self):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             now = rospy.get_time()
             if now > self.request_time + self.WAIT_TIME and self.request:
-                self.status_pub.publish(True)
+                if self.payload:
+                    self.status_pub.publish(1)
+                else:
+                    self.status_pub.publish(2)
                 self.request = False
             rate.sleep()
-        return
-
-    def sendStatus(self, msg):
-        if not self.request:
-            self.request_time = rospy.get_time()
-        self.request = True
         return
 
 
