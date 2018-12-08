@@ -400,13 +400,6 @@ void rosMsg::gotRedirect(const drone_decon::RedirectDrone &msg)
     if(missionMsg.waypoints.empty())
         return;
 
-    if(msg.insertBeforeNextWayPoint) {
-        mavlink_lora::mavlink_lora_mission_item_int item = missionMsg.waypoints.front();
-        item.x = int32_t(msg.position.latitude * 1e7);
-        item.y = int32_t(msg.position.longitude * 1e7);
-        missionMsg.waypoints.insert(missionMsg.waypoints.begin(), item);
-    }
-
     altitude += msg.position.altitude - currentActualAltitude;
     if(altitude > 80) {
         altitude = 80;
@@ -415,10 +408,21 @@ void rosMsg::gotRedirect(const drone_decon::RedirectDrone &msg)
     else
         std::cout << "PATHPLANNER: New altitude: " << altitude << std::endl;
 
-    for(auto &it : missionMsg.waypoints) {
-        it.seq = it.seq + 1;
-        it.z = altitude;
+    if(msg.insertBeforeNextWayPoint) {
+        mavlink_lora::mavlink_lora_mission_item_int item = missionMsg.waypoints.front();
+        item.x = int32_t(msg.position.latitude * 1e7);
+        item.y = int32_t(msg.position.longitude * 1e7);
+        item.z = altitude;
+        missionMsg.waypoints.insert(missionMsg.waypoints.begin(), item);
+
+        for(size_t i = 1; i < missionMsg.waypoints.size(); i++) {
+            missionMsg.waypoints[i].seq = ushort(i);
+            missionMsg.waypoints[i].z = altitude;
+        }
     }
+    else
+        for(size_t i = 0; i < missionMsg.waypoints.size(); i++)
+            missionMsg.waypoints[i].z = altitude;
 
     std_msgs::Bool emergencyMsg;
     pubEmergency.publish(emergencyMsg);
