@@ -42,7 +42,6 @@ class DroneFSM():
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
         self.HOLD_POSITION = False
-        self.CLEAR_MISSION = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -98,18 +97,10 @@ class DroneFSM():
         """
         Update the state of the FSM, based on the state variables.
         """
-        # TODO:Check for errors first!
-        # if self.msg._connection_header["topic"] == "/mavlink/drone/error":
-        #     if self.msg == "BATTERY_ERROR":                                         # Battery error
-        #         self.__state = "emergency_landing"
-
-        #     elif self.msg == "RC_LINK_LOSS":                                        # Commlink error
-        #         self.__state = "recover_comm"
-
         # START state. Wait until a new operation is requested.
         if self.__state == "start":
             if (self.new_mission and self.comm_ok and self.takeoff_batt_ok
-                    and self.gps_ok and self.docking):
+                    and self.gps_ok and self.docking and not self.armed):
                 self.__state = "planner_setup"
                 self.new_mission = False
                 self.mission_ready = False
@@ -136,7 +127,6 @@ class DroneFSM():
             if self.armed and self.taking_off:
                 self.__state = "take_off"
                 self.new_mission = False
-                self.armed = False
                 self.state_to_log()
                 # Restart timer for the new state.
                 self.__state_timer = 0.0
@@ -194,6 +184,7 @@ class DroneFSM():
             if self.mission_ready:
                 self.__state = "start_mission"
                 self.mission_ready = False
+                self.mission_started = False
                 self.state_to_log()
                 self.__state_timer = 0.0
 
@@ -209,6 +200,7 @@ class DroneFSM():
             if self.new_path and not (self.emergency_stop and
                                       not self.holding_position):
                 self.__state = "upload_mission"
+                self.mission_ready = False
                 self.emergency_stop = False
                 self.new_path = False
                 self.holding_position = False
@@ -235,9 +227,9 @@ class DroneFSM():
         elif self.__state == "land":
             if self.relative_alt<0.01:
                 self.__state = "start"
-                self.mission_ready = False
-                self.landing = False
                 self.state_to_log()
+                self.reset_flags()
+                self.armed = True
                 self.__state_timer = 0.0
 
         # Non-valid state
@@ -350,7 +342,6 @@ class DroneFSM():
                 self.START_MISSION = True
                 self.__state_timer = rospy.get_time()
 
-
         # Non-valid state
         else:
             raise ValueError("Unrecognized state '{}'".format(self.__state))
@@ -377,6 +368,32 @@ class DroneFSM():
         Returns the state of the FSM.
         """
         return self.__state
+
+    def reset_flags(self):
+        """
+        Reset the class FSM state flags
+        """
+        rospy.loginfo("Reseting FSM state variables")
+        self.armed = False
+        self.docking = False
+        self.taking_off = False
+        self.landing = False
+        self.holding_position = False
+        self.mode_updated = False
+        self.takeoff_batt_ok = False
+        self.mission_cleared = False
+        self.batt_ok = False
+        self.comm_ok = False
+        self.planner_ready = False
+        self.gps_ok = False
+        self.dest_unreachable = False
+        self.emergency_stop = False
+        self.new_mission = False
+        self.new_path = False
+        self.new_waypoint = False
+        self.mission_ready = False
+        self.mission_started = False
+        return
 
     def state_to_log(self):
         """

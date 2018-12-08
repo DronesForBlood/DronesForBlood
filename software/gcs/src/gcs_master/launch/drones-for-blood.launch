@@ -2,12 +2,15 @@
 
 <launch>
 
+    <!-- GCS master arguments -->
     <arg name="takeoff-batt" default="80"/>
     <arg name="critic-batt" default="20"/>
     <arg name="alt" default="50"/>
     <arg name="hovertime" default="10"/>
     <arg name="sim" default="false"/>
     <arg name="flyzones" default="true"/>
+    <!-- Mavlink lora argument -->
+    <arg name="port" default="/dev/ttyUSB0"/>
 
     <arg unless="$(arg flyzones)" name="ignore-fly-zones" value="-z"/>
     <arg     if="$(arg flyzones)" name="ignore-fly-zones" value=""/>
@@ -16,7 +19,9 @@
         <include file="$(find mavlink_lora)/launch/mavlink_lora_sim.launch"/>
     </group>
     <group unless="$(arg sim)">
-        <include file="$(find mavlink_lora)/launch/mavlink_lora.launch"/>
+        <include file="$(find mavlink_lora)/launch/mavlink_lora.launch">
+            <arg name="port" value="$(arg port)"/>
+        </include>
     </group>
 
     <include file="$(find gcs_master)/launch/gcs_master.launch">
