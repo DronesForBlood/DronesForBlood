@@ -415,8 +415,10 @@ void rosMsg::gotRedirect(const drone_decon::RedirectDrone &msg)
     else
         std::cout << "PATHPLANNER: New altitude: " << altitude << std::endl;
 
-    for(auto &it : missionMsg.waypoints)
+    for(auto &it : missionMsg.waypoints) {
+        it.seq = it.seq + 1;
         it.z = altitude;
+    }
 
     std_msgs::Bool emergencyMsg;
     pubEmergency.publish(emergencyMsg);
