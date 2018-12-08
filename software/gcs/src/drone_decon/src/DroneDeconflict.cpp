@@ -401,6 +401,12 @@ double simpleDroneDeconflict::time2point(point goal, direction heading, double v
 
     double t1= (goal.x-start.east)/(V.east);
     double t2= (goal.y-start.north)/(V.north);
+    if(std::abs(goal.x-start.east)<1){
+        t1 = 0;
+    }
+    if(std::abs(goal.y-start.north)<1){
+        t2 = 0;
+    }
     if(std::isinf(t1)){
         t1 = -1;
     }
@@ -415,11 +421,12 @@ double simpleDroneDeconflict::time2point(point goal, direction heading, double v
     
 
     if(std::abs(t1-t2)>2){
-        std::cout << "ERROR point not on line - tdif =" << std::abs(t1-t2) << std::endl;
+        std::cout << endl << "ERROR point not on line - tdif =" << std::abs(t1-t2) << std::endl;
         std::cout << "Calculating time from : " << start << endl;
         std::cout << "                   to : " << goal << endl;
         std::cout << "Using velocity        : " << V << endl;
         std::cout << "ETA1: " << t1 << " - ETA2: " << t2 << " - ETA: " << (t1+t2)/2 << endl;
+        std::cout << flush;
         throw "[time2point] error to large time diff";
     }
         
@@ -468,6 +475,7 @@ bool simpleDroneDeconflict::crashDetected(){
         cout << "Point0: " << ourDronePath[0] << endl;
         cout << "Point1: " << ourDronePath[1] << endl;
         cout << "Speed : " << ourDrone.getEstimatedVelocity() << endl;
+        cout << flush;
         throw "FIX Error line 439";
     }
     if(ourTimeStep == 0) ourTimeStep = this->ourSearchTime;

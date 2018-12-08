@@ -473,6 +473,13 @@ void rosMsg::gotRedirect(const drone_decon::RedirectDrone &msg)
     justGotRedirect = true;
 }
 
+void rosMsg::lowBattery(const std_msgs::Bool &msg)
+{
+    publishBlockedGoal(0);
+    std_msgs::Bool emergencyMsg;
+    pubEmergency.publish(emergencyMsg);
+}
+
 void rosMsg::generateNewMap()
 {
     std::cout << "PATHPLANNER: Generating a new map" << std::endl;
@@ -528,6 +535,7 @@ void rosMsg::subStart()
     subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
     subRallyPoints = n.subscribe("utm/fetch_rally_points", 1, &rosMsg::rallyPointsForBlockedGoal, this );
     droneRedirectSub = n.subscribe("/drone_decon/redirect", 10, &rosMsg::gotRedirect, this);
+    subLowBattery = n.subscribe("gcs_master/critical_battery", 1, &rosMsg::lowBattery, this);
 
 
     subDrones = n.subscribe("/utm/dronesList", 100, &rosMsg::droneData, this);
@@ -574,7 +582,7 @@ bool rosMsg::checkIfZoneExists(DynamicNoFlightZone &zone)
 
 void rosMsg::publishBlockedGoal(int epochOver)
 {
-    std::cout << "PATHPLANNER: Goal is blocked" << std::endl;
+    std::cout << "PATHPLANNER: Goal is blocked or low battery" << std::endl;
     if(waitingForRallyPoints)
         return;
 

@@ -71,6 +71,8 @@ class rosMsg
     // Collision avoidance
     void gotRedirect(const drone_decon::RedirectDrone &msg);
 
+    void lowBattery(const std_msgs::Bool &msg);
+
     void generateNewMap();
 
     void subStart();
@@ -102,6 +104,7 @@ private:
     ros::Subscriber subDeconflict;
     ros::Subscriber subRallyPoints;
     ros::Subscriber subDrones;
+    ros::Subscriber subLowBattery;
 
     ros::Publisher pubIsReady;
     ros::Subscriber subIsReady;
