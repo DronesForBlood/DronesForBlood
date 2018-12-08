@@ -261,8 +261,8 @@ class GcsMasterNode():
         base_mode = (data.custom_mode >> 16) & 0xFF
         rospy.logdebug("Sub mode: {}. Base mode: {}".format(sub_mode, base_mode))
         if sub_mode == 2:
-            # Mission mode
-            pass
+            # Take off mode
+            self.state_machine.holding_position = False
         elif sub_mode == 3:
             # Loiter mode
             if not self.state_machine.holding_position:
@@ -270,10 +270,14 @@ class GcsMasterNode():
             self.state_machine.holding_position = True
         elif sub_mode == 4:
             # mission mode
-            pass
+            self.state_machine.holding_position = False
         elif sub_mode == 5:
             # RTL mode
-            pass
+            self.state_machine.holding_position = False
+        else:
+            self.state_machine.holding_position = False
+
+        # Assess whether the drone is armed or not
         if not bool(data.base_mode & 0x80):
             if self.state_machine.armed:
                 self.state_machine.armed = False

@@ -203,7 +203,6 @@ class DroneFSM():
                 self.mission_ready = False
                 self.emergency_stop = False
                 self.new_path = False
-                self.holding_position = False
                 self.state_to_log()
                 self.__state_timer = 0.0
 
@@ -213,7 +212,6 @@ class DroneFSM():
                 pass
             if self.holding_position:
                 self.__state = "calculate_path"
-                self.holding_position = False
                 rospy.loginfo("Communication recovered")
                 self.state_to_log()
                 self.__state_timer = 0.0
