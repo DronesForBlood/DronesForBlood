@@ -275,7 +275,6 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
         }
     }
 
-    waitingForRallyPoints = false;
 
     if(rallyPointIsFree) {
         goalCoord = shortestDistancePoint;
@@ -296,6 +295,8 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
             pubLandNow.publish(msg);
         }
     }
+
+    waitingForRallyPoints = false;
 
     /*
     double distanceToHome = GeoFunctions::calcMeterDistanceBetweensCoords(initCoord, currentCoord);
@@ -573,7 +574,9 @@ bool rosMsg::checkIfZoneExists(DynamicNoFlightZone &zone)
 
 void rosMsg::publishBlockedGoal(int epochOver)
 {
-    *currentTask = "PATHPLANNER: Goal is blocked";
+    std::cout << "PATHPLANNER: Goal is blocked" << std::endl;
+    if(waitingForRallyPoints)
+        return;
 
     //std::cout << "BLOCKED GOAL!" << std::endl;
     epochBlockedUntil = epochOver;
