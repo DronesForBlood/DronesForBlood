@@ -27,12 +27,16 @@ try:
     import utm.msg
 except ModuleNotFoundError:
     print("UTM module not found")
+try:
+    import lora_ground_control.msg
+except ModuleNotFoundError:
+    print("Lora ground control module not found")
 
 class GcsMasterNode():
 
     # Node variables
     UTM_PERIOD = 1              # Seconds
-    HEARBEAT_PERIOD = 0.5       # Seconds
+    HEARBEAT_PERIOD = 0.3       # Seconds
     HEARTBEAT_TIMEOUT = 5       # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
     GPS_TIMEOUT = 5             # Seconds
@@ -41,6 +45,7 @@ class GcsMasterNode():
 
     def __init__(self, alt=50, takeoff_batt=80, fly_batt=30, hover_time=10):
         
+        self.status = -1
         self.altitude = alt
         rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
@@ -152,6 +157,11 @@ class GcsMasterNode():
         self.utm_data_pub = rospy.Publisher(
                 "utm/add_tracking_data",
                 utm.msg.utm_tracking_data,
+                queue_size=1)
+        # Lora ground control publisher
+        self.lora_monitor_pub = rospy.Publisher(
+                "/lora_ground_control/heartbeat_nodes_rx",
+                lora_ground_control.msg.heartbeat_node,
                 queue_size=1)
 
     def update_flags(self):
@@ -488,6 +498,16 @@ class GcsMasterNode():
         """
         Broadcast a heartbeat containing the GCS basic information.
         """
+        # Heartbeat to the Lora ground control
+        lora_msg = lora_ground_control.msg.heartbeat_node()
+        lora_msg.id = 0
+        lora_msg.name = "GCS master"
+        lora_msg.expected_interval = self.HEARBEAT_PERIOD
+        lora_msg.main_status = "Op {}".format(self.status)
+        lora_msg.current_task  = self.state_machine.get_state()
+        lora_msg.has_error = False
+        self.lora_monitor_pub.publish(lora_msg)
+        # Heartbeat to the drone
         msg = mavlink_lora.msg.mavlink_lora_heartbeat()
         msg.type = 6
         msg.autopilot = 8
@@ -508,19 +528,18 @@ class GcsMasterNode():
         The data is gathered from different attributes of the drone FSM
         instance.
         """
-        status = -1
         if self.state_machine.get_state() in ["start", "planner_setup", "arm"]:
             # Drone on the ground
-            status = 22
+            self.status = 22
         elif not self.state_machine.comm_ok or not self.state_machine.batt_ok:
             # Emergency, systems failing
-            status = 0
+            self.status = 0
         elif self.state_machine.payload:
             # Medical transport
-            status = 3
+            self.status = 3
         else:
             # No payload operation
-            status = 21
+            self.status = 21
         # Get the next waypoint in the mission
         wp_next = mavlink_lora.msg.mavlink_lora_mission_item_int()
         if not self.state_machine.gps_ok:
@@ -536,7 +555,7 @@ class GcsMasterNode():
             wp_next.param1 = self.state_machine.heading
 
         msg = utm.msg.utm_tracking_data()
-        msg.uav_op_status = status
+        msg.uav_op_status = self.status
         msg.pos_cur_lat_dd = self.state_machine.latitude
         msg.pos_cur_lng_dd = self.state_machine.longitude
         msg.pos_cur_alt_m = self.state_machine.altitude
