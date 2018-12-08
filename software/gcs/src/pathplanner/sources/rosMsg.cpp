@@ -281,6 +281,11 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
         generateNewMap();
         *mainStatus = "Ready";
         *currentTask = "Idle";
+
+        mavlink_lora::mavlink_lora_pos goalMsg;
+        goalMsg.lat = goalCoord.first;
+        goalMsg.lon = goalCoord.second;
+        pubChangeGoal.publish(goalMsg);
     }
     else {
         bool homeIsBlocked = controller.checkIfPointIsInNoFlightZone(initCoord);
@@ -289,6 +294,11 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
             generateNewMap();
             *mainStatus = "Ready";
             *currentTask = "Idle";
+
+            mavlink_lora::mavlink_lora_pos goalMsg;
+            goalMsg.lat = goalCoord.first;
+            goalMsg.lon = goalCoord.second;
+            pubChangeGoal.publish(goalMsg);
         }
         else {
             std_msgs::Bool msg;
@@ -548,7 +558,7 @@ void rosMsg::subStart()
     pubBlockedGoal = n.advertise<pathplanner::blocked_goal>("pathplanner/blocked_goal", 1);
     pubFetchRallyPoints = n.advertise<std_msgs::Bool>("utm/request_rally_points", 1);
     pubLandNow = n.advertise<std_msgs::Bool>("pathplanner/land_now", 1);
-
+    pubChangeGoal = n.advertise<mavlink_lora::mavlink_lora_pos>("userlink/destination", 1);
 
     getZonesFromUTM();
 

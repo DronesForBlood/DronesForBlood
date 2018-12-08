@@ -93,6 +93,7 @@ private:
     ros::Publisher pubBlockedGoal;
     ros::Publisher pubFetchRallyPoints;
     ros::Publisher pubLandNow;
+    ros::Publisher pubChangeGoal;
 
     ros::Subscriber subCurrentPosition;
     ros::Subscriber subGoalPosition;
