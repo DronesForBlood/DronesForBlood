@@ -27,12 +27,16 @@ try:
     import utm.msg
 except ModuleNotFoundError:
     print("UTM module not found")
+try:
+    import lora_ground_control.msg
+except ModuleNotFoundError:
+    print("Lora ground control module not found")
 
 class GcsMasterNode():
 
     # Node variables
     UTM_PERIOD = 1              # Seconds
-    HEARBEAT_PERIOD = 0.5       # Seconds
+    HEARBEAT_PERIOD = 0.3       # Seconds
     HEARTBEAT_TIMEOUT = 5       # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
     GPS_TIMEOUT = 5             # Seconds
@@ -41,6 +45,7 @@ class GcsMasterNode():
 
     def __init__(self, alt=50, takeoff_batt=80, fly_batt=30, hover_time=10):
         
+        self.status = -1
         self.altitude = alt
         rospy.logdebug("ALTITUDE: {}".format(self.altitude))
         # Create an instance of the drone finite-state-machine class.
@@ -69,8 +74,10 @@ class GcsMasterNode():
                          self.pathplanner_newplan_callback)
         rospy.Subscriber("pathplanner/is_ready", std_msgs.msg.Bool,
                          self.pathplanner_isready_callback)
+        rospy.Subscriber("pathplanner/emergency", std_msgs.msg.Bool,
+                         self.pathplanner_emergency_callback)
         # Docking station topic subscriber
-        rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Bool,
+        rospy.Subscriber("docklink/statusPublish", std_msgs.msg.Int64,
                          self.docking_station_callback)
         # Mavlink topic susbscribers
         rospy.Subscriber("mavlink_status",
@@ -151,15 +158,21 @@ class GcsMasterNode():
                 "utm/add_tracking_data",
                 utm.msg.utm_tracking_data,
                 queue_size=1)
+        # Lora ground control publisher
+        self.lora_monitor_pub = rospy.Publisher(
+                "/lora_ground_control/heartbeat_nodes_rx",
+                lora_ground_control.msg.heartbeat_node,
+                queue_size=1)
 
     def update_flags(self):
 
         if self.state_machine.ARM:
+            rospy.loginfo("Sending ARM command")
             self.drone_arm_pub.publish(True)
             self.state_machine.ARM = False
 
         if self.state_machine.TAKE_OFF:
-            #TODO: Set the parameters to adequate values
+            rospy.loginfo("Sending TAKE OFF command")
             msg = mavlink_lora.msg.mavlink_lora_command_takeoff()
             msg.latitude = self.state_machine.latitude
             msg.longtitude = self.state_machine.longitude
@@ -171,26 +184,29 @@ class GcsMasterNode():
             self.state_machine.TAKE_OFF = False
 
         if self.state_machine.ASK_DOCKING:
-            self.docking_station_pub.publish(True)
             rospy.loginfo("Requesting status to docking station")
+            self.docking_station_pub.publish(True)
             self.state_machine.ASK_DOCKING = False
 
         if self.state_machine.CLEAR_MISSION:
+            rospy.loginfo("Sending CLEAR MISSION command")
             self.clear_mission_pub.publish()
-            rospy.loginfo("Clearing the mission list")
-            self.state_machine.mission_cleared = True
             self.state_machine.CLEAR_MISSION = False
 
         if self.state_machine.LAND:
+            rospy.loginfo("Sending LAND command")
             # Landing waypoint
             wp = mavlink_lora.msg.mavlink_lora_mission_item_int()
             wp.target_system = 0
             wp.target_component = 0
             wp.seq = 0
-            wp.frame = 6 #global pos, relative alt_int
+            # Global pos, relative alt_int
+            wp.frame = 6
             wp.command = 21
-            wp.param1 = 5 # abort alt
-            wp.param2 = 2 # precision landing. 0 = normal landing
+            # Abort altitude
+            wp.param1 = 5
+            # Precision landing. 0 = normal landing
+            wp.param2 = 2
             wp.x = int(10000000 * self.state_machine.destination[0])
             wp.y = int(10000000 * self.state_machine.destination[1])
             wp.z = 20
@@ -199,29 +215,30 @@ class GcsMasterNode():
             land_mission = mavlink_lora.msg.mavlink_lora_mission_list()
             land_mission.waypoints.append(wp)
             self.new_mission_pub.publish(land_mission)
-            rospy.logdebug("Published a land mission to Mavlink")
             self.state_machine.LAND = False
 
         if self.state_machine.ACTIVATE_PLANNER:
+            rospy.loginfo("Sending ACTIVATE PLANNER command")
             msg = mavlink_lora.msg.mavlink_lora_pos()
             msg.lat = self.state_machine.destination[0]
             msg.lon = self.state_machine.destination[1]
             self.activate_planner_pub.publish(msg)
-            rospy.loginfo("Activating pathplanner")
             self.state_machine.ACTIVATE_PLANNER = False
 
         if self.state_machine.CALCULATE_PATH:
+            rospy.loginfo("Sending CALCULATE PATH command")
             self.calc_path_pub.publish(True)
             self.state_machine.CALCULATE_PATH = False
 
         if self.state_machine.UPLOAD_MISSION:
+            rospy.loginfo("Sending UPLOAD MISSION command")
             msg = mavlink_lora.msg.mavlink_lora_mission_list()
             msg.waypoints = self.state_machine.current_path
             self.new_mission_pub.publish(msg)
-            rospy.logdebug("Published a new mission to Mavlink")
             self.state_machine.UPLOAD_MISSION = False
 
         if self.state_machine.START_MISSION:
+            rospy.loginfo("Sending START MISSION command")
             # Remove the hold position command, in case it was previously
             # set to true
             mode_msg = mavlink_lora.msg.mavlink_lora_command_set_mode()
@@ -235,16 +252,14 @@ class GcsMasterNode():
             self.state_machine.START_MISSION = False
 
         if self.state_machine.HOLD_POSITION:
+            rospy.loginfo("Sending HOLD POSITION command")
             msg = mavlink_lora.msg.mavlink_lora_command_set_mode()
             # base mode = 4 (AUTO). sub mode = 3 (LOITER)
-            msg.custom_mode = 4 << 16 | 3 << 24
+            msg.mode = 1
+            msg.custom_mode = 4 
+            msg.custom_sub_mode = 3
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
-
-        if self.state_machine.CLEAR_MISSION:
-            self.clear_mission_pub.publish()
-            self.state_machine.CLEAR_MISSION = False
-            rospy.loginfo("Mission cleared")
 
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
@@ -258,14 +273,38 @@ class GcsMasterNode():
         base_mode = (data.custom_mode >> 16) & 0xFF
         rospy.logdebug("Sub mode: {}. Base mode: {}".format(sub_mode, base_mode))
         if sub_mode == 2:
-            # Mission mode
-            pass
+            # Take off mode
+            if not self.state_machine.taking_off:
+                rospy.loginfo("Switched to TAKE OFF mode")
+            self.state_machine.taking_off = True
+            self.state_machine.holding_position = False
         elif sub_mode == 3:
             # Loiter mode
+            if not self.state_machine.holding_position:
+                rospy.logwarn("Switched to HOLD POSITION mode")
+            self.state_machine.taking_off = False
             self.state_machine.holding_position = True
+        elif sub_mode == 4:
+            # mission mode
+            self.state_machine.taking_off = False
+            self.state_machine.holding_position = False
         elif sub_mode == 5:
             # RTL mode
-            pass
+            self.state_machine.taking_off = False
+            self.state_machine.holding_position = False
+        else:
+            self.state_machine.taking_off = False
+            self.state_machine.holding_position = False
+
+        # Assess whether the drone is armed or not
+        if not bool(data.base_mode & 0x80):
+            if self.state_machine.armed:
+                self.state_machine.armed = False
+                rospy.logwarn("Drone is now disarmed")
+        else:
+            if not self.state_machine.armed:
+                self.state_machine.armed = True
+                rospy.loginfo("Drone is now armed")
         if not self.state_machine.comm_ok:
             rospy.loginfo("Communication recovered")
         self.state_machine.comm_ok = True
@@ -273,7 +312,9 @@ class GcsMasterNode():
         return
 
     def mavlink_ack_callback(self, data):
-        ## Check if command is acknowledged
+        """
+        Parse ACK answer after sending command to Mavlink
+        """
         ack = False
         if data.result == 0:
             ack = True
@@ -301,25 +342,32 @@ class GcsMasterNode():
         ## Check command to be acknowledged
         if data.command == 22:
             if ack:
-                self.state_machine.taking_off = True
+                rospy.loginfo("'Take off' acknowledged")
         if data.command == 400:
             if ack:
-                self.state_machine.armed = True
+                rospy.loginfo("'Arm' acknowledged")
         if data.command == 21:
             if ack:
                 self.state_machine.landing = True
+                rospy.loginfo("'Land' acknowledged")
         if data.command == 73:
             if ack:
                 self.state_machine.mission_ready = True
+                rospy.loginfo("'Mission ready' acknowledged")
         if data.command == 176:
             if ack:
                 self.state_machine.mode_updated = True
+                rospy.loginfo("'Mode update' acknowledged")
         if data.command == 300:
             if ack:
                 self.state_machine.mission_started = True
+                rospy.loginfo("'Mission start' acknowledged")
         return
 
     def mavlink_pos_callback(self, data):
+        """
+        Parse incomming Mavlink position message.
+        """
         self.state_machine.latitude = data.lat
         self.state_machine.longitude = data.lon
         self.state_machine.altitude = data.alt
@@ -328,7 +376,9 @@ class GcsMasterNode():
 
         self.state_machine.position[0] = data.lat
         self.state_machine.position[1] = data.lon
-        self.state_machine.gps_ok = True
+        if not self.state_machine.gps_ok:
+            self.state_machine.gps_ok = True
+            rospy.loginfo("GPS communication OK")
         if not all(self.state_machine.home_pos):
             self.state_machine.home_pos = [data.lat, data.lon]
             rospy.loginfo("Setting HOME position")
@@ -336,6 +386,12 @@ class GcsMasterNode():
         return
 
     def mavlink_currentmission_callback(self, data):
+        """
+        Parse incomming Mavlink current mission message.
+
+        data.data specifies which is the index of the current waypoint
+        in the mission list.
+        """
         # If first waypoint is reached, set the FSM flag to true
         if data.data != self.state_machine.current_mission:
             if data.data > self.state_machine.current_mission:
@@ -345,9 +401,20 @@ class GcsMasterNode():
         return
 
     def mavlink_missionack_callback(self, data):
+        """
+        Parse incomming Mavlink Mission ACK message.
+
+        It is received after sending an 'upload mission' message or a
+        'clear mission' command.
+        """
         if data.data == "MAV_MISSION_ACCEPTED":
-            self.state_machine.mission_ready = True
-            rospy.loginfo("Mission upload accepted")
+            # In the start state, only the clear mission is sent
+            if self.state_machine.get_state() == "planner_setup":
+                self.state_machine.mission_cleared = True
+                rospy.loginfo("Mission list cleared")
+            else:
+                self.state_machine.mission_ready = True
+                rospy.loginfo("Mission upload accepted")
         else:
             rospy.logwarn("Mission acknowledge failed!")
         return
@@ -358,9 +425,9 @@ class GcsMasterNode():
         return
 
     def ui_start_callback(self, data):
+        rospy.loginfo("Start mission command received")
         self.state_machine.new_mission = True
         return
-    #TODO: Acknowledge back to the dronelink that the mission is getting started
 
     def ui_destination_callback(self, data):
         self.state_machine.destination = [data.lat, data.lon]
@@ -403,25 +470,46 @@ class GcsMasterNode():
         """
         The incomming boolean data specifies if the pathplanner is ready
         """
+        rospy.loginfo("Planner ready acknowledged")
         if data.data:
             self.state_machine.planner_ready = True
         elif not data.data:
             self.state_machine.planner_ready = False
         return
 
+    def pathplanner_emergency_callback(self, data):
+        rospy.logwarn("Emergency stop command received")
+        self.state_machine.emergency_stop = True
+        return
+
     def docking_station_callback(self, data):
-        if data.data:
-            self.state_machine.docking = True
-            rospy.loginfo("Docking station is OK")
-        else:
+        if data.data == 0:
             self.state_machine.docking = False
             rospy.logwarn("Docking station is not OK")
+        if data.data == 1:
+            self.state_machine.docking = True
+            self.state_machine.payload = True
+            rospy.loginfo("Docking station is OK and payload is attached")
+        elif data.data == 2:
+            self.state_machine.docking = True
+            self.state_machine.payload = False
+            rospy.loginfo("Docking station is OK and payload is dettached")
         return
 
     def send_heartbeat(self):
         """
         Broadcast a heartbeat containing the GCS basic information.
         """
+        # Heartbeat to the Lora ground control
+        lora_msg = lora_ground_control.msg.heartbeat_node()
+        lora_msg.id = 0
+        lora_msg.name = "GCS master"
+        lora_msg.expected_interval = self.HEARBEAT_PERIOD
+        lora_msg.main_status = "Op {}".format(self.status)
+        lora_msg.current_task  = self.state_machine.get_state()
+        lora_msg.has_error = False
+        self.lora_monitor_pub.publish(lora_msg)
+        # Heartbeat to the drone
         msg = mavlink_lora.msg.mavlink_lora_heartbeat()
         msg.type = 6
         msg.autopilot = 8
@@ -442,19 +530,38 @@ class GcsMasterNode():
         The data is gathered from different attributes of the drone FSM
         instance.
         """
-        # Check if there is already a plan loaded
-        if not self.state_machine.current_path:
-            return
+        if self.state_machine.get_state() in ["start", "planner_setup", "arm"]:
+            # Drone on the ground
+            self.status = 22
+        elif not self.state_machine.comm_ok or not self.state_machine.batt_ok:
+            # Emergency, systems failing
+            self.status = 0
+        elif self.state_machine.payload:
+            # Medical transport
+            self.status = 3
+        else:
+            # No payload operation
+            self.status = 21
         # Get the next waypoint in the mission
-        wp_next = self.state_machine.current_path[0]
+        wp_next = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        if not self.state_machine.gps_ok:
+            return
+        elif self.state_machine.current_path:
+            wp_next = self.state_machine.current_path[0]
+        else:
+            # If no waypoints available, mock the next one as a copy of the
+            # current situation.
+            wp_next.x = self.state_machine.latitude
+            wp_next.y = self.state_machine.longitude
+            wp_next.z = self.state_machine.relative_alt
+            wp_next.param1 = self.state_machine.heading
 
         msg = utm.msg.utm_tracking_data()
-        msg.uav_op_status 
+        msg.uav_op_status = self.status
         msg.pos_cur_lat_dd = self.state_machine.latitude
         msg.pos_cur_lng_dd = self.state_machine.longitude
         msg.pos_cur_alt_m = self.state_machine.altitude
         msg.pos_cur_hdg_deg = self.state_machine.heading
-        #TODO: Specify the correct drone velocity
         msg.pos_cur_vel_mps = self.state_machine.cur_speed
         msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x / 10000000.0
@@ -464,7 +571,7 @@ class GcsMasterNode():
         msg.wp_next_hdg_deg = wp_next.param1
         #TODO: Specify the correct drone velocity
         msg.wp_next_vel_mps = 5
-        #TODO: Estimate the epoch that the drone will reach the next wp
+        # Epoch that the drone will reach the next wp
         msg.wp_next_eta_epoch = self.next_wp_epoch
         msg.uav_bat_soc = self.state_machine.batt_level
 
