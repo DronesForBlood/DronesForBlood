@@ -29,6 +29,8 @@
 #include <utm/utm_rally_point_list.h>
 
 #include <drone_decon/RedirectDrone.h>
+#include <drone_decon/UTMDrone.h>
+#include <drone_decon/UTMDroneList.h>
 
 #include "headers/mapcontroller.h"
 #include "headers/global/geofunctions.h"
@@ -57,6 +59,7 @@ class rosMsg
     void addNoFlightCircle(const utm::utm_no_flight_circle &msg);
     void addNoFlightArea(const utm::utm_no_flight_area &msg);
     void rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg);
+    void droneData(const drone_decon::UTMDroneList &msg);
 
     // Dronelink
     void setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg);
@@ -87,6 +90,7 @@ private:
     ros::Publisher pubEmergency;
     ros::Publisher pubBlockedGoal;
     ros::Publisher pubFetchRallyPoints;
+    ros::Publisher pubLandNow;
 
     ros::Subscriber subCurrentPosition;
     ros::Subscriber subGoalPosition;
@@ -97,6 +101,7 @@ private:
     ros::Subscriber subNoFlightAreas;
     ros::Subscriber subDeconflict;
     ros::Subscriber subRallyPoints;
+    ros::Subscriber subDrones;
 
     ros::Publisher pubIsReady;
     ros::Subscriber subIsReady;
@@ -144,6 +149,9 @@ private:
     mavlink_lora::mavlink_lora_mission_list missionMsg;
 
     bool justGotRedirect = false;
+    bool waitingForRallyPoints = false;
+
+    drone_decon::UTMDroneList otherDrones;
 };
 
 
