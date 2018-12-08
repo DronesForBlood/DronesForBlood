@@ -62,7 +62,7 @@ class DroneFSM():
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
         self.holding_position = False       # Drone is holding position on air
-        self.payloa = False                 # Drone has the payload attached
+        self.payload = False                 # Drone has the payload attached
         self.mode_updated = False           # The drone has updated the mode
         self.batt_level = 0                 # Reamining battery capacity
         self.takeoff_batt_ok = False        # Enough battery for taking off

@@ -267,6 +267,9 @@ class GcsMasterNode():
             if not self.state_machine.holding_position:
                 rospy.logwarn("Holding position")
             self.state_machine.holding_position = True
+        elif sub_mode == 4:
+            # mission mode
+            pass
         elif sub_mode == 5:
             # RTL mode
             pass
@@ -471,8 +474,8 @@ class GcsMasterNode():
         else:
             # If no waypoints available, mock the next one as a copy of the
             # current situation.
-            wp_next.x = self.state_machine.lat
-            wp_next.y = self.state_machine.lon
+            wp_next.x = self.state_machine.latitude
+            wp_next.y = self.state_machine.longitude
             wp_next.z = self.state_machine.altitude
             wp_next.param1 = self.state_machine.heading
 
