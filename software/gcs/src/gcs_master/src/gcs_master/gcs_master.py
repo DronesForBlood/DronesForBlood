@@ -451,19 +451,34 @@ class GcsMasterNode():
         The data is gathered from different attributes of the drone FSM
         instance.
         """
-        # Check if there is already a plan loaded
-        if not self.state_machine.current_path:
-            return
+        status = -1
+        if self.state_machine.get_state() in ["start", "planner_setup", "arm"]:
+            # Drone on the ground
+            status = 22
+        elif not self.state_machine.comm_ok or not self.state_machine.batt_ok:
+            # Emergency, systems failing
+            status = 0
+        elif self.state_machine.payload:
+            # Medical transport
+            status = 3
+        else:
+            # No payload operation
+            status = 21
         # Get the next waypoint in the mission
-        wp_next = self.state_machine.current_path[0]
+        wp_next = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        if self.state_machine.current_path:
+            wp_next = self.state_machine.current_path[0]
+        else:
+            wp_next.x = self.state_machine.lat
+            wp_next.y = self.state_machine.lon
+            wp_next.z = self.state_machine.altitude
 
         msg = utm.msg.utm_tracking_data()
-        msg.uav_op_status 
+        msg.uav_op_status = status
         msg.pos_cur_lat_dd = self.state_machine.latitude
         msg.pos_cur_lng_dd = self.state_machine.longitude
         msg.pos_cur_alt_m = self.state_machine.altitude
         msg.pos_cur_hdg_deg = self.state_machine.heading
-        #TODO: Specify the correct drone velocity
         msg.pos_cur_vel_mps = self.state_machine.cur_speed
         msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x / 10000000.0
@@ -473,7 +488,7 @@ class GcsMasterNode():
         msg.wp_next_hdg_deg = wp_next.param1
         #TODO: Specify the correct drone velocity
         msg.wp_next_vel_mps = 5
-        #TODO: Estimate the epoch that the drone will reach the next wp
+        # Epoch that the drone will reach the next wp
         msg.wp_next_eta_epoch = self.next_wp_epoch
         msg.uav_bat_soc = self.state_machine.batt_level
 

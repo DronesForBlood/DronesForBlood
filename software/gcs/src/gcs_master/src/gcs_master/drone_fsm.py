@@ -62,10 +62,11 @@ class DroneFSM():
         self.taking_off = False             # Drone on taking-off operation
         self.landing = False                # Drone is landing
         self.holding_position = False       # Drone is holding position on air
+        self.payloa = False                 # Drone has the payload attached
         self.mode_updated = False           # The drone has updated the mode
         self.batt_level = 0                 # Reamining battery capacity
         self.takeoff_batt_ok = False        # Enough battery for taking off
-        self.mission_cleared = False
+        self.mission_cleared = False        # Drone has cleared mission list
         self.batt_ok = False                # Enough battery for flying
         self.comm_ok = False                # Comlink status
         self.planner_ready = False          # Pathplanner status
