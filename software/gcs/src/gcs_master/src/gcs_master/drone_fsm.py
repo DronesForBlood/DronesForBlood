@@ -43,6 +43,7 @@ class DroneFSM():
         self.UPLOAD_MISSION = False
         self.START_MISSION = False
         self.HOLD_POSITION = False
+        self.BATT_WARN = False
         self.EMERGENCY_LANDING = False
         # Drone parameters. FSM inputs
         self.altitude = None                # Absolute altitude
@@ -356,7 +357,9 @@ class DroneFSM():
         if self.batt_level > self.MIN_FLY_BAT:
             self.batt_ok = True
         else:
-            self.batt_ok = False
+            if self.__state == "fly" and self.batt_ok:
+                self.BATT_WARN = True
+                self.batt_ok = False
             rospy.logwarn("WARNING: Very low battery level: {}%"
                           "".format(self.batt_level))
         return self.takeoff_batt_ok
