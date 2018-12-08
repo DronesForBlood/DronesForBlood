@@ -255,7 +255,9 @@ class GcsMasterNode():
             rospy.loginfo("Sending HOLD POSITION command")
             msg = mavlink_lora.msg.mavlink_lora_command_set_mode()
             # base mode = 4 (AUTO). sub mode = 3 (LOITER)
-            msg.custom_mode = 4 << 16 | 3 << 24
+            msg.mode = 1
+            msg.custom_mode = 4 
+            msg.custom_sub_mode = 3
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
 
