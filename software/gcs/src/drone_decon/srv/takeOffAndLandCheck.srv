@@ -1,0 +1,9 @@
+#input
+uint32 drone_id
+bool isAsending #else decending
+
+---
+# output
+bool takeOffIsSafe
+float32 maxAltitude
+float32 minAltitude

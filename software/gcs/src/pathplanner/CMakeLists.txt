@@ -8,7 +8,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
 find_package(OpenCV REQUIRED) 
-find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation mavlink_lora utm)
+find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation mavlink_lora utm drone_decon)
 
 include_directories( SYSTEM
     ${OpenCV_INCLUDE_DIRS}
@@ -28,6 +28,7 @@ generate_messages(
   std_msgs
   mavlink_lora
   utm
+  drone_decon
 )
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

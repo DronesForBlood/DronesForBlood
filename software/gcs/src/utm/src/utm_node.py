@@ -24,6 +24,10 @@ from utm.msg import utm_no_flight_area
 from utm.msg import utm_rally_point
 from utm.msg import utm_rally_point_list
 
+from drone_decon.msg import UTMDroneList
+from drone_decon.msg import UTMDrone
+from drone_decon.msg import GPS
+
 from lora_ground_control.msg import heartbeat_node
 
 import sys
@@ -86,10 +90,17 @@ class UTM_node:
                     queue_size=1)
 
         # Publishers
+        """
         self.tracking_data_pub = rospy.Publisher(
             "utm/fetch_tracking_data",
             utm_tracking_data,
             queue_size=1000)
+        """
+
+        self.tracking_data_pub = rospy.Publisher(
+            "/utm/dronesList",
+            UTMDroneList,
+            queue_size=100)
 
         self.number_of_zones_pub = rospy.Publisher(
             "utm/number_of_zones",
@@ -294,7 +305,10 @@ class UTM_node:
             else:
                 # print r.text # Print the raw body data
                 # already_tracked_uavs = [uav_id]
-                already_tracked_uavs = [] # Change this back later! Now tracks ourselves
+                already_tracked_uavs = [] # Change this back later! Now tracks ourselves. Edit: Do not change back. It is good now
+
+                msg = UTMDroneList()
+
                 for entry in data_dict:
 
                     if(entry['uav_id'] in already_tracked_uavs):
@@ -303,6 +317,33 @@ class UTM_node:
 
                     already_tracked_uavs.append(entry['uav_id'])
 
+                    droneMsg = UTMDrone()
+
+                    gpsCurrent = GPS()
+                    gpsCurrent.altitude = entry['pos_cur_alt_m']
+                    gpsCurrent.latitude = entry['pos_cur_lat_dd']
+                    gpsCurrent.longitude = entry['pos_cur_lng_dd']
+
+                    gpsNext = GPS()
+                    gpsNext.altitude = entry['wp_next_alt_m']
+                    gpsNext.latitude = entry['wp_next_lat_dd']
+                    gpsNext.longitude = entry['wp_next_lng_dd']
+
+                    droneMsg.drone_id = entry['uav_id']
+                    droneMsg.next_WP = gpsNext
+                    droneMsg.cur_pos = gpsCurrent
+                    droneMsg.next_vel = entry['wp_next_vel_mps']
+                    droneMsg.cur_vel = entry['pos_cur_vel_mps']
+                    droneMsg.cur_heading = entry['pos_cur_hdg_deg']
+                    droneMsg.next_heading = entry['wp_next_hdg_deg']
+                    droneMsg.gps_time = entry['pos_cur_gps_timestamp']
+                    droneMsg.ETA_next_WP = entry['wp_next_eta_epoch']
+                    droneMsg.drone_priority = entry['uav_op_status']
+
+                    msg.drone_list.append(droneMsg)
+
+
+                    """
                     msg = utm_tracking_data()
 
                     msg.uav_id = entry['uav_id']
@@ -322,6 +363,8 @@ class UTM_node:
                     msg.uav_bat_soc = entry['uav_bat_soc']
 
                     self.tracking_data_pub.publish(msg)
+                    """
+                self.tracking_data_pub.publish(msg)
 
         self.last_tracking_fetch = rospy.get_time()
         self.current_task = "Idle"

@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: drone_decon
+Description: Description of drone_decon
+Version: 0.0.0
+Cflags: -I/usr/local/include
+Libs: -L/usr/local/lib 
+Requires: 

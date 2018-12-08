@@ -231,14 +231,14 @@ int main(int argc, char **argv)
     droneMsg.wp_next_eta_epoch = 1234;
     droneMsg.uav_bat_soc = 100;
 
-    dronePub.publish(droneMsg);
+    //dronePub.publish(droneMsg);
 
 	
     bool first = true;
 	while(ros::ok()) {
 
 
-        dronePub.publish(droneMsg);
+        //dronePub.publish(droneMsg);
 
         if(!isReady) {
             std::cout << "Running not ready" << std::endl;
@@ -261,7 +261,8 @@ int main(int argc, char **argv)
             double distanceToNextWp = GeoFunctions::calcMeterDistanceBetweensCoords(currentPos, nextPos);
 
             if(distanceToNextWp < 10) {
-                if(emptyPath && isReady) {
+                double distanceToGoal = GeoFunctions::calcMeterDistanceBetweensCoords(currentPos, goalCoord);
+                if(distanceToGoal < 10 && isReady) {
                     std::cout << "GENERATE NEW MAP" << std::endl;
 
                     mavlink_lora::mavlink_lora_pos temp = goalPositionMsg;

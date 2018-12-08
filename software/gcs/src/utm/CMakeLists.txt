@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(utm)
 
-find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation)
+find_package( catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation drone_decon)
 
 catkin_python_setup()
 
@@ -18,6 +18,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  drone_decon
 )
 
 catkin_package(
