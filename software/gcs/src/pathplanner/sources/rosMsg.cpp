@@ -282,16 +282,14 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
         generateNewMap();
         *mainStatus = "Ready";
         *currentTask = "Idle";
-        generateNewMap();
     }
     else {
-        bool homeIsClear = controller.checkIfPointIsInNoFlightZone(initCoord);
-        if(homeIsClear) {
+        bool homeIsBlocked = controller.checkIfPointIsInNoFlightZone(initCoord);
+        if(!homeIsBlocked) {
             goalCoord = initCoord;
             generateNewMap();
             *mainStatus = "Ready";
             *currentTask = "Idle";
-            generateNewMap();
         }
         else {
             std_msgs::Bool msg;
