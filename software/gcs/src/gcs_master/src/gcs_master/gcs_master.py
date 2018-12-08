@@ -115,6 +115,10 @@ class GcsMasterNode():
                 "pathplanner/get_is_ready",
                 mavlink_lora.msg.mavlink_lora_pos,
                 queue_size=1)
+        self.critical_battery_pub = rospy.Publisher(
+                "gcs_master/critical_battery",
+                std_msgs.msg.Bool,
+                queue_size=1)
         # Docking station topic publisher
         self.docking_station_pub = rospy.Publisher(
                 "docklink/statusRequest",
@@ -260,6 +264,11 @@ class GcsMasterNode():
             msg.custom_sub_mode = 3
             self.set_mode_pub.publish(msg)
             self.state_machine.HOLD_POSITION = False
+
+        if self.state_machine.BATT_WARN:
+            rospy.logwarn("Sending CRITICAL BATTERY warning")
+            self.critical_battery_pub.publish(True)
+            self.state_machine.BATT_WARN = False
 
         if self.state_machine.EMERGENCY_LANDING:
             rospy.logwarn("shits fucked")
@@ -470,11 +479,12 @@ class GcsMasterNode():
         """
         The incomming boolean data specifies if the pathplanner is ready
         """
-        rospy.loginfo("Planner ready acknowledged")
         if data.data:
             self.state_machine.planner_ready = True
+            rospy.loginfo("Planner ready acknowledged")
         elif not data.data:
             self.state_machine.planner_ready = False
+            rospy.loginfo("Planner ready dismissed")
         return
 
     def pathplanner_emergency_callback(self, data):
@@ -562,7 +572,7 @@ class GcsMasterNode():
         msg.pos_cur_lng_dd = self.state_machine.longitude
         msg.pos_cur_alt_m = self.state_machine.altitude
         msg.pos_cur_hdg_deg = self.state_machine.heading
-        msg.pos_cur_vel_mps = self.state_machine.cur_speed
+        msg.pos_cur_vel_mps = 5
         msg.pos_cur_gps_timestamp = int(time.time())
         msg.wp_next_lat_dd = wp_next.x / 10000000.0
         msg.wp_next_lng_dd = wp_next.y / 10000000.0
