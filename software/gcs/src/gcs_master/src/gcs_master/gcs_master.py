@@ -479,6 +479,7 @@ class GcsMasterNode():
         """
         The incomming boolean data specifies if the pathplanner is ready
         """
+        rospy.loginfo("Planner ready acknowledged")
         if data.data:
             self.state_machine.planner_ready = True
             rospy.loginfo("Planner ready acknowledged")
