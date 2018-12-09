@@ -375,6 +375,9 @@ void rosMsg::calculatePath()
         return;
     }
 
+    if(waitingForRallyPoints)
+        return;
+
     missionMsg.waypoints.clear();
 
     bool succes = controller.getPathToDestination(path);
@@ -610,6 +613,9 @@ void rosMsg::publishBlockedGoal(int epochOver)
     std_msgs::Bool msg;
     pubFetchRallyPoints.publish(msg);
     waitingForRallyPoints = true;
+
+    std_msgs::Bool emergencyMsg;
+    pubEmergency.publish(emergencyMsg);
 
     *mainStatus = "Goal blocked";
     *currentTask = "Loading rally points";
