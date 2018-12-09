@@ -46,7 +46,7 @@ uav_id = 3013
 # We expect to have one heartbeat at least every second. We often publisher a bit faster
 # to ensure we uphold the timing
 HEARTBEAT_PERIOD = 0.5
-HEARTBEAT_PERIOD_EXPECTED = 1
+HEARTBEAT_PERIOD_EXPECTED = 2
 
 DATA_FETCH_PERIOD = 0.5
 DATA_FETCH_PERIOD_EXPECTED = 1

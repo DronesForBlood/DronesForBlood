@@ -9,11 +9,16 @@
     <arg name="hovertime" default="10"/>
     <arg name="sim" default="false"/>
     <arg name="flyzones" default="true"/>
+    <arg name="monitor" default="false"/>
     <!-- Mavlink lora argument -->
     <arg name="port" default="/dev/ttyUSB0"/>
 
     <arg unless="$(arg flyzones)" name="ignore-fly-zones" value="-z"/>
     <arg     if="$(arg flyzones)" name="ignore-fly-zones" value=""/>
+
+    <group if="$(arg monitor)">
+        <include file="$(find lora_ground_control)/launch/groundcontrol.launch"/>
+    </group>
 
     <group if="$(arg sim)">
         <include file="$(find mavlink_lora)/launch/mavlink_lora_sim.launch"/>

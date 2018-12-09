@@ -515,7 +515,7 @@ class GcsMasterNode():
         lora_msg = lora_ground_control.msg.heartbeat_node()
         lora_msg.id = 0
         lora_msg.name = "GCS master"
-        lora_msg.expected_interval = self.HEARBEAT_PERIOD
+        lora_msg.expected_interval = self.HEARBEAT_PERIOD * 1.5
         lora_msg.main_status = "Op {}".format(self.status)
         lora_msg.current_task  = self.state_machine.get_state()
         lora_msg.has_error = False

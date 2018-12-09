@@ -12,7 +12,7 @@ except ModuleNotFoundError:
 class dock_node:
 
     WAIT_TIME = 8.0
-    HEARTBEAT_PERIOD = 0.3
+    HEARTBEAT_PERIOD = 1
 
     def __init__(self):
 
@@ -56,7 +56,7 @@ class dock_node:
         lora_msg = lora_ground_control.msg.heartbeat_node()
         lora_msg.id = 0
         lora_msg.name = "Docking station"
-        lora_msg.expected_interval = self.HEARTBEAT_PERIOD
+        lora_msg.expected_interval = self.HEARTBEAT_PERIOD * 1.5
         lora_msg.main_status = "OK"
         lora_msg.current_task  = "Prepared for docking"
         lora_msg.has_error = False
@@ -64,7 +64,7 @@ class dock_node:
         return
 
     def run(self):
-        rate = rospy.Rate(80)
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             now = rospy.get_time()
             if now > self.request_time + self.WAIT_TIME and self.request:
