@@ -249,9 +249,11 @@ class DroneFSM():
             if all(self.home_pos):
                 distance_to_home = np.linalg.norm(
                         np.array(self.home_pos)-np.array(self.position))
-                if distance_to_home > 0.0001:
-                    self.destination = self.home_pos
-                    self.new_mission = True
+                if distance_to_home > 0.0001 and self.payload:
+                    if not self.new_mission:
+                        rospy.logwarn("Going back home")
+                        self.destination = self.home_pos
+                        self.new_mission = True
 
         # PLANNER SETUP state
         elif self.__state == "planner_setup":
