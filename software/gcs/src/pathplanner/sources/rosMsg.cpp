@@ -252,6 +252,7 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
 void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
 {
     //std::cout << "CHECK RALLY POINTS PLZ. Size: " << msg.rally_point_list.size() << std::endl;
+    std::cout << "PATHPLANNER: Checking rally points and stuff" << std::endl;
 
     std::pair<double,double> shortestDistancePoint(msg.rally_point_list[0].lat_dd, msg.rally_point_list[0].lng_dd);
     double minDistance = GeoFunctions::calcMeterDistanceBetweensCoords(shortestDistancePoint, currentCoord);
@@ -273,6 +274,12 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
             rallyPointIsFree = false;
             break;
         }
+        std::pair<double,double> otherDroneCurPos(it.cur_pos.latitude, it.cur_pos.longitude);
+        double curPosDistanceToRallyPoint = GeoFunctions::calcMeterDistanceBetweensCoords(shortestDistancePoint, otherDroneCurPos);
+        if(curPosDistanceToRallyPoint < 5) {
+            rallyPointIsFree = false;
+            break;
+        }
     }
 
 
@@ -280,7 +287,7 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
         goalCoord = shortestDistancePoint;
         generateNewMap();
         *mainStatus = "Ready";
-        *currentTask = "Idle";
+        *currentTask = "Going to rally point";
 
         mavlink_lora::mavlink_lora_pos goalMsg;
         goalMsg.lat = goalCoord.first;
@@ -293,7 +300,7 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
             goalCoord = initCoord;
             generateNewMap();
             *mainStatus = "Ready";
-            *currentTask = "Idle";
+            *currentTask = "Going home";
 
             mavlink_lora::mavlink_lora_pos goalMsg;
             goalMsg.lat = goalCoord.first;
@@ -438,6 +445,8 @@ void rosMsg::calculatePath()
             missionMsg.waypoints.push_back(item);
             i++;
         }
+        if(missionMsg.waypoints.size() > 0)
+            missionMsg.waypoints.back().autocontinue = 0;
         pubPath.publish(missionMsg);
     }
     else {
