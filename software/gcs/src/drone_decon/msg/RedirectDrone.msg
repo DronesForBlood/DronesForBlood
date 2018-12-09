@@ -1,0 +1,6 @@
+uint32 drone_id
+
+GPS position
+
+bool insertBeforeNextWayPoint
+bool standByAndReplanRouteAtPoint

@@ -14,5 +14,7 @@
     <node pkg="pathplanner" type="pathplanner" name="pathplanner" output="screen"
           args="$(arg fly-zones)"/>
     <node pkg="utm" type="utm_node.py" name="utm" output="log"/>
+    <node pkg="drone_decon" type="drone_decon_node" name="drone_decon_node"
+          output="screen"/>
 
 </launch>

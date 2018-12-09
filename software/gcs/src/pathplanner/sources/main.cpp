@@ -13,7 +13,7 @@
 
 #include <algorithm>
 
-#define HEARTBEAT_PERIOD 0.5
+#define HEARTBEAT_PERIOD 2
 #define PATHPLANNER_ID 9
 
 static bool utmReady = false;
@@ -75,16 +75,19 @@ int main(int argc, char **argv)
 
     std::cout << "PATHPLANNER: Connecting to UTM node" << std::endl;
 
+    mainStatus = new std::string("NOT SET");
+    currentTask = new std::string("NOT SET");
+
     while(ros::ok() && !utmReady) {
         pubCheckReady.publish(msg);
+        sendHeartBeat();
         ros::spinOnce();
         loopRate.sleep();
     }
 
     std::cout << "PATHPLANNER: Succesfully connected to UTM node" << std::endl;
 
-    mainStatus = new std::string("NOT SET");
-    currentTask = new std::string("NOT SET");
+
     rosMsg rosMsgObject(mainStatus, currentTask);
 
     if(cmdOptionExists(argv, argv+argc, "-z")) {

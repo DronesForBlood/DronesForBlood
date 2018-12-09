@@ -31,6 +31,9 @@ void rosMsg::setStatusMessages(std::string *main, std::string *current)
 
 void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
 {
+    if(waitingForRallyPoints)
+        return;
+
     *mainStatus = "Not ready";
     *currentTask = "Checking if ready";
     //std::cout << "Check ready" << std::endl;
@@ -63,7 +66,7 @@ void rosMsg::isReady(const mavlink_lora::mavlink_lora_pos &msg)
     if(hasAllInformation) {
         std::pair<double, double> coord(msg.lat, msg.lon);
 
-        bool sameGoalAsLast = GeoFunctions::calcMeterDistanceBetweensCoords(coord, goalCoord) < 10;
+        bool sameGoalAsLast = GeoFunctions::calcMeterDistanceBetweensCoords(coord, goalCoord) < 2;
 
         if(!sameGoalAsLast) {
             //std::cout << "New goal set" << std::endl;
@@ -246,11 +249,6 @@ void rosMsg::addNoFlightArea(const utm::utm_no_flight_area &msg)
     }
 }
 
-void rosMsg::checkDrones(const utm::utm_tracking_data &msg)
-{
-
-}
-
 void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
 {
     //std::cout << "CHECK RALLY POINTS PLZ. Size: " << msg.rally_point_list.size() << std::endl;
@@ -267,6 +265,50 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
         }
     }
 
+    bool rallyPointIsFree = true;
+    for(auto &it : otherDrones.drone_list) {
+        std::pair<double,double> otherDroneNextWp(it.next_WP.latitude, it.next_WP.longitude);
+        double nextWpDistanceToRallyPoint = GeoFunctions::calcMeterDistanceBetweensCoords(shortestDistancePoint, otherDroneNextWp);
+        if(nextWpDistanceToRallyPoint < 5) {
+            rallyPointIsFree = false;
+            break;
+        }
+    }
+
+
+    if(rallyPointIsFree) {
+        goalCoord = shortestDistancePoint;
+        generateNewMap();
+        *mainStatus = "Ready";
+        *currentTask = "Idle";
+
+        mavlink_lora::mavlink_lora_pos goalMsg;
+        goalMsg.lat = goalCoord.first;
+        goalMsg.lon = goalCoord.second;
+        pubChangeGoal.publish(goalMsg);
+    }
+    else {
+        bool homeIsBlocked = controller.checkIfPointIsInNoFlightZone(initCoord);
+        if(!homeIsBlocked) {
+            goalCoord = initCoord;
+            generateNewMap();
+            *mainStatus = "Ready";
+            *currentTask = "Idle";
+
+            mavlink_lora::mavlink_lora_pos goalMsg;
+            goalMsg.lat = goalCoord.first;
+            goalMsg.lon = goalCoord.second;
+            pubChangeGoal.publish(goalMsg);
+        }
+        else {
+            std_msgs::Bool msg;
+            pubLandNow.publish(msg);
+        }
+    }
+
+    waitingForRallyPoints = false;
+
+    /*
     double distanceToHome = GeoFunctions::calcMeterDistanceBetweensCoords(initCoord, currentCoord);
 
     pathplanner::blocked_goal newMsg;
@@ -282,12 +324,19 @@ void rosMsg::rallyPointsForBlockedGoal(const utm::utm_rally_point_list &msg)
     newMsg.rallyPointLon = shortestDistancePoint.second;
 
     pubBlockedGoal.publish(newMsg);
+    */
+}
+
+void rosMsg::droneData(const drone_decon::UTMDroneList &msg)
+{
+    otherDrones = msg;
 }
 
 void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
 {
     currentCoordSet = true;
 
+    currentActualAltitude = msg.alt;
     currentCoord.first = msg.lat;
     currentCoord.second = msg.lon;
 
@@ -301,7 +350,17 @@ void rosMsg::setCurrentPosition(const mavlink_lora::mavlink_lora_pos &msg)
     }
 }
 
-void rosMsg::calculatePath(const std_msgs::Bool &msg)
+void rosMsg::getPath(const std_msgs::Bool &msg)
+{
+    if(justGotRedirect) {
+        justGotRedirect = false;
+        pubPath.publish(missionMsg);
+    }
+    else
+        calculatePath();
+}
+
+void rosMsg::calculatePath()
 {
     if(!goalCoordSet || !currentCoordSet || !mapHasBeenGenerated) {
         *currentTask = "Cannot find path. Missing info";
@@ -309,7 +368,7 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
         return;
     }
 
-    mavlink_lora::mavlink_lora_mission_list newMsg;
+    missionMsg.waypoints.clear();
 
     bool succes = controller.getPathToDestination(path);
 
@@ -376,15 +435,59 @@ void rosMsg::calculatePath(const std_msgs::Bool &msg)
             std::cout << "Sending Y: " << int32_t(it->second * 1e7) << std::endl;
             */
 
-            newMsg.waypoints.push_back(item);
+            missionMsg.waypoints.push_back(item);
             i++;
         }
-        pubPath.publish(newMsg);
+        pubPath.publish(missionMsg);
     }
     else {
         *currentTask = "UNABLE TO FIND A PATH";
         std::cout << "PATHPLANNER: UNABLE TO FIND A PATH. THIS MIGHT BE BAD" << std::endl;
     }
+}
+
+void rosMsg::gotRedirect(const drone_decon::RedirectDrone &msg)
+{
+    std::cout << "PATHPLANNER: Got redirect" << std::endl;
+
+    if(missionMsg.waypoints.empty())
+        return;
+
+    altitude += msg.position.altitude - currentActualAltitude;
+    if(altitude > 80) {
+        altitude = 80;
+        std::cout << "PATHPLANNER: Max altitude set: " << altitude << std::endl;
+    }
+    else
+        std::cout << "PATHPLANNER: New altitude: " << altitude << std::endl;
+
+    if(msg.insertBeforeNextWayPoint) {
+        mavlink_lora::mavlink_lora_mission_item_int item = missionMsg.waypoints.front();
+        item.x = int32_t(msg.position.latitude * 1e7);
+        item.y = int32_t(msg.position.longitude * 1e7);
+        item.z = altitude;
+        missionMsg.waypoints.insert(missionMsg.waypoints.begin(), item);
+
+        for(size_t i = 1; i < missionMsg.waypoints.size(); i++) {
+            missionMsg.waypoints[i].seq = ushort(i);
+            missionMsg.waypoints[i].z = altitude;
+        }
+    }
+    else
+        for(size_t i = 0; i < missionMsg.waypoints.size(); i++)
+            missionMsg.waypoints[i].z = altitude;
+
+    std_msgs::Bool emergencyMsg;
+    pubEmergency.publish(emergencyMsg);
+
+    justGotRedirect = true;
+}
+
+void rosMsg::lowBattery(const std_msgs::Bool &msg)
+{
+    publishBlockedGoal(0);
+    std_msgs::Bool emergencyMsg;
+    pubEmergency.publish(emergencyMsg);
 }
 
 void rosMsg::generateNewMap()
@@ -435,14 +538,17 @@ void rosMsg::subStart()
 
     subCurrentPosition = n.subscribe("mavlink_pos", 1, &rosMsg::setCurrentPosition, this );
     //subGoalPosition = n.subscribe("dronelink/destination", 1, &rosMsg::setGoalPosition, this );
-    subCalculatePath = n.subscribe("gcs_master/calculate_path", 1, &rosMsg::calculatePath, this );
+    subCalculatePath = n.subscribe("gcs_master/calculate_path", 1, &rosMsg::getPath, this );
 
     subNumberOfZones = n.subscribe("utm/number_of_zones", 1, &rosMsg::setNumberOfExpectedZones, this);
     subNoFlightCircles = n.subscribe("utm/fetch_no_flight_circles", 1000, &rosMsg::addNoFlightCircle, this);
     subNoFlightAreas = n.subscribe("utm/fetch_no_flight_areas", 1000, &rosMsg::addNoFlightArea, this);
-    subDrones = n.subscribe("utm/fetch_tracking_data", 1000, &rosMsg::checkDrones, this);
     subRallyPoints = n.subscribe("utm/fetch_rally_points", 1, &rosMsg::rallyPointsForBlockedGoal, this );
+    droneRedirectSub = n.subscribe("/drone_decon/redirect", 10, &rosMsg::gotRedirect, this);
+    subLowBattery = n.subscribe("gcs_master/critical_battery", 1, &rosMsg::lowBattery, this);
 
+
+    subDrones = n.subscribe("/utm/dronesList", 100, &rosMsg::droneData, this);
     subIsReady = n.subscribe("pathplanner/get_is_ready", 1, &rosMsg::isReady, this );
 
     pubPath  = n.advertise<mavlink_lora::mavlink_lora_mission_list>("pathplanner/mission_list", 1);
@@ -451,6 +557,8 @@ void rosMsg::subStart()
     pubEmergency = n.advertise<std_msgs::Bool>("pathplanner/emergency", 1);
     pubBlockedGoal = n.advertise<pathplanner::blocked_goal>("pathplanner/blocked_goal", 1);
     pubFetchRallyPoints = n.advertise<std_msgs::Bool>("utm/request_rally_points", 1);
+    pubLandNow = n.advertise<std_msgs::Bool>("pathplanner/land_now", 1);
+    pubChangeGoal = n.advertise<mavlink_lora::mavlink_lora_pos>("userlink/destination", 1);
 
     getZonesFromUTM();
 
@@ -484,10 +592,16 @@ bool rosMsg::checkIfZoneExists(DynamicNoFlightZone &zone)
 
 void rosMsg::publishBlockedGoal(int epochOver)
 {
-    *currentTask = "Goal is blocked. Informing GCS";
+    std::cout << "PATHPLANNER: Goal is blocked or low battery" << std::endl;
+    if(waitingForRallyPoints)
+        return;
 
     //std::cout << "BLOCKED GOAL!" << std::endl;
     epochBlockedUntil = epochOver;
     std_msgs::Bool msg;
     pubFetchRallyPoints.publish(msg);
+    waitingForRallyPoints = true;
+
+    *mainStatus = "Goal blocked";
+    *currentTask = "Loading rally points";
 };
