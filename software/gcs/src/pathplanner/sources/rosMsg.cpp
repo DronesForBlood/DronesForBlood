@@ -449,7 +449,7 @@ void rosMsg::calculatePath()
             i++;
         }
         if(missionMsg.waypoints.size() > 0)
-            missionMsg.waypoints.back().autocontinue = 0;
+            missionMsg.waypoints.back().autocontinue = 1;
         pubPath.publish(missionMsg);
     }
     else {

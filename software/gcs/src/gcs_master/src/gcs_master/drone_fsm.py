@@ -14,7 +14,7 @@ from gcs_master import path_operations
 class DroneFSM():
 
     PLANNER_TIMEOUT = 10    # Timeout, in seconds, for asking again for a path
-    TIMEOUT = 5             # Timeout, in seconds, for asking again for commands
+    TIMEOUT = 12             # Timeout, in seconds, for asking again for commands
     MISSION_LENGTH = 4      # Number of waypoints sent to the drone
     DOCK_TIMEOUT = 15       # Timeout for asking again the docking station
 
@@ -260,8 +260,10 @@ class DroneFSM():
         elif self.__state == "planner_setup":
             now = rospy.get_time()
             if now > self.__state_timer + self.TIMEOUT:
-                self.ACTIVATE_PLANNER = True
-                self.CLEAR_MISSION = True
+                if not self.mission_cleared:
+                    self.CLEAR_MISSION = True
+                if not self.planner_ready:
+                    self.ACTIVATE_PLANNER = True
                 self.__state_timer = rospy.get_time()
 
         # ARM state

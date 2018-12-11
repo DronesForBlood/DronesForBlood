@@ -37,7 +37,7 @@ class GcsMasterNode():
     # Node variables
     UTM_PERIOD = 1              # Seconds
     HEARBEAT_PERIOD = 0.3       # Seconds
-    HEARTBEAT_TIMEOUT = 5       # Seconds
+    HEARTBEAT_TIMEOUT = 10      # Seconds
     BATTERY_CHECK_TIMEOUT = 5   # Seconds
     GPS_TIMEOUT = 5             # Seconds
 
@@ -200,30 +200,30 @@ class GcsMasterNode():
         if self.state_machine.LAND:
             rospy.loginfo("Sending LAND command")
             # Pre-landing waypoint
-            wp1 = mavlink_lora.msg.mavlink_lora_mission_item_int()
-            wp1.target_system = 0
-            wp1.target_component = 0
-            wp1.seq = 0
-            # Global pos, relative alt_int
-            wp1.frame = 6
-            wp1.command = 16
-            # Hold time
-            wp1.param1 = 0
-            # Acceptance radius, in m
-            wp1.param2 = 5
-            # Pass through the waypoint
-            wp1.param3 = 0
-            wp1.x = int(10000000 * self.state_machine.position[0])
-            wp1.y = int(10000000 * self.state_machine.position[1])
-            rospy.loginfo("Land X: {}".format(wp1.x))
-            rospy.loginfo("Land Y: {}".format(wp1.y))
-            wp1.z = 10
-            wp1.autocontinue = 1
+            # wp1 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+            # wp1.target_system = 0
+            # wp1.target_component = 0
+            # wp1.seq = 0
+            # # Global pos, relative alt_int
+            # wp1.frame = 6
+            # wp1.command = 16
+            # # Hold time
+            # wp1.param1 = 0
+            # # Acceptance radius, in m
+            # wp1.param2 = 5
+            # # Pass through the waypoint
+            # wp1.param3 = 0
+            # wp1.x = int(10000000 * self.state_machine.position[0])
+            # wp1.y = int(10000000 * self.state_machine.position[1])
+            # rospy.loginfo("Land X: {}".format(wp1.x))
+            # rospy.loginfo("Land Y: {}".format(wp1.y))
+            # wp1.z = 10
+            # wp1.autocontinue = 1
             # Landing waypoint
             wp2 = mavlink_lora.msg.mavlink_lora_mission_item_int()
             wp2.target_system = 0
             wp2.target_component = 0
-            wp2.seq = 1
+            wp2.seq = 0
             # Global pos, relative alt_int
             wp2.frame = 6
             wp2.command = 21
@@ -237,7 +237,6 @@ class GcsMasterNode():
             wp2.autocontinue = 0
             # Create mission list and send it to Mavlink
             land_mission = mavlink_lora.msg.mavlink_lora_mission_list()
-            land_mission.waypoints.append(wp1)
             land_mission.waypoints.append(wp2)
             self.new_mission_pub.publish(land_mission)
             self.state_machine.LAND = False
@@ -500,7 +499,6 @@ class GcsMasterNode():
         """
         The incomming boolean data specifies if the pathplanner is ready
         """
-        rospy.loginfo("Planner ready acknowledged")
         if data.data:
             self.state_machine.planner_ready = True
             rospy.loginfo("Planner ready acknowledged")
