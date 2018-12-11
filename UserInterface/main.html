@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+div {
+    padding: 10px 0px 0px 0px;
+}	
+</style>
+<meta charset="UTF-8">
+<link rel="icon" href="icons/blood-donation.png">
+<link rel="stylesheet" href="OpenLayers/v5.3.0-dist/ol.css" type="text/css">
+<script src="OpenLayers/v5.3.0-dist/ol.js"></script>
+<script type="text/javascript" src="ROSLIB/eventemitter2.min.js"></script>
+<script type="text/javascript" src="ROSLIB/roslib.min.js"></script>
+<style>
+    .map {
+        height: 400px;
+        width: 100%;
+    }
+
+</style>
+
+<title>Drones for Blood</title>
+</head>
+<body style="font-family:arial black;">
+
+<h1>Drones for Blood</h1>
+<p>Please select your position and destination.</p>
+
+<div id="map" class="map"></div>
+<script>		
+    var markerOrder = true;
+    var destinationSent = false;
+    var startSource = new ol.source.Vector({wrapX: false});
+    var destinationSource = new ol.source.Vector({wrapX: false});
+    var droneSource = new ol.source.Vector({wrapX: false});
+    var pathSource = new ol.source.Vector({wrapX: false});
+    var crumbSource = new ol.source.Vector({wrapX: false});
+    var countdown = 0;
+    
+    var startStyle = new ol.style.Style({
+            image: new ol.style.Icon(/** @type {olx.style.IconOptions} */ ({
+              anchor: [0.5, 0],
+              anchorOrigin: 'bottom-left',
+              anchorXUnits: 'fraction',
+              anchorYUnits: 'fraction',
+              src: "icons/home_marker.png"
+            }))
+        });
+    
+    var destinationStyle = new ol.style.Style({
+            image: new ol.style.Icon(/** @type {olx.style.IconOptions} */ ({
+                anchor: [0.5, 0],
+                anchorOrigin: 'bottom-right',
+                anchorXUnits: 'fraction',
+                anchorYUnits: 'fraction',
+                src: 'icons/goal_marker.png'
+            }))
+        });
+    
+    var droneStyle = new ol.style.Style({
+            image: new ol.style.Icon(/** @type {olx.style.IconOptions} */ ({
+                anchor: [0.5, 0.5],
+                anchorXUnits: 'fraction',
+                anchorYUnits: 'fraction',
+                src: 'icons/drone.png'
+            }))
+        });
+    
+    var pathStyle = new ol.style.Style({
+	stroke : new ol.style.Stroke({
+	    width : 5,
+     	    color: [255, 0, 0, 0.5]
+	})
+    });
+
+    var crumbStyle = new ol.style.Style({
+	image : new ol.style.Circle({
+	    radius : 3000, 
+	    color: [255, 0, 0, 0.5]
+	})
+    });
+
+    var startLayer = new ol.layer.Vector({
+        source: startSource,
+        style: startStyle,
+        ratio: 1
+      });
+    
+    var destinationLayer = new ol.layer.Vector({
+        source: destinationSource,
+        style: destinationStyle
+      });
+    
+    var droneLayer = new ol.layer.Vector({
+        source: droneSource,
+        style: droneStyle
+      });
+
+    var pathLayer = new ol.layer.Vector({
+	source : pathSource,
+	style : pathStyle
+    });
+
+    var crumbLayer = new ol.layer.Vector({
+	source : crumbSource,
+ 	style : crumbStyle,
+    });
+
+    var raster = new ol.layer.Tile({
+        source: new ol.source.XYZ({url : 'https://{1-4}.aerial.maps.cit.api.here.com' +
+        '/maptile/2.1/maptile/newest/hybrid.day/{z}/{x}/{y}/256/png' +
+        '?app_id=h9gdBWYmTQWA4xyORRqv&app_code=ZRzycTIbZXel-U-XHJ3pZQ'})
+      });
+
+    var view = new ol.View({
+	center: ol.proj.fromLonLat([10.4285, 55.3690]),
+        zoom: 15
+    });	
+
+    var map = new ol.Map({
+        target: 'map',
+        layers: [raster, startLayer, destinationLayer, droneLayer, pathLayer, crumbLayer],
+	loadTilesWhileInteracting: true,
+        view: view
+      });
+
+    map.on('click', function(e){
+        var translated = new ol.proj.transform(e.coordinate, "EPSG:900913" ,"EPSG:4326");
+	document.getElementById("startBtn").disabled = true;
+        if (markerOrder){
+            startSource.clear();
+            var feature = new ol.Feature({
+                geometry: new ol.geom.Point(e.coordinate)
+            }); 	
+            feature.setStyle(startStyle);
+            startSource.addFeature(feature);
+            document.getElementById("startLat").value = Math.round(translated[1] * 1000000) / 1000000;   
+            document.getElementById("startLon").value = Math.round(translated[0] * 1000000) / 1000000;
+            markerOrder = false;
+       }
+       else {
+            destinationSource.clear();
+            var feature = new ol.Feature({
+                geometry: new ol.geom.Point(e.coordinate)
+            }); 	
+            feature.setStyle(destinationStyle);
+            destinationSource.addFeature(feature);
+            document.getElementById("endLat").value = Math.round(translated[1] * 1000000) / 1000000;
+            document.getElementById("endLon").value = Math.round(translated[0] * 1000000) / 1000000;
+            markerOrder = true;
+       }  
+    });
+    
+function addStartMarker(markPos){
+	startSource.clear();
+    var feature = new ol.Feature({
+        geometry: new ol.geom.Point(markPos.lon, markPos.lat), 
+    }); 	
+    feature.setStyle(startStyle);
+    startSource.addFeature(feature);
+    document.getElementById("startBtn").disabled = true;
+};
+
+function addStartMarkerManual(){
+	var pattern = /\d{2}\.\d{7}/;
+	document.getElementById("startBtn").disabled = true;
+	if (pattern.test(document.getElementById("startLat").value) && pattern.test(document.getElementById("startLon").value))
+	{
+		startSource.clear();
+        markPos = new ol.proj.transform([Number(document.getElementById("startLon").value), Number(document.getElementById("startLat").value)], "EPSG:4326", "EPSG:3857");
+        var feature = new ol.Feature({
+            geometry: new ol.geom.Point(markPos),
+        }); 	
+        feature.setStyle(startStyle);
+        startSource.addFeature(feature);       
+	}
+};
+
+function addEndMarker(markPos){
+	destinationSource.clear();
+    var feature = new ol.Feature({
+        geometry: new ol.geom.Point(markPos), 
+    }); 	
+    feature.setStyle(destinationStyle);
+    destinationSource.addFeature(feature);
+    document.getElementById("startBtn").disabled = true;
+
+};
+
+function addEndMarkerManual(){
+	var pattern = /\d{2}\.\d{7}/;
+	document.getElementById("startBtn").disabled = true;
+	if (pattern.test(document.getElementById("endLat").value) && pattern.test(document.getElementById("endLon").value))
+	{
+	    destinationSource.clear();
+	    markPos = new ol.proj.transform([Number(document.getElementById("endLon").value),   Number(document.getElementById("endLat").value)], "EPSG:4326", "EPSG:3857");
+            var feature = new ol.Feature({
+                geometry: new ol.geom.Point(markPos), 
+            }); 
+        	
+            feature.setStyle(destinationStyle);
+            destinationSource.addFeature(feature);
+	}
+};
+
+function addDroneMarker(){
+	droneSource.clear();
+	markPos = new ol.proj.transform([Number(document.getElementById("droneLon").value), Number(document.getElementById("droneLat").value)], "EPSG:4326", "EPSG:3857");
+    var feature = new ol.Feature({
+        geometry: new ol.geom.Point(markPos),
+    });  	
+    feature.setStyle(droneStyle);
+    droneSource.addFeature(feature);
+};
+
+function setStart(){
+    var pattern = /\d{2}\.\d{7}/;
+    if (pattern.test(document.getElementById("droneLon").value) && pattern.test(document.getElementById("droneLat").value)){
+        document.getElementById("startLon").value = document.getElementById("droneLon").value;
+        document.getElementById("startLat").value = document.getElementById("droneLat").value;
+        addStartMarkerManual();
+	markerOrder = false;
+    }
+    else {
+	alert("No valid drone position");
+    }
+};
+
+function setDestination(){
+    var pattern = /\d{2}\.\d{7}/;
+    if (pattern.test(document.getElementById("droneLon").value) && pattern.test(document.getElementById("droneLat").value)){
+        document.getElementById("endLon").value = document.getElementById("droneLon").value;
+        document.getElementById("endLat").value = document.getElementById("droneLat").value;
+        addEndMarkerManual();
+	markerOrder = true;
+    }    
+    else {
+	alert("No valid drone position");
+    }
+};
+
+function startETA(){
+   etaId = setInterval(function() {
+	var hours = parseInt(countdown / 3600);
+	var minutes = parseInt(countdown / 60);
+	var seconds = parseInt(countdown % 60); 
+
+	document.getElementById("eta").innerHTML = hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + ":" + minutes.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + 
+	":" + seconds.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
+
+	if (--countdown <= 0){
+            clearInterval(etaId);
+	}
+   }, 1000);
+};
+
+
+function swap(){
+    var tempLon = document.getElementById("startLon").value;
+    var tempLat = document.getElementById("startLat").value;
+    document.getElementById("startLon").value = document.getElementById("endLon").value
+    document.getElementById("startLat").value = document.getElementById("endLat").value
+    document.getElementById("endLon").value = tempLon;
+    document.getElementById("endLat").value = tempLat;
+    addStartMarkerManual();
+    addEndMarkerManual();
+};
+
+function centerModel(){
+    map.setView(new ol.View({
+	center : ol.proj.fromLonLat([10.4151, 55.4720]),
+	zoom : 18
+    }));
+};
+
+function centerHCA(){
+    map.setView(new ol.View({
+	center : ol.proj.fromLonLat([10.3285, 55.4752]),
+	zoom : 15
+    }));
+};
+
+function centerDrone(){
+    var pattern = /\d{2}\.\d{7}/;
+    var lon = document.getElementById("droneLon").value;
+    var lat = document.getElementById("droneLat").value;
+    if (pattern.test(lon) && pattern.test(lat)){
+        map.setView(new ol.View({
+	    center : ol.proj.fromLonLat([Number(lon), Number(lat)]),
+	    zoom : 17
+        }));
+    }
+    else {
+	alert("No valid drone position");
+    }
+};
+
+function drawPath(message){
+    pathSource.clear();
+    var waypoints = message.waypoints;
+    var arrLength = waypoints.length;
+    var coordinates = [];
+    for (i = 0; i < arrLength; i++){
+	var coord = ol.proj.fromLonLat([waypoints[i].y / 10000000, waypoints[i].x / 10000000]);
+	coordinates.push(coord);
+    };
+    var feature = new ol.Feature({
+        geometry: new ol.geom.LineString(coordinates),
+	name : "Line"
+    });  
+    feature.setId("Line");	
+    feature.setStyle(pathStyle);
+    pathSource.addFeature(feature);
+
+    // WRITE ETA
+    countdown = waypoints[waypoints.length - 1].param4 - Math.round((new Date()).getTime() / 1000); 
+    console.info(waypoints[waypoints.length - 1].y / 10000000, waypoints[waypoints.length - 1].x / 10000000);
+    var hours = parseInt(countdown / 3600);
+    var minutes = parseInt(countdown / 60);
+    var seconds = parseInt(countdown % 60); 
+
+    document.getElementById("eta").innerHTML = hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + ":" + minutes.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + 
+	":" + seconds.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
+};
+
+function drawCrumbs(){
+    crumbSource.clear();
+    crumbId = setInterval(function() {
+	console.info("Creating crumbs!");
+	var pattern = /\d{2}\.\d{7}/;
+	if (pattern.test(document.getElementById("droneLat").value) && pattern.test(document.getElementById("droneLon").value))
+	{
+	    var crumb = new ol.proj.transform([Number(document.getElementById("droneLon").value),
+			Number(document.getElementById("droneLat").value)], "EPSG:4326", "EPSG:3857");
+	    var feature = new ol.Feature({
+		geometry: new ol.geom.Point([Number(document.getElementById("droneLon").value),
+			Number(document.getElementById("droneLat").value)]), 
+	    }); 	
+	    console.info(feature.geometry);
+	    feature.setStyle(crumbStyle);
+	    crumbSource.addFeature(feature);
+	    
+ 	    // Check for arrival
+	    if (arrLength = 0){
+		clearInterval(crumbId);
+	    } 
+	}
+    }, 3000);
+};
+
+// ROS INTEGRATION BELOW //
+var ros = new ROSLIB.Ros({
+	url : 'ws://localhost:9090'
+	});
+	
+	ros.on('connection', function() {
+		console.log('Connected to server.');
+	});
+	ros.on('error', function(error) {
+		console.log('Error connecting to websocket server: ', error);
+    });
+	ros.on('close', function() {
+        console.log('Connection to websocket server closed.');
+    });
+
+
+// DEFINE SUBSCRIBED AND PUBLISHABLE TOPICS
+var droneDestination = new ROSLIB.Topic({
+    ros : ros,
+    name : "/userlink/destination",
+    messageType : "mavlink_lora/mavlink_lora_pos"
+});
+    
+var droneStart = new ROSLIB.Topic({
+    ros : ros,
+    name : "/userlink/start",
+    messageType : "std_msgs/Int16MultiArray"
+});
+
+var dronePosition = new ROSLIB.Topic({
+    ros : ros,
+    name : "/mavlink_pos",
+    messageType : "mavlink_lora/mavlink_lora_pos"
+}); 
+
+var dronePath = new ROSLIB.Topic({
+    ros : ros, 
+    name : "/pathplanner/mission_list",
+    messageType : "mavlink_lora/mavlink_lora_mission_list"
+});
+
+var gcsAck = new ROSLIB.Topic({
+   ros : ros,
+   name : "gcs_master/destination_ack",
+   messageType : "std_msgs/Bool"
+});
+
+// DEFINE SUBSCRIBE CALLBACK FUNCTIONS
+dronePosition.subscribe(function(message) {
+	document.getElementById("droneLat").value = message.lat;
+	document.getElementById("droneLon").value = message.lon;	
+	addDroneMarker();
+});   
+
+dronePath.subscribe(function(message) {
+   drawPath(message);
+});
+
+gcsAck.subscribe(function(message){
+   if (message.data = true){
+	document.getElementById("startBtn").disabled = false; 
+   };
+});
+
+// Used to simulate GCS
+function sendAck(){ 
+   var msg = new ROSLIB.Message({
+	data : true
+   });
+   gcsAck.publish(msg);
+};
+
+function publishStart(){
+	var checked = 0;
+	if (document.getElementById("package").checked){
+		var checked = 1;
+	};
+	var msg = new ROSLIB.Message({
+		layout: {
+			dim: [{
+				label: "Start",
+				size: 1,
+				stride: 0},
+				{
+				label: "Package",
+				size: 1,
+				stride: 0}],
+			data_offset: 0
+		},
+		data:[1, checked]
+	});
+	droneStart.publish(msg);
+	startETA();
+	drawCrumbs();
+};
+
+function publishDestination(){
+	var msg = new ROSLIB.Message({
+		time_usec: 0,
+        	lat : Number(document.getElementById("endLat").value),
+        	lon: Number(document.getElementById("endLon").value),
+        	alt: 0.0,
+        	relative_alt: 0.0,
+        	heading: 0.0,
+	});
+	droneDestination.publish(msg);
+};
+
+// Used to simulate a path published to /pathplanner/mission_list
+function sendPath(){
+	var msg = new ROSLIB.Message({
+		time_usec: 0,
+		waypoints : [{target_system: 0,
+			target_component : 0,
+			seq : 0,     // Number in sequence
+			frame : 6,    
+			command : 16,
+			param1 : 0,   
+			param2 : 5,    
+			param3 : 0, 
+			x : 5536861, // LAT
+			y : 1042066, // LON
+			z : 20,      // ALT
+			autocontinue : 1,
+			param4 : 20},
+			{target_system : 0,
+			target_component : 0,
+			seq : 1,
+			frame : 6,     
+			command : 16,
+			param1 : 0,   
+			param2 : 5,    
+			param3 : 0, 
+			x : 5536905,
+			y : 1043516,
+			z : 20,
+			autocontinue : 1,
+			param4 : 40},
+			{target_system : 0,
+			target_component : 0,
+			seq : 3,
+			frame : 6,     
+			command : 16,
+			param1 : 0,   
+			param2 : 5,    
+			param3 : 0, 
+			x : 5536330,
+			y : 1042212,
+			z : 20,
+			autocontinue : 1,
+			param4 : 60}]
+	});
+	dronePath.publish(msg);	
+};
+
+</script>
+<div style="height:5px"></div>
+<hr>
+
+<form onsubmit="return false">
+<button onclick="swap()">Swap</button>
+<button onclick="centerHCA()">Center on Airport</button>
+<button onclick="centerModel()">Center on Airfield</button>
+<button onclick="centerDrone()">Center on Drone</button>
+<button onclick="sendPath()">Sim Path</button>
+<button onclick="sendAck()">Sim gcsACk</button>
+</form>
+
+<form onsubmit="publishDestination();return false">
+<label>Start Position:</label>
+<input type = "number" id = "startLat" step="0.0000001" max="90" min="-90" placeholder="Latitude" required pattern=.{1} oninput="addStartMarkerManual()"/>
+<input type = "number" id = "startLon" step="0.0000001" max="180" min="-180" placeholder="Longitude" required pattern=.{1} oninput="addStartMarkerManual()"/>
+
+<div></div>
+
+<label>End Position:</label>
+<input type = "number" id = "endLat" step="0.0000001" max="90" min="-90" placeholder="Latitude" required pattern=.{1} oninput="addEndMarkerManual()"/>
+<input type = "number" id = "endLon" step="0.0000001" max="180" min="-180" placeholder="Longitude" required pattern=.{1} oninput="addEndMarkerManual()"/>
+
+<div style="height:0px"></div>
+<hr>
+<input type="submit" value="Request"/>
+
+<nobr>
+<span>ETA - </span>
+<span id="eta">00:00:00<span>
+</nobr>
+
+</form>
+
+<div></div>
+
+<form style="display:inline-block;" onsubmit="publishStart();return false">
+<input type="submit" value="Start" id="startBtn" disabled/>
+<input type="checkbox" id="package" value="1"/> Package attached
+</form>
+
+<hr>
+<form style="display:inline-block;" onsubmit="addDroneMarker();return false">
+<span>Current Drone Position<br></span> 
+<input type = "number" id = "droneLat" step="0.0000001" placeholder="Latitude" required pattern=.{1} />
+<input type = "number" id = "droneLon" step="0.0000001" placeholder="Longitude" required pattern=.{1} />
+</form>
+
+<form style="display:inline-block;" onsubmit="setStart();return false">
+<input type="submit" value="Use as Start"/>
+</form>
+
+<form style="display:inline-block;" onsubmit="setDestination();return false">
+<input type="submit" value="Use as Destination"/>
+</form>
+</body>
+</html>
