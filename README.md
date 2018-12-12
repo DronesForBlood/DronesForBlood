@@ -6,6 +6,11 @@ Repo for the groups documents and stuff for blood transport system for drones
 
 # Installation instructions
 
+The full ROS package is assumed to be installed before installing and running this
+project. Check the [ROS website](https://wiki.ros.org/ROS/Installation) and install
+the version compatible with your current OS version. The project was tested for
+**Ubuntu18.04** and **ROS Melodic**.
+
 1. Clone the develop branch to a local folder, as well as the required submodules, and checkout to the adequate Firmware branch. Finally, compile the Gazebo SITL project:
 
 ```bash
@@ -58,17 +63,28 @@ There is a main launch file that executes the required packages for doing an aut
 
 - **critic-batt:** Threshold battery level. Below this point, a warning will be prompted. However, no special actions are performed yet when this situation happens
 
+- **hovertime:** Time that the drone will be holding position before starting the 
+land maneuver.
+
 - **alt:** Set point altitude for the take-off and fly operations
 
 - **sim:** If true, Mavlink will establish a communication with the Gazebo simulation, instead of doing it with the drone
 
 - **flyzones:** If false, the restricted fly zones will be ignored when taking off, so the flight/simulation is faster (suitable for debugging).
 
-Hence, if the user wants to make a simulated flight at 50 meters altitude, withe a minimum take-off battery of 80%, and a critical battery level of 20%, the following instruction has to be run:
+- **monitor:** If true, the lora monitor node will be opened. It is not recommended to
+set it as true, as if the GCS master crashes, the monitor nodel will need to be closed
+as well. Instead, it is recommended to launch it in a separate terminal.
+
+- **port:** Name of the port where the telemetry module is connected. A way of knowing
+the port is typing `dmesg | grep tty` after plugging in the device.
+
+Hence, if the user wants to make a simulated flight at 50 meters altitude, with a minimum take-off battery of 80%, and a critical battery level of 20%, with the telemetry link
+connected in the ttyUSB0 port, the following instruction has to be run:
 
 
 ```bash
-roslaunch gcs_master drones-for-blood.launch alt:=50 sim:=true flyzones:=false takeoff-batt:=80 critic-batt:=20
+roslaunch gcs_master drones-for-blood.launch alt:=50 hovertime:=5 sim:=true flyzones:=false takeoff-batt:=80 critic-batt:=20 monitor:=true port:=/dev/ttyUSB0
 ```
     
    
@@ -94,19 +110,51 @@ it is nessecary to restart LoraGroundControl so it can reconnect its listeners o
     
     - If not, it is in the system libraries folder e.g. _~/.local/lib/python3.6/site-packages/pykml/_
     
-In the file, the line that says `import urrlib2` has to be changed by the following lines:
+    In the file, the line that says `import urrlib2` has to be changed by the following lines:
 
-```python
-try:
-    # For Python 3.0 and later
-    from urllib.request import urlopen
-except ImportError:
-    # Fall back to Python 2's urllib2
-    from urllib2 import urlopen
-```
+    ```python
+    try:
+        # For Python 3.0 and later
+        from urllib.request import urlopen
+    except ImportError:
+        # Fall back to Python 2's urllib2
+        from urllib2 import urlopen
+    ```
     
 - __[ERROR] [1543662066.324335031]: Unable to open port__: Unable to open tty v6 port when running mavlink_lora. Check if the socat is installed, and then run the commands from the launch_sim_sitl_gazebo.sh files again.
 
     ```bash
     sudo apt install socat
     ```
+
+- **'dict' object has no attribute 'has_key'** error raised when launching the *rosbridge_websocket* node:
+
+     >**[ERROR] [1544621992.541580]:** Unable to accept incoming connection.  Reason: 'dict' object has no attribute 'has_key'
+    
+    The reason behind this error is that the rosbridge package is written in
+    python2 version, but the shebang header line in the code does not specify
+    the python version. Hence, if the machine running the code has as default
+    python3 it will raise this error(which is the case if it is run inside a
+    python3 virtual environment).
+
+    - Solution 1: Edit the rosbridge_websocket node in your ROS library. Normally,
+    it is in the */opt/ros/\<ros-distro>/lib/rosbridge_server* folder. Specify the
+    ROS version in the very first line:
+
+        ```python
+        #!/usr/bin/env python2
+        ```
+
+    - Solution 2: Launch rosbridge from outside the virtual environment, or
+    change the python version that will be used by default (This last one is
+    tricky and not recommended).
+
+
+- **Can not open the telemetry port.** If this happens even after specifying the correct
+port, try to add the user to the dialout group. Remember to log out and log in
+after running the instruction:
+
+    ```bash
+    sudo adduser <user-name> dialout
+    ```
+
