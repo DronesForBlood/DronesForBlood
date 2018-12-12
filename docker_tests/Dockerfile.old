@@ -1,0 +1,20 @@
+FROM ros:melodic-robot
+
+SHELL ["/bin/bash", "-c"]
+RUN mkdir -p /usr/src/
+RUN apt update && apt install -y python-jinja2 gcc g++ protobuf-compiler unzip ros-melodic-mavros ros-melodic-mavlink ros-melodic-mavros-extras ros-melodic-geographic-msgs geographiclib-tools ros-melodic-gazebo-dev ros-melodic-diagnostic-updater ros-melodic-mavros-msgs ros-melodic-cv-bridge python-argparse python-empy python-toml python-numpy python-dev python-pip
+
+WORKDIR /usr/src/
+RUN git clone https://github.com/PX4/Firmware.git
+
+#PX4 gazebo build progress is retarted, so we need to do it like this...
+RUN source /opt/ros/melodic/setup.bash && cd Firmware && make all -j4
+RUN source /opt/ros/melodic/setup.bash && cd Firmware && DONT_RUN=1 make posix_sitl_default gazebo -j4
+ADD run.sh /usr/src/run.sh
+RUN chmod +x /usr/src/run.sh
+EXPOSE 14557
+EXPOSE 14556
+EXPOSE 14560
+
+ENTRYPOINT ["/usr/src/run.sh"]
+CMD ["serial"]
