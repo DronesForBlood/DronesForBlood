@@ -1,6 +1,8 @@
 # DronesForBlood
 Repo for the groups documents and stuff for blood transport system for drones
 
+# Dependencies
+- Mavlink_lora (Is not public at this moment, but take contact to Crowdedlight if interested in using it, and he can relay request to owner of mavlink_lora)
 
 # Installation instructions
 
