@@ -1,0 +1,15 @@
+int64 uav_id
+int64 uav_op_status
+float64 pos_cur_lat_dd
+float64 pos_cur_lng_dd
+float64 pos_cur_alt_m
+float64 pos_cur_hdg_deg
+float64 pos_cur_vel_mps
+int64 pos_cur_gps_timestamp
+float64 wp_next_lat_dd
+float64 wp_next_lng_dd
+float64 wp_next_alt_m
+float64 wp_next_hdg_deg
+float64 wp_next_vel_mps
+int64 wp_next_eta_epoch
+int64 uav_bat_soc

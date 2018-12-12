@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""
+Node that simulates the user link, requesting a new mission.
+"""
+# Standard libraries
+import sys
+# Third-party libraries
+import rospy
+import geometry_msgs.msg
+import std_msgs.msg
+# Local libraries
+from gcs_master import drone_fsm
+try:
+    import mavlink_lora.msg
+except ModuleNotFoundError:
+    print("Mavlink module not found")
+
+
+class PathplannerSimNode():
+
+    def __init__(self):
+
+
+        self.lat = 0
+        self.lon = 0
+        self.alt = 0
+
+        self.waypoints = []
+        self.received_pos = False
+
+        rospy.init_node("sim_pathplanner", anonymous=True)
+
+        self.new_path_pub = rospy.Publisher(
+                "pathplanner/mission_list",
+                mavlink_lora.msg.mavlink_lora_mission_list,
+                queue_size=1)
+        self.is_ready_pub = rospy.Publisher(
+                "pathplanner/is_ready",
+                std_msgs.msg.Bool,
+                queue_size=1)
+
+        rospy.Subscriber("gcs_master/calculate_path",
+                        std_msgs.msg.Bool,
+                        self.new_path_callback,
+                        queue_size=1)
+        rospy.Subscriber("pathplanner/get_is_ready",
+                        mavlink_lora.msg.mavlink_lora_pos,
+                        self.get_ready_callback,
+                        queue_size=1)
+
+        rospy.Subscriber("mavlink_pos", mavlink_lora.msg.mavlink_lora_pos,
+                         self.mavlink_pos_callback, queue_size=1)
+
+    def mavlink_pos_callback(self, data):
+        self.lat = 10000000 * data.lat
+        self.lon = 10000000 * data.lon
+        self.alt = data.alt
+        if not self.received_pos:
+            self.create_linear_waypoints_list()
+            self.received_pos = True
+            rospy.loginfo("Created waypoints list")
+        return
+
+    def new_path_callback(self, data):
+        if data.data:
+            if not self.waypoints:
+                rospy.logwarn("No remaining waypoints")
+                return
+            msg = mavlink_lora.msg.mavlink_lora_mission_list()
+            msg.waypoints = self.waypoints
+            self.new_path_pub.publish(msg)
+
+            # Remove the first waypoint from the list, as it should have already
+            # been reached.
+            self.waypoints = self.waypoints[1:]
+            for index, _ in enumerate(self.waypoints):
+                self.waypoints[index].seq = index
+        return
+
+    def get_ready_callback(self, data):
+        self.is_ready_pub.publish(True)
+        return
+
+    def create_linear_waypoints_list(self):
+        # WAYPOINT 1
+        way1 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way1.target_system = 0
+        way1.target_component = 0
+        way1.seq = 0
+        way1.frame = 6 #global pos, relative alt_int
+        way1.command = 16
+        way1.param1 = 0 # hold time
+        way1.param2 = 5 # acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
+        way1.param3 = 0 # pass though waypoint, no trajectory control
+        way1.x = int(self.lat + 5000)
+        way1.y = int(self.lon + 5000)
+        way1.z = 20
+        way1.autocontinue = 1
+
+        self.waypoints = [way1]
+        return
+
+    def create_squre_waypoints_list(self):
+
+        # WAYPOINT 1
+        way1 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way1.target_system = 0
+        way1.target_component = 0
+        way1.seq = 0
+        way1.frame = 6 #global pos, relative alt_int
+        way1.command = 16
+        way1.param1 = 0 # hold time
+        way1.param2 = 5 # acceptance radius in mmsg = mavlink_lora.msg.mavlink_lora_mission_list()
+        way1.param3 = 0 # pass though waypoint, no trajectory control
+        way1.x = int(self.lat + 5000)
+        way1.y = int(self.lon)
+        way1.z = 20
+        way1.autocontinue = 1
+
+        # WAYPOINT 2
+        way2 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way2.target_system = 0
+        way2.target_component = 0
+        way2.seq = 1
+        way2.frame = 6 #global pos, relative alt_int
+        way2.command = 16
+        way2.param1 = 0 # hold time
+        way2.param2 = 5 # acceptance radius in m
+        way2.param3 = 0 # pass though waypoint, no trajectory control
+        way2.x = int(self.lat + 5000)
+        way2.y = int(self.lon + 5000)
+        way2.z = 20
+        way2.autocontinue = 1
+
+        # WAYPOINT 3
+        way3 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way3.target_system = 0
+        way3.target_component = 0
+        way3.seq = 2
+        way3.frame = 6 #global pos, relative alt_int
+        way3.command = 16
+        way3.param1 = 0 # hold time
+        way3.param2 = 5 # acceptance radius in m
+        way3.param3 = 0 # pass though waypoint, no trajectory control
+        way3.x = int(self.lat)
+        way3.y = int(self.lon + 5000)
+        way3.z = 20
+        way3.autocontinue = 1
+
+        # WAYPOINT 4
+        way4 = mavlink_lora.msg.mavlink_lora_mission_item_int()
+        way4.target_system = 0
+        way4.target_component = 0
+        way4.seq = 3
+        way4.frame = 6 #global pos, relative alt_int
+        way4.command = 16
+        way4.param1 = 0 # hold time
+        way4.param2 = 5 # acceptance radius in m
+        way4.param3 = 0 # pass though waypoint, no trajectory control
+        way4.x = int(self.lat)
+        way4.y = int(self.lon)
+        way4.z = 20
+        way4.autocontinue = 1
+
+        self.waypoints = [way1, way2, way3, way4]
+        return
+
+    def main(self):
+        rospy.spin()
+        return
+
+
+if __name__ == "__main__":
+    pathplanner_node = PathplannerSimNode()
+    pathplanner_node.main()

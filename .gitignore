@@ -3,6 +3,9 @@
 # Prerequisites
 *.d
 
+# Mavlink messages
+**/mavlink_lora*
+
 # Compiled Object files
 *.slo
 *.lo
@@ -86,6 +89,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+buildd/
 develop-eggs/
 dist/
 downloads/
@@ -151,6 +155,7 @@ ENV/
 ##ROS stuff
 devel/
 build/
+buildd/
 bin/
 lib/
 msg_gen/
@@ -195,3 +200,9 @@ CATKIN_IGNORE
 
 # Clion IDE
 .idea
+
+# Mavlink private package
+mavlink_lora/
+
+# Log files
+log/

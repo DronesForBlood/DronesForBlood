@@ -1,0 +1,3 @@
+<launch>
+   <node name="drone_decon" pkg="drone_decon" type="drone_decon_node" output="screen" />
+</launch>

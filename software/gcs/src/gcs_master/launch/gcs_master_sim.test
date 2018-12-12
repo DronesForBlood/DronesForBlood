@@ -1,0 +1,16 @@
+
+<launch>
+
+    <arg name="takeoff-batt" default="80"/>
+    <arg name="critic-batt" default="20"/>
+    <arg name="alt" default="20"/>
+    <arg name="hover-time" default="8"/>
+
+    <node pkg="gcs_master" type="gcs_master" name="gcs_master" output= "screen"
+          args="--batt1 $(arg takeoff-batt) --batt2 $(arg critic-batt)
+                --altitude $(arg alt) --hovertime $(arg hover-time)"/>
+    <node pkg="gcs_master" type="sim_pathplanner" name="sim_pathplanner" output= "screen"/>
+    <node pkg="gcs_master" type="sim_userlink" name="sim_userlink" output= "screen"/>
+    <test test-name="drone_fsm_test" pkg="gcs_master" type="test_drone_fsm.py"/>
+
+</launch>

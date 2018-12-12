@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import rospy
+import std_msgs.msg
+from std_msgs.msg import Bool
+from std_msgs.msg import Int64
+try:
+    import lora_ground_control.msg
+except ModuleNotFoundError:
+    print("Lora ground control module not found")
+
+class dock_node:
+
+    WAIT_TIME = 8.0
+    HEARTBEAT_PERIOD = 1
+
+    def __init__(self):
+
+        self.request_time = 0.0
+        self.heartbeat_receive_time = 0.0
+        self.request = False
+        self.payload = True
+
+        rospy.init_node('dock_node', anonymous=True)
+
+        # Subscribers
+        rospy.Subscriber("docklink/statusRequest",
+                         Bool,
+                         self.request_callback,
+                         queue_size=1)
+
+        # Publishers
+        self.status_pub = rospy.Publisher(
+            "docklink/statusPublish",
+            Int64,
+            queue_size=1)
+        # Lora ground control publisher
+        self.lora_monitor_pub = rospy.Publisher(
+                "/lora_ground_control/heartbeat_nodes_rx",
+                lora_ground_control.msg.heartbeat_node,
+                queue_size=1)
+
+    def request_callback(self, msg):
+        if not self.request:
+            self.request_time = rospy.get_time()
+        self.request = True
+        self.payload = not self.payload
+        return
+    
+    def send_heartbeat(self):
+        """
+        Broadcast a heartbeat containing basic information.
+        """
+        # Heartbeat to the Lora ground control
+        self.heartbeat_receive_time = rospy.get_time()
+        lora_msg = lora_ground_control.msg.heartbeat_node()
+        lora_msg.id = 0
+        lora_msg.name = "Docking station"
+        lora_msg.expected_interval = self.HEARTBEAT_PERIOD * 1.5
+        lora_msg.main_status = "OK"
+        lora_msg.current_task  = "Prepared for docking"
+        lora_msg.has_error = False
+        self.lora_monitor_pub.publish(lora_msg)
+        return
+
+    def run(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            now = rospy.get_time()
+            if now > self.request_time + self.WAIT_TIME and self.request:
+                data = Int64()
+                if self.payload:
+                    data.data = 1
+                else:
+                    data.data = 2
+                self.status_pub.publish(data)
+                self.request = False
+            if now > self.heartbeat_receive_time + self.HEARTBEAT_PERIOD:
+                self.send_heartbeat()
+            rate.sleep()
+        return
+
+
+if __name__ == '__main__':
+    dock_node = dock_node()
+    dock_node.run()
