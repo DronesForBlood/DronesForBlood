@@ -1,5 +1,6 @@
 # DronesForBlood
-Repo for the groups documents and stuff for blood transport system for drones
+
+DronesForBlood is an autonomous flight multirotor project. It is based on the remote control of a PX4 controller from a ground control station with the repo ROS project on it.
 
 # Dependencies
 - Mavlink_lora (Is not public at this moment, but take contact to Crowdedlight if interested in using it, and he can relay request to owner of mavlink_lora)
