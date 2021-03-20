@@ -27,7 +27,7 @@ genpy==0.6.7
 idna==2.7
 image-geometry==1.13.0
 interactive-markers==1.11.4
-Jinja2==2.10
+Jinja2==2.11.3
 kdl-parser-py==1.13.1
 laser-geometry==1.6.4
 lxml==4.2.5
