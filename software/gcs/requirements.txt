@@ -40,7 +40,7 @@ pymap3d==1.7.11
 pyparsing==2.2.1
 python-dateutil==2.7.3
 python-qt-binding==0.3.4
-PyYAML==3.13
+PyYAML==5.4
 qt-dotgraph==0.3.11
 qt-gui==0.3.11
 qt-gui-cpp==0.3.11
