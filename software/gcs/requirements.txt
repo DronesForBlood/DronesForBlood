@@ -30,7 +30,7 @@ interactive-markers==1.11.4
 Jinja2==2.10
 kdl-parser-py==1.13.1
 laser-geometry==1.6.4
-lxml==4.2.5
+lxml==4.6.3
 MarkupSafe==1.1.0
 mavros==0.26.3
 message-filters==1.14.3
