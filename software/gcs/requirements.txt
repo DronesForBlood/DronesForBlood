@@ -34,7 +34,7 @@ lxml==4.2.5
 MarkupSafe==1.1.0
 mavros==0.26.3
 message-filters==1.14.3
-numpy==1.15.3
+numpy==1.22.0
 pykml==0.1.3
 pymap3d==1.7.11
 pyparsing==2.2.1
